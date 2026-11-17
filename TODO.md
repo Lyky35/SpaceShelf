@@ -197,8 +197,11 @@ smaller-items list below.
 
 ### Smaller bot items
 
-- [ ] Defense depth: `UtilityBrain::buildDefense()` deliberately stops at
-      turret tiers — add small/large shield domes and missile-silo/ABM defense
+- [x] Defense depth: `UtilityBrain::buildDefense()` now grows the shooting tiers
+      to target, then spends the surplus on depth — shield dome layers
+      (`shield_dome_target`), a missile silo raised through the scored building
+      pass (`abm_silo_level`), and an ABM stock capped by `abm_target` and the
+      engine's 10-per-silo-level storage.
 - [ ] Moon play for bots (build/defend moons; moon destruction not planned)
 - [ ] Headless arrival sweeper for idle accounts (fairness; open decision #6
       in the plan doc)
