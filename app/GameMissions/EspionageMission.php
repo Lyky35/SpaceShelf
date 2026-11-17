@@ -10,6 +10,7 @@ use OGame\GameMessages\FleetLostContact;
 use OGame\GameMissions\Abstracts\GameMission;
 use OGame\GameMissions\BattleEngine\Models\AttackerFleet;
 use OGame\GameMissions\BattleEngine\Models\BattleResult;
+use OGame\GameMissions\BattleEngine\Models\DefenderFleet;
 use OGame\GameMissions\BattleEngine\PhpBattleEngine;
 use OGame\GameMissions\BattleEngine\RustBattleEngine;
 use OGame\GameMissions\Models\MissionPossibleStatus;
@@ -115,11 +116,16 @@ class EspionageMission extends GameMission
         $attackerEspionageLevel = $originPlayer->getEffectiveEspionageLevel();
         $defenderEspionageLevel = $targetPlayer->getEffectiveEspionageLevel();
 
-        // TODO: Include ACS Defend fleets in counter-espionage chance calculation
-        // Currently only counts planet owner's ships via getDefenderShipCount()
-        // Should also count ships from ACS Defend fleets present at the target planet
-        // This creates inconsistency: ACS fleets participate in battle but don't affect detection chance
+        // Vanilla OGame ACS: "When a planet with an ACS defence is being probed, the number
+        // of ACS ships will be added to the planet's original fleet." Snapshot the ACS Defend
+        // fleets docked at the target now, before a counter-espionage battle could destroy
+        // them, so both the counter-espionage chance and the spy report see the same fleet.
+        $acsDefendFleets = $this->getAcsDefendFleetsAtPlanet($target_planet);
+
         $defenderShipCount = $counterEspionageService->getDefenderShipCount($target_planet);
+        foreach ($acsDefendFleets as $acsDefendFleet) {
+            $defenderShipCount += $acsDefendFleet->units->getAmount();
+        }
 
         $counterEspionageChance = $counterEspionageService->calculateChance(
             $attackerProbeCount,
@@ -175,7 +181,7 @@ class EspionageMission extends GameMission
         }
 
         // Always create espionage report (even if all probes destroyed)
-        $reportId = $this->createEspionageReport($mission, $origin_planet, $target_planet, $counterEspionageChance);
+        $reportId = $this->createEspionageReport($mission, $origin_planet, $target_planet, $counterEspionageChance, $acsDefendFleets);
 
         // --- Defender notification (mirror official OGame "you were spied" message)
         // Defender is the owner of the target planet
@@ -447,9 +453,10 @@ class EspionageMission extends GameMission
      * @param PlanetService $originPlanet
      * @param PlanetService $targetPlanet
      * @param int $counterEspionageChance
+     * @param array<DefenderFleet> $acsDefendFleets ACS Defend fleets docked at the target at scan time
      * @return int
      */
-    private function createEspionageReport(FleetMission $mission, PlanetService $originPlanet, PlanetService $targetPlanet, int $counterEspionageChance = 0): int
+    private function createEspionageReport(FleetMission $mission, PlanetService $originPlanet, PlanetService $targetPlanet, int $counterEspionageChance = 0, array $acsDefendFleets = []): int
     {
         $originPlayer = $originPlanet->getPlayer();
         $targetPlayer = $targetPlanet->getPlayer();
@@ -499,14 +506,16 @@ class EspionageMission extends GameMission
         $extraProbesRequired = pow($levelDifference, 2);
         $remainingProbes = max(0, $mission->espionage_probe - $extraProbesRequired);
 
-        // Fleets
-        // TODO: Include ACS Defend fleets in espionage report
-        // Currently only shows planet owner's ships via getShipUnits()
-        // Should also show ACS Defend fleet units present at the target planet
-        // This creates inconsistency: ACS fleets are invisible to spy but participate in counter-espionage battles
-        // Consider showing them in a separate section or with owner labels
+        // Fleets. Vanilla OGame ACS: ships of ACS Defend fleets docked at the planet are
+        // added to the planet's original fleet and shown to the spy as one combined force.
         if ($this->canRevealData($remainingProbes, $attackerEspionageLevel, $defenderEspionageLevel, 2, 1)) {
-            $report->ships = $targetPlanet->getShipUnits()->toArray();
+            $ships = $targetPlanet->getShipUnits()->toArray();
+            foreach ($acsDefendFleets as $acsDefendFleet) {
+                foreach ($acsDefendFleet->units->toArray() as $machineName => $amount) {
+                    $ships[$machineName] = ($ships[$machineName] ?? 0) + $amount;
+                }
+            }
+            $report->ships = $ships;
         }
 
         // Defense
@@ -545,5 +554,25 @@ class EspionageMission extends GameMission
     private function canRevealData(int $remainingProbes, int $attackerLevel, int $defenderLevel, int $probeThreshold, int $levelThreshold): bool
     {
         return $remainingProbes >= $probeThreshold || $attackerLevel - $levelThreshold >= $defenderLevel;
+    }
+
+    /**
+     * Get the ACS Defend fleets that have physically arrived and are still holding at the
+     * given planet. Mirrors the ACS Defend fleet collection of collectDefendingFleets() but
+     * excludes the planet owner's stationary forces.
+     *
+     * @param PlanetService $planet
+     * @return array<DefenderFleet>
+     */
+    private function getAcsDefendFleetsAtPlanet(PlanetService $planet): array
+    {
+        $acsDefendFleets = [];
+        foreach ($this->collectDefendingFleets($planet) as $defenderFleet) {
+            if ($defenderFleet->fleetMissionId !== 0) {
+                $acsDefendFleets[] = $defenderFleet;
+            }
+        }
+
+        return $acsDefendFleets;
     }
 }

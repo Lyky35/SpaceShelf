@@ -52,10 +52,14 @@ are incomplete:
       cargo capacity, credited to each fleet's return mission, one harvest
       message per harvesting player; previously the pool vanished in ACS
       battles). `AttackMission.php:250` fixed.
-- [ ] Include ACS Defend fleets in espionage reports
+- [x] Include ACS Defend fleets in espionage reports
       (`EspionageMission.php:503`) and in counter-espionage chance
-      (`EspionageMission.php:118`) — needs verification against original
-      OGame behavior before implementing (AGENTS.md game-accuracy rule)
+      (`EspionageMission.php:118`) — shipped (2026-11-17; verified against the
+      original game: the ACS wiki states "when a planet with an ACS defence is
+      being probed, the number of ACS ships will be added to the planet's
+      original fleet", so docked ACS Defend fleet ships now raise the
+      counter-espionage chance and appear merged into the spy report's fleet
+      section; snapshot taken before any counter-espionage battle).
 
 ### 3. Expedition battle debris
 

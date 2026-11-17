@@ -2,17 +2,23 @@
 
 namespace Tests\Feature\FleetDispatch;
 
+use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use OGame\Factories\GameMessageFactory;
 use OGame\Factories\PlanetServiceFactory;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\BattleReport;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\EspionageReport;
+use OGame\Models\FleetMission;
 use OGame\Models\Message;
 use OGame\Models\Resources;
+use OGame\Models\User;
+use OGame\Services\BuddyService;
 use OGame\Services\CounterEspionageService;
 use OGame\Services\FleetMissionService;
 use OGame\Services\ObjectService;
+use OGame\Services\PlanetService;
 use OGame\Services\SettingsService;
 use Tests\FleetDispatchTestCase;
 
@@ -23,6 +29,11 @@ class FleetDispatchCounterEspionageTest extends FleetDispatchTestCase
 {
     protected int $missionType = 6;
     protected string $missionName = 'Espionage';
+
+    /**
+     * @var array<int> Buddy user IDs created during this test run, cleaned up in tearDown.
+     */
+    protected static array $allCreatedBuddyUserIds = [];
 
     protected function basicSetup(): void
     {
@@ -466,5 +477,188 @@ class FleetDispatchCounterEspionageTest extends FleetDispatchTestCase
             $body = $gameMessage->getBody();
             $this->assertStringContainsString('was sighted near your planet', $body);
         }
+    }
+
+    /**
+     * Clean up buddy relationships created during this test run.
+     */
+    protected function tearDown(): void
+    {
+        while (!empty(self::$allCreatedBuddyUserIds)) {
+            $buddyUserId = array_shift(self::$allCreatedBuddyUserIds);
+
+            DB::table('buddy_requests')
+                ->where(function ($query) use ($buddyUserId) {
+                    $query->where('sender_user_id', $buddyUserId)
+                        ->orWhere('receiver_user_id', $buddyUserId);
+                })
+                ->delete();
+        }
+
+        parent::tearDown();
+    }
+
+    /**
+     * Create a fresh user that is a buddy of the given user, with a planet near the
+     * current player. ACS Defend missions are only possible to buddies/alliance mates.
+     *
+     * @param User $targetUser The user the new buddy is related to.
+     * @return PlanetService The buddy's planet.
+     */
+    private function createBuddyPlanet(User $targetUser): PlanetService
+    {
+        $buddyUser = User::factory()->create();
+        self::$allCreatedBuddyUserIds[] = $buddyUser->id;
+
+        $buddyPlanet = $this->createPlanetAtSafeCoordinate($buddyUser->id);
+
+        $buddyService = resolve(BuddyService::class);
+        $request = $buddyService->sendRequest($targetUser->id, $buddyUser->id);
+        $buddyService->acceptRequest($request->id, $buddyUser->id);
+
+        return $buddyPlanet;
+    }
+
+    /**
+     * Remove all ship units from a planet so counter-espionage chances and spy reports
+     * only reflect what the test explicitly places there.
+     *
+     * @param PlanetService $planet
+     * @return void
+     */
+    private function removeShipUnitsFromPlanet(PlanetService $planet): void
+    {
+        $shipUnits = $planet->getShipUnits();
+        if ($shipUnits->getAmount() > 0) {
+            $planet->removeUnits($shipUnits, false);
+            $planet->save();
+        }
+
+        $this->assertSame(0, $planet->getShipUnits()->getAmount());
+    }
+
+    /**
+     * Send an ACS Defend fleet from one planet to another and advance time until it has
+     * physically arrived and is holding above the host planet.
+     *
+     * @return FleetMission The ACS Defend fleet mission.
+     */
+    private function dockAcsDefendFleet(PlanetService $originPlanet, PlanetService $hostPlanet, string $machineName, int $amount): FleetMission
+    {
+        $originPlayer = $originPlanet->getPlayer();
+        $this->assertNotNull($originPlayer);
+
+        $units = new UnitCollection();
+        $units->addUnit(ObjectService::getUnitObjectByMachineName($machineName), $amount);
+
+        $fleetMissionService = resolve(FleetMissionService::class, ['player' => $originPlayer]);
+        $defendMission = $fleetMissionService->createNewFromPlanet(
+            $originPlanet,
+            $hostPlanet->getPlanetCoordinates(),
+            PlanetType::Planet,
+            5, // ACS Defend
+            $units,
+            new Resources(0, 0, 0, 0),
+            10, // 100% speed
+            10  // 10 hours holding
+        );
+
+        // Advance to physical arrival (time_arrival includes the holding time) and process
+        // fleet events so the defending fleet docks.
+        $this->travelTo(Date::createFromTimestamp($defendMission->time_arrival - $defendMission->time_holding + 60));
+        $this->get('/overview');
+
+        return $defendMission;
+    }
+
+    /**
+     * Vanilla OGame ACS: when a planet with an ACS defence is being probed, the number of
+     * ACS ships is added to the planet's original fleet. So docked ACS Defend fleet ships
+     * must raise the counter-espionage chance and appear in the spy report's fleet section.
+     */
+    public function testAcsDefendFleetShipsCountInCounterEspionageAndAppearInReport(): void
+    {
+        $this->basicSetup();
+
+        // Foreign planet to spy on, kept ship-free so any counter-espionage chance can
+        // only come from the docked ACS Defend fleet.
+        $foreignPlanet = $this->createForeignPlanet();
+        $this->removeShipUnitsFromPlanet($foreignPlanet);
+
+        // A buddy of the foreign player docks 10 cruisers above the foreign planet.
+        $foreignPlayer = $foreignPlanet->getPlayer();
+        $this->assertNotNull($foreignPlayer);
+
+        $buddyPlanet = $this->createBuddyPlanet($foreignPlayer->getUser());
+        $buddyPlanet->addUnit('cruiser', 10);
+        $buddyPlanet->addResources(new Resources(0, 0, 100000, 0));
+        $buddyPlanet->save();
+
+        $this->dockAcsDefendFleet($buddyPlanet, $foreignPlanet, 'cruiser', 10);
+
+        // Send 5 espionage probes right away (basicSetup granted 10 on the home planet);
+        // they arrive well within the docked fleet's 10-hour holding window.
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('espionage_probe'), 5);
+        $this->dispatchFleet($foreignPlanet->getPlanetCoordinates(), $unitCollection, new Resources(0, 0, 0, 0), PlanetType::Planet, 0, true);
+
+        $fleetMissionService = resolve(FleetMissionService::class);
+        $spyMission = $fleetMissionService->getActiveFleetMissionsForCurrentPlayer()->first();
+        $this->assertNotNull($spyMission, 'Spy mission should exist');
+
+        $this->travelTo(Date::createFromTimestamp($spyMission->time_arrival + 60));
+        $response = $this->get('/overview');
+        $response->assertStatus(200);
+
+        $espionageReport = EspionageReport::orderByDesc('id')->first();
+        $this->assertNotNull($espionageReport, 'Espionage report should be created');
+
+        // Counter-espionage formula: (defender_ships * (0 - 0 + 1)) / (5 probes * 4) * 100.
+        // With the 10 docked defending cruisers that is exactly 50%; without them it is 0%.
+        $this->assertSame(50, (int)$espionageReport->counter_espionage_chance, 'ACS Defend ships must count for counter-espionage');
+
+        // The defending cruisers show up merged into the planet's fleet section, matching
+        // the original game adding ACS ships to the planet's original fleet.
+        $this->assertNotNull($espionageReport->ships, 'Ships section should be revealed');
+        $this->assertArrayHasKey('cruiser', $espionageReport->ships);
+        $this->assertSame(10, (int)$espionageReport->ships['cruiser'], 'ACS Defend fleet units should appear in the spy report');
+    }
+
+    /**
+     * Control case: a planet without ships and without docked ACS Defend fleets must not
+     * show any fleet in the spy report and must have zero counter-espionage chance.
+     */
+    public function testNoCounterEspionageOrReportedShipsWithoutShipsPresent(): void
+    {
+        $this->basicSetup();
+
+        $foreignPlanet = $this->createForeignPlanet();
+        $this->removeShipUnitsFromPlanet($foreignPlanet);
+
+        // A buddy is set up but sends no fleet, so nothing is docked above the planet.
+        $foreignPlayer = $foreignPlanet->getPlayer();
+        $this->assertNotNull($foreignPlayer);
+
+        $buddyPlanet = $this->createBuddyPlanet($foreignPlayer->getUser());
+        $buddyPlanet->addUnit('cruiser', 10);
+        $buddyPlanet->save();
+
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('espionage_probe'), 5);
+        $this->dispatchFleet($foreignPlanet->getPlanetCoordinates(), $unitCollection, new Resources(0, 0, 0, 0), PlanetType::Planet, 0, true);
+
+        $fleetMissionService = resolve(FleetMissionService::class);
+        $spyMission = $fleetMissionService->getActiveFleetMissionsForCurrentPlayer()->first();
+        $this->assertNotNull($spyMission, 'Spy mission should exist');
+
+        $this->travelTo(Date::createFromTimestamp($spyMission->time_arrival + 60));
+        $response = $this->get('/overview');
+        $response->assertStatus(200);
+
+        $espionageReport = EspionageReport::orderByDesc('id')->first();
+        $this->assertNotNull($espionageReport, 'Espionage report should be created');
+
+        $this->assertSame(0, (int)$espionageReport->counter_espionage_chance, 'No ships means no counter-espionage chance');
+        $this->assertEmpty($espionageReport->ships ?? [], 'No ships means an empty fleet section');
     }
 }
