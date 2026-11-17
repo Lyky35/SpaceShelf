@@ -64,6 +64,15 @@ class ResearchController extends OGameController
         $characterClassService = app(CharacterClassService::class);
         $combatResearchBonus = $characterClassService->getAdditionalCombatResearchLevels($player->getUser());
 
+        // Get officer bonus for espionage research (Technocrat: +2, Commanding Staff: +1)
+        $espionageResearchBonus = 0;
+        if ($player->hasTechnocrat()) {
+            $espionageResearchBonus += 2;
+        }
+        if ($player->hasCommandingStaff()) {
+            $espionageResearchBonus += 1;
+        }
+
         $count = 0;
 
         // Parse research queue for this planet
@@ -103,6 +112,11 @@ class ResearchController extends OGameController
                 // Apply combat research bonus if applicable
                 if (in_array($object->machine_name, $combat_research)) {
                     $view_model->bonus_level = $combatResearchBonus;
+                }
+
+                // Apply espionage officer bonus if applicable
+                if ($object->machine_name === 'espionage_technology') {
+                    $view_model->bonus_level = $espionageResearchBonus;
                 }
 
                 $research[$key_row][$object->id] = $view_model;

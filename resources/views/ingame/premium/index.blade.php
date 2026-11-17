@@ -8,6 +8,12 @@
         </div>
     @endif
 
+    @if (session('statusError'))
+        <div class="alert alert-error">
+            {{ session('statusError') }}
+        </div>
+    @endif
+
     <div id="eventboxContent" style="display: none">
         <img height="16" width="16" src="/img/icons/3f9884806436537bdec305aa26fc60.gif">
     </div>
@@ -45,84 +51,37 @@
                                 </a>
                             </div>
                         </div>			</li>
-                    <li class="button" id="button2">
-                        <div class="premium">
-                            <div class="officers100  commander">
-                                <a tabindex="2" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_commander') }}" ref="2" class="detail_button tooltip js_hideTipOnMobile slideIn">
-                        <span class="ecke">
-                            <span class="level">
-                                <img src="/img/icons/aa2ad16d1e00956f7dc8af8be3ca52.gif" width="12" height="11">
+                    @foreach($officerRows as $index => $officerData)
+                        <li class="button{{ $officerData['remainingDays'] > 0 ? ' on' : '' }}" id="button{{ $index + 2 }}">
+                            <div class="premium">
+                                <div class="officers100  {{ $officerData['officer']->value }}">
+                                    <a tabindex="{{ $index + 2 }}" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_' . $officerData['officer']->value) }}" ref="{{ $index + 2 }}" class="detail_button tooltip js_hideTipOnMobile slideIn">
+                            <span class="ecke">
+                                <span class="level">
+                                    {{ number_format($officerData['cost'], 0, ',', '.') }}
+                                </span>
                             </span>
-                        </span>
-                                </a>
+                                    </a>
+                                </div>
+                                <div class="remaining tooltip" title="{{ __('t_ingame.premium.cost_per_week') }}">
+                                    <span class="remDate">{{ __('t_ingame.premium.cost_dm', ['cost' => number_format($officerData['cost'], 0, ',', '.')]) }}</span>
+                                </div>
                             </div>
-                        </div>
-                    </li>
-                    <li class="button" id="button3">
-                        <div class="premium">
-                            <div class="officers100  admiral">
-                                <a tabindex="3" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_admiral') }}" ref="3" class="detail_button tooltip js_hideTipOnMobile slideIn">
-                        <span class="ecke">
-                            <span class="level">
-                                <img src="/img/icons/aa2ad16d1e00956f7dc8af8be3ca52.gif" width="12" height="11">
-                            </span>
-                        </span>
-                                </a>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="button" id="button4">
-                        <div class="premium">
-                            <div class="officers100  engineer">
-                                <a tabindex="4" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_engineer') }}" ref="4" class="detail_button tooltip js_hideTipOnMobile slideIn">
-                        <span class="ecke">
-                            <span class="level">
-                                <img src="/img/icons/aa2ad16d1e00956f7dc8af8be3ca52.gif" width="12" height="11">
-                            </span>
-                        </span>
-                                </a>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="button" id="button5">
-                        <div class="premium">
-                            <div class="officers100  geologist">
-                                <a tabindex="5" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_geologist') }}" ref="5" class="detail_button tooltip js_hideTipOnMobile slideIn">
-                        <span class="ecke">
-                            <span class="level">
-                                <img src="/img/icons/aa2ad16d1e00956f7dc8af8be3ca52.gif" width="12" height="11">
-                            </span>
-                        </span>
-                                </a>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="button" id="button6">
-                        <div class="premium">
-                            <div class="officers100  technocrat">
-                                <a tabindex="6" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_technocrat') }}" ref="6" class="detail_button tooltip js_hideTipOnMobile slideIn">
-                        <span class="ecke">
-                            <span class="level">
-                                <img src="/img/icons/aa2ad16d1e00956f7dc8af8be3ca52.gif" width="12" height="11">
-                            </span>
-                        </span>
-                                </a>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="button" id="button12">
+                        </li>
+                    @endforeach
+                    <li class="button{{ $activeOfficerCount === 5 ? ' on' : '' }}" id="button12">
                         <div class="premium">
                             <div class="officers100  allOfficers">
                                 <a tabindex="12" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_commanding_staff') }}" ref="12" class="detail_button tooltip js_hideTipOnMobile slideIn">
                         <span class="ecke">
                             <span class="level">
-                                <img src="/img/icons/aa2ad16d1e00956f7dc8af8be3ca52.gif" width="12" height="11">
+                                5
                             </span>
                         </span>
                                 </a>
                             </div>
                             <div class="remaining tooltip " title="">
-                                <span class="remDate">{{ __('t_ingame.premium.remaining_officers', ['current' => 0, 'max' => 5]) }}</span>
+                                <span class="remDate">{{ __('t_ingame.premium.remaining_officers', ['current' => $activeOfficerCount, 'max' => 5]) }}</span>
                             </div>
                         </div>
                     </li>
@@ -132,6 +91,42 @@
                 </ul>
                 <br class="clearfloat">
                 <div class="footer"></div>
+
+                <table class="officerHireTable">
+                    <thead>
+                        <tr>
+                            <th>{{ __('t_ingame.premium.officer') }}</th>
+                            <th>{{ __('t_ingame.premium.cost_per_week') }}</th>
+                            <th>{{ __('t_ingame.premium.status') }}</th>
+                            <th>&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($officerRows as $officerData)
+                            <tr>
+                                <td>{{ __('t_ingame.premium.officer_' . $officerData['officer']->value) }}</td>
+                                <td>{{ __('t_ingame.premium.cost_dm', ['cost' => number_format($officerData['cost'], 0, ',', '.')]) }}</td>
+                                <td>
+                                    @if($officerData['remainingDays'] > 0)
+                                        {{ __('t_ingame.premium.status_active', ['days' => $officerData['remainingDays']]) }}
+                                    @else
+                                        {{ __('t_ingame.premium.status_not_hired') }}
+                                    @endif
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('premium.officer.hire') }}">
+                                        @csrf
+                                        <input type="hidden" name="officer" value="{{ $officerData['officer']->value }}">
+                                        <input type="hidden" name="weeks" value="1">
+                                        <button type="submit" @if($darkMatter < $officerData['cost']) disabled title="{{ __('t_ingame.premium.hire_insufficient_dm') }}" @endif>
+                                            {{ __('t_ingame.premium.hire') }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

@@ -51,6 +51,11 @@ use Spatie\Permission\Traits\HasRoles;
  * @property int|null $character_class
  * @property bool $character_class_free_used
  * @property Carbon|null $character_class_changed_at
+ * @property Carbon|null $commander_expires_at
+ * @property Carbon|null $admiral_expires_at
+ * @property Carbon|null $engineer_expires_at
+ * @property Carbon|null $geologist_expires_at
+ * @property Carbon|null $technocrat_expires_at
  * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
  * @property-read UserTech|null $tech
@@ -318,6 +323,11 @@ class User extends Authenticatable
             'dark_matter_last_regen' => 'datetime',
             'character_class_free_used' => 'boolean',
             'character_class_changed_at' => 'datetime',
+            'commander_expires_at' => 'datetime',
+            'admiral_expires_at' => 'datetime',
+            'engineer_expires_at' => 'datetime',
+            'geologist_expires_at' => 'datetime',
+            'technocrat_expires_at' => 'datetime',
             'alliance_left_at' => 'datetime',
         ];
     }

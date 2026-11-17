@@ -574,6 +574,16 @@ class PlayerService
         $user = $this->getUser();
         $fleet_slots_bonus = $characterClassService->getAdditionalFleetSlots($user);
 
+        // Add Admiral officer bonus (+2 fleet slots)
+        if ($this->hasAdmiral()) {
+            $fleet_slots_bonus += 2;
+        }
+
+        // Add Commanding Staff bonus (all officers hired, +1 fleet slot)
+        if ($this->hasCommandingStaff()) {
+            $fleet_slots_bonus += 1;
+        }
+
         return $fleet_slots_from_research + $fleet_slots_bonus;
     }
 
@@ -618,6 +628,11 @@ class PlayerService
         $characterClassService = app(CharacterClassService::class);
         $user = $this->getUser();
         $expedition_slots_bonus = $characterClassService->getExpeditionSlotsBonus($user);
+
+        // Add Admiral officer bonus (+1 expedition slot)
+        if ($this->hasAdmiral()) {
+            $expedition_slots_bonus += 1;
+        }
 
         return $expedition_slots_from_research + $bonus_slots + $expedition_slots_bonus;
     }
@@ -960,32 +975,27 @@ class PlayerService
 
     public function hasCommander(): bool
     {
-        // TODO: add logic
-        return false;
+        return $this->user->commander_expires_at !== null && $this->user->commander_expires_at->isFuture();
     }
 
     public function hasAdmiral(): bool
     {
-        // TODO: add logic
-        return false;
+        return $this->user->admiral_expires_at !== null && $this->user->admiral_expires_at->isFuture();
     }
 
     public function hasEngineer(): bool
     {
-        // TODO: add logic
-        return false;
+        return $this->user->engineer_expires_at !== null && $this->user->engineer_expires_at->isFuture();
     }
 
     public function hasGeologist(): bool
     {
-        // TODO: add logic
-        return false;
+        return $this->user->geologist_expires_at !== null && $this->user->geologist_expires_at->isFuture();
     }
 
     public function hasTechnocrat(): bool
     {
-        // TODO: add logic
-        return false;
+        return $this->user->technocrat_expires_at !== null && $this->user->technocrat_expires_at->isFuture();
     }
 
     public function hasCommandingStaff(): bool
@@ -995,6 +1005,32 @@ class PlayerService
             && $this->hasEngineer()
             && $this->hasGeologist()
             && $this->hasTechnocrat();
+    }
+
+    /**
+     * Get the player's espionage technology level including officer bonuses.
+     *
+     * The Technocrat officer adds +2 espionage levels and having all officers
+     * hired (Commanding Staff) adds +1 espionage level. These bonus levels apply
+     * to all espionage checks, but not to the actual research level in the database.
+     *
+     * @return int
+     */
+    public function getEffectiveEspionageLevel(): int
+    {
+        $level = $this->getResearchLevel('espionage_technology');
+
+        // Add Technocrat officer bonus (+2 espionage levels)
+        if ($this->hasTechnocrat()) {
+            $level += 2;
+        }
+
+        // Add Commanding Staff bonus (all officers hired, +1 espionage level)
+        if ($this->hasCommandingStaff()) {
+            $level += 1;
+        }
+
+        return $level;
     }
 
     public function getDarkMatter(): int

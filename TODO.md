@@ -6,22 +6,26 @@ codebase; file references included.
 
 ## Game engine gaps
 
-### 1. Officer system — fully stubbed (biggest functional gap)
+### 1. Officer system — implemented (2026-11-17), remaining sub-items
 
-Player-facing Premium page exists but does nothing, and every officer-dependent
-code path silently sees "no officer".
+Shipped: `Officer` enum (weekly prices per classic OGame: Commander/Technocrat
+10000, Admiral/Engineer 5000, Geologist 12500 DM), `OfficerService` (hire with
+Dark Matter, expiry stacking), 5 `*_expires_at` columns on `users`,
+`premium.officer.hire` route, hire forms + status on the premium page and
+real `PlayerService::has*()` switches. Bonuses active: Engineer +10% energy,
+Geologist +10% mines, Commanding Staff +2% mines/+2% energy/+1 fleet slot/
++1 espionage, Admiral +2 fleet slots, +1 expedition slot and tactical retreat
+ratio 3, Technocrat -25% research time and +2 espionage levels (effective
+level used in espionage missions, galaxy view and research page `(+N)` badge).
 
-- [ ] DB: add officer fields (hired-until timestamps) to `users` (or an
-      `officers` table) + migration
-- [ ] Hire/renew flow with dark matter costs + routes
-      (`PremiumController` currently only renders the DM balance)
-- [ ] Implement `PlayerService::hasCommander/hasAdmiral/hasEngineer/
-      hasGeologist/hasTechnocrat()` (all `return false; // TODO: add logic`)
-- [ ] Apply the actual bonuses: production, fleet speed (admiral),
-      acceleration discounts, construction speed (engineer), geologist
-      crystal/geo-crawler handling, technocrat research time
-- [ ] Officer expiry tick handling (lazy check on login/update is enough)
-- [ ] Tests
+Remaining officer bonus items from the recruitment tooltips:
+
+- [ ] Admiral: Combat simulation save slots +20 (no combat save feature exists)
+- [ ] Engineer: Halve losses to defenses (needs identical changes in both
+      `PhpBattleEngine` and `RustBattleEngine`; the Rust engine binary would
+      also have to be rebuilt)
+- [ ] Commander: Interface perks (+40 favorites, shortcuts, transport scanner,
+      advertisement-free) — no corresponding server-side features
 
 ### 2. ACS (multi-attacker) battle polish
 

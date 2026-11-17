@@ -1360,6 +1360,23 @@ return [
         'benefit_mines'              => '+2% mine production',
         'benefit_espionage_title'    => '1 level will be added to your espionage research.',
         'benefit_espionage'          => '+1 espionage levels',
+
+        // Officer recruitment table (SpaceShelf addition: hiring with Dark Matter)
+        'officer'                    => 'Officer',
+        'officer_commander'          => 'Commander',
+        'officer_admiral'            => 'Admiral',
+        'officer_engineer'           => 'Engineer',
+        'officer_geologist'          => 'Geologist',
+        'officer_technocrat'         => 'Technocrat',
+        'cost_per_week'              => 'Cost per week',
+        'cost_dm'                    => ':cost Dark Matter',
+        'status'                     => 'Status',
+        'status_not_hired'           => 'Not hired',
+        'status_active'              => 'Active for :days more days',
+        'hire'                       => 'Hire for 1 week',
+        'hired_success'              => ':name hired for :weeks week(s). Dark Matter spent: :cost.',
+        'hire_insufficient_dm'       => 'You do not have enough Dark Matter to hire this officer.',
+        'hire_failed'                => 'Officer could not be hired.',
     ],
 
     // ── Shop ────────────────────────────────────────────────────────────────

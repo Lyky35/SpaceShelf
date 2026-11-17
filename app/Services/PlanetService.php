@@ -1217,6 +1217,11 @@ class PlanetService
             $time_seconds = (int)($time_seconds * $timeMultiplier);
         }
 
+        // Apply Technocrat officer research time bonus (-25%)
+        if ($this->player->hasTechnocrat()) {
+            $time_seconds = (int)($time_seconds * 0.75);
+        }
+
         // Minimum time is always 1 second for all objects/units.
         if ($time_seconds < 1) {
             $time_seconds = 1;
