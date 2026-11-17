@@ -28,9 +28,12 @@ the vanilla framed border when one / all officers are hired.
 Remaining officer bonus items from the recruitment tooltips:
 
 - [ ] Admiral: Combat simulation save slots +20 (no combat save feature exists)
-- [ ] Engineer: Halve losses to defenses (needs identical changes in both
-      `PhpBattleEngine` and `RustBattleEngine`; the Rust engine binary would
-      also have to be rebuilt)
+- [x] Engineer: Halve losses to defenses — shipped (2026-11-17; defense repair
+      is a shared post-battle pass in `BattleEngine::simulateBattle()`, not in
+      the per-engine round code, so one boost covers both engines and the Rust
+      binary was untouched. The defending planet owner's engineer halves the
+      losses surviving the base repair rate, lifting the 70% default to the
+      vanilla 85% and a 0% rate to 50%.)
 - [ ] Commander: Interface perks (+40 favorites, shortcuts, transport scanner,
       advertisement-free) — no corresponding server-side features
 
