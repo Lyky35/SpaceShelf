@@ -1,8 +1,9 @@
 # SpaceShelf — TODO
 
 Feature-gap inventory as of 2026-11-17 (after bot phases 0–1, random planet
-names and the Collector/General/Discoverer class rework). Verified against the
-codebase; file references included.
+names, the Collector/General/Discoverer class rework, the Legor account
+disable, shop-tab removal and the full officer system including its UI).
+Verified against the codebase; file references included.
 
 ## Game engine gaps
 
@@ -17,6 +18,11 @@ Geologist +10% mines, Commanding Staff +2% mines/+2% energy/+1 fleet slot/
 +1 espionage, Admiral +2 fleet slots, +1 expedition slot and tactical retreat
 ratio 3, Technocrat -25% research time and +2 espionage levels (effective
 level used in espionage missions, galaxy view and research page `(+N)` badge).
+
+UI: two-line hire button (label + per-week cost) positioned inside each
+officer card; top-bar officer icons show the colored sprite frame (`#officers
+a.<officer>.on`) when hired and link to the premium page; the icon strip gets
+the vanilla framed border when one / all officers are hired.
 
 Remaining officer bonus items from the recruitment tooltips:
 
@@ -76,7 +82,9 @@ character class. Still missing:
 - [ ] **Class ships**: accounts unlock Crawler/Reaper/Pathfinder, brain does
       not build them yet — crawlers for Collector mine bonuses, reapers for
       Generals, pathfinders for Discoverer expeditions
-- [ ] **Phase 5 — Officer hiring**: blocked by engine gap #1 above
+- [ ] **Phase 5 — Officer hiring**: no longer blocked — human officer hiring is
+      live; add a bot-side hiring policy to the brains (e.g. General → Admiral,
+      Discoverer → Technocrat, budget guard against burning all DM)
 - [ ] **Phase 6 — Scale & tuning**: admin panel "Bots" page (list / enable /
       edit personality — today this needs artisan/tinker), simulation tuning
       harness, optional per-bot highscore opt-out
