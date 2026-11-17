@@ -38,15 +38,24 @@ Remaining officer bonus items from the recruitment tooltips:
 ACS fleet unions exist (`AcsDefendMission`, union routes) but battle reports
 are incomplete:
 
-- [ ] Send battle report to all ACS Attack participants
-      (`AttackMission.php:447`, `BattleReport.php:145`)
+- [x] Send battle report to all ACS Attack participants — shipped (2026-11-17;
+      every union member that dispatched a fleet now receives the same combat
+      report, and a first-round wipe sends exactly one lost-contact message per
+      participant). `AttackMission.php:447` fixed, `BattleReport.php:145` was
+      the message fan-out path.
 - [ ] Show individual participating fleets/defenders in reports
-      (`AttackMission.php:717`)
-- [ ] Reaper debris share for multi-attacker battles
-      (`AttackMission.php:250`)
+      (`AttackMission.php:717` data layer — per-fleet data is available in
+      `$battleResult->attackerFleetResults` / `defenderFleetResults`; report
+      view still renders aggregated attacker/defender blocks)
+- [x] Reaper debris share for multi-attacker battles — shipped (2026-11-17;
+      collected debris pool is split between union fleets by surviving Reaper
+      cargo capacity, credited to each fleet's return mission, one harvest
+      message per harvesting player; previously the pool vanished in ACS
+      battles). `AttackMission.php:250` fixed.
 - [ ] Include ACS Defend fleets in espionage reports
       (`EspionageMission.php:503`) and in counter-espionage chance
-      (`EspionageMission.php:118`)
+      (`EspionageMission.php:118`) — needs verification against original
+      OGame behavior before implementing (AGENTS.md game-accuracy rule)
 
 ### 3. Expedition battle debris
 
