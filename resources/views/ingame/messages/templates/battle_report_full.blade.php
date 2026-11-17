@@ -267,6 +267,20 @@
             </ul>
             <br class="clearfloat">
 
+            @if (count($attacker_fleets ?? []) > 1)
+                @foreach ($attacker_fleets as $fleet)
+                    <p>
+                        <span class="undermark">{{ __('t_ingame.messages.battle_attacker') }} {{ $fleet['player_name'] }} [{{ $fleet['coords'] }}]</span>
+                    </p>
+                    <ul class="common_info fleft">
+                        @foreach ($fleet['units'] as $unit)
+                            <li>{{ $unit['title'] }}: {{ $unit['amount'] }}@if ($unit['lost'] > 0) <span class="lost_ships">(-{{ $unit['lost'] }})</span>@endif</li>
+                        @endforeach
+                    </ul>
+                    <br class="clearfloat">
+                @endforeach
+            @endif
+
             <div class="section_title">
                 <div class="c-left"></div>
                 <div class="c-right"></div>
@@ -338,6 +352,20 @@
                 </li> -->
             </ul>
             <br class="clearfloat">
+
+            @if (count($defender_fleets ?? []) > 1)
+                @foreach ($defender_fleets as $fleet)
+                    <p>
+                        <span class="undermark">{{ __('t_ingame.messages.battle_defender') }} {{ $fleet['player_name'] }} [{{ $fleet['coords'] }}]</span>
+                    </p>
+                    <ul class="common_info fleft">
+                        @foreach ($fleet['units'] as $unit)
+                            <li>{{ $unit['title'] }}: {{ $unit['amount'] }}@if ($unit['lost'] > 0) <span class="lost_ships">(-{{ $unit['lost'] }})</span>@endif</li>
+                        @endforeach
+                    </ul>
+                    <br class="clearfloat">
+                @endforeach
+            @endif
 
             <div class="section_title">
                 <div class="c-left"></div>

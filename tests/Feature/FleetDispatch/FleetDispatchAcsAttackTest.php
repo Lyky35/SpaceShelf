@@ -5,6 +5,7 @@ namespace Tests\Feature\FleetDispatch;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use OGame\Enums\CharacterClass;
+use OGame\Factories\GameMessageFactory;
 use OGame\Factories\PlanetServiceFactory;
 use OGame\GameMissions\AttackMission;
 use OGame\GameObjects\Models\Units\UnitCollection;
@@ -639,6 +640,73 @@ class FleetDispatchAcsAttackTest extends FleetDispatchTestCase
                 sprintf('Player %d should have exactly one copy of the battle report', $recipientId)
             );
         }
+    }
+
+    /**
+     * Vanilla ACS battle reports list each participating fleet separately ("Attacker
+     * <player> [<coords>]" plus that fleet's unit composition). The report must carry
+     * the per-fleet breakdown and render every union member's fleet individually.
+     */
+    public function testAcsAttackBattleReportListsEachParticipatingFleet(): void
+    {
+        $this->basicSetup();
+        $this->createTargetPlayer();
+        $this->createAllyPlayer();
+
+        // Stock the fleets (the ally planet ships its own battlecruisers).
+        $this->planetAddUnit('battlecruiser', 20);
+        $this->allyPlanet()->addUnit('battlecruiser', 15);
+
+        // Weak defense so both attacking fleets have survivors.
+        $this->targetPlanet()->addUnit('rocket_launcher', 5);
+
+        [$initiatorMission, $allyMission] = $this->dispatchUnionAttack(20, 15, 'battlecruiser');
+
+        $arrivalTime = max($initiatorMission->time_arrival, $allyMission->time_arrival);
+        $this->travelTo(Date::createFromTimestamp($arrivalTime + 10));
+        $this->playerSetAllMessagesRead();
+        $this->get('/overview');
+
+        $battleReport = BattleReport::orderBy('id', 'desc')->first();
+        $this->assertNotNull($battleReport, 'Battle report should be created for ACS attack');
+
+        // Two fleets fought on the attacker side: the initiator's and the ally's.
+        /** @var array<int, array<string, mixed>> $attackerFleets */
+        $attackerFleets = $battleReport->attacker['fleets'] ?? [];
+        $this->assertCount(2, $attackerFleets, 'Report should carry one entry per attacking fleet');
+
+        $fleetPlayerIds = array_column($attackerFleets, 'player_id');
+        $this->assertContains($this->currentUserId, $fleetPlayerIds);
+        $this->assertContains($this->allyUser()->id, $fleetPlayerIds);
+
+        $allyFleet = collect($attackerFleets)->firstWhere('player_id', $this->allyUser()->id);
+        $this->assertNotNull($allyFleet, 'Ally fleet should be part of the per-fleet breakdown');
+        $this->assertSame(
+            $this->allyPlanet()->getPlanetCoordinates()->asString(),
+            $allyFleet['coords'],
+            'Fleet origin coordinates should be snapshotted into the report'
+        );
+        $this->assertSame(15, $allyFleet['units']['battlecruiser'] ?? 0, 'Ally fleet composition should be stored');
+
+        // The rendered report must show the ally's fleet: the aggregated attacker
+        // header only names the initiator, so both strings below are new.
+        $reportMessage = Message::where('user_id', $this->currentUserId)
+            ->where('battle_report_id', $battleReport->id)
+            ->where('key', 'battle_report')
+            ->first();
+        $this->assertNotNull($reportMessage, 'Battle report message should exist for the initiator');
+
+        $bodyFull = GameMessageFactory::createGameMessage($reportMessage)->getBodyFull();
+        $this->assertStringContainsString(
+            $this->allyUser()->username,
+            $bodyFull,
+            'Report must name every participating attacking player'
+        );
+        $this->assertStringContainsString(
+            '[' . $this->allyPlanet()->getPlanetCoordinates()->asString() . ']',
+            $bodyFull,
+            'Report must show each participating fleet\'s origin coordinates'
+        );
     }
 
     /**

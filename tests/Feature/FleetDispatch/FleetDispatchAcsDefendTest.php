@@ -2,12 +2,17 @@
 
 namespace Tests\Feature\FleetDispatch;
 
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use OGame\Factories\GameMessageFactory;
 use OGame\Factories\PlanetServiceFactory;
+use OGame\Factories\PlayerServiceFactory;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\AllianceMember;
+use OGame\Models\BattleReport;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\FleetMission;
+use OGame\Models\Message;
 use OGame\Models\Planet;
 use OGame\Models\Resources;
 use OGame\Models\User;
@@ -671,6 +676,148 @@ class FleetDispatchAcsDefendTest extends FleetDispatchTestCase
         // We should have gotten at least some resources back
         $this->assertGreaterThan(0, $finalMetal, 'No metal returned after battle');
         $this->assertGreaterThan(0, $finalCrystal, 'No crystal returned after battle');
+    }
+
+    /**
+     * Vanilla battle reports list every participating defending fleet separately
+     * ("Defender <player> [<coords>]"), so an ACS Defend fleet in a battle at the
+     * hosted planet must appear individually alongside the owner's forces.
+     */
+    public function testAcsDefendBattleReportListsEachParticipatingFleet(): void
+    {
+        $this->basicSetup();
+        $this->planetAddUnit('small_cargo', 5);
+        $this->planetAddUnit('light_fighter', 5);
+        $buddyUser = $this->createBuddyPlayer();
+
+        // Send ACS Defend fleet to the buddy's planet and let it hold there for eight
+        // hours; it counts as defending the planet while unprocessed and before hold
+        // expiry, which is the window the attack must land in.
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('small_cargo'), 5);
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), 5);
+        $this->dispatchFleet(
+            $this->getBuddyPlanet()->getPlanetCoordinates(),
+            $unitCollection,
+            new Resources(0, 0, 0, 0),
+            PlanetType::Planet,
+            8
+        );
+
+        // Wait until the ACS fleet has physically arrived at the buddy's planet.
+        $defendMission = FleetMission::where('user_id', $this->currentUserId)
+            ->where('mission_type', 5)
+            ->where('processed', 0)
+            ->firstOrFail();
+        $physicalArrival = $defendMission->time_arrival - ($defendMission->time_holding ?? 0);
+        $this->travelTo(Date::createFromTimestamp($physicalArrival + 10));
+
+        // Set up an attacker planet in the same system with a small strike force
+        $attackerUser = User::factory()->create();
+        self::$allCreatedBuddyUserIds[] = $attackerUser->id;
+
+        $buddyCoordinates = $this->getBuddyPlanet()->getPlanetCoordinates();
+        $attackerPosition = collect(range(1, 15))->first(
+            fn ($p) => !Planet::where('galaxy', $buddyCoordinates->galaxy)->where('system', $buddyCoordinates->system)->where('planet', $p)->exists()
+        );
+        $attackerPlanet = Planet::factory()->create([
+            'user_id' => $attackerUser->id,
+            'galaxy' => $buddyCoordinates->galaxy,
+            'system' => $buddyCoordinates->system,
+            'planet' => $attackerPosition,
+        ]);
+
+        $planetServiceFactory = resolve(PlanetServiceFactory::class);
+        $attackerPlayerService = resolve(PlayerService::class, ['player_id' => $attackerUser->id]);
+        $attackerPlanetService = $planetServiceFactory->makeForPlayer($attackerPlayerService, $attackerPlanet->id);
+
+        $attackerPlanetService->addUnit('light_fighter', 20);
+        $attackerPlanetService->addResources(new Resources(0, 0, 100000, 0));
+
+        $fleetMissionService = resolve(FleetMissionService::class);
+        $attackUnits = new UnitCollection();
+        $attackUnits->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), 20);
+        $fleetMissionService->createNewFromPlanet(
+            $attackerPlanetService,
+            $buddyCoordinates,
+            PlanetType::Planet,
+            1,
+            $attackUnits,
+            new Resources(0, 0, 0, 0),
+            10
+        );
+
+        $attackMission = FleetMission::where('user_id', $attackerUser->id)
+            ->orderBy('id', 'desc')
+            ->firstOrFail();
+
+        // Arrive while the ACS Defend fleet still holds at the planet.
+        $this->travelTo(Date::createFromTimestamp($attackMission->time_arrival + 10));
+
+        // The attack was dispatched by a foreign player, whose arrivals are processed
+        // on their side; trigger that explicitly, the same way the admin panel's
+        // "process fleet mission" action does.
+        $foreignPlayer = resolve(PlayerServiceFactory::class)->make($attackerUser->id, true);
+        $attackerFleetMissionService = resolve(FleetMissionService::class, ['player' => $foreignPlayer]);
+        $pendingAttackerMissions = FleetMission::where('user_id', $attackerUser->id)
+            ->where('processed', 0)
+            ->where('canceled', 0)
+            ->get();
+
+        foreach ($pendingAttackerMissions as $pendingMission) {
+            $attackerFleetMissionService->updateMission($pendingMission);
+        }
+
+        $this->get('/overview');
+
+        $battleReport = BattleReport::orderBy('id', 'desc')->first();
+        $this->assertNotNull($battleReport, 'Battle report should be created for attack on defended planet');
+
+        // Two defending fleets: the planet owner (stationary, no units) and our ACS fleet.
+        /** @var array<int, array<string, mixed>> $defenderFleets */
+        $defenderFleets = $battleReport->defender['fleets'] ?? [];
+        $this->assertCount(2, $defenderFleets, 'Report should carry one entry per defending fleet');
+
+        $fleetPlayerIds = array_column($defenderFleets, 'player_id');
+        $this->assertContains($buddyUser->id, $fleetPlayerIds);
+        $this->assertContains($this->currentUserId, $fleetPlayerIds);
+
+        $buddyFleet = collect($defenderFleets)->firstWhere('player_id', $buddyUser->id);
+        $this->assertNotNull($buddyFleet, 'Planet owner should be part of the per-fleet breakdown');
+        $this->assertSame(
+            $buddyCoordinates->asString(),
+            $buddyFleet['coords'],
+            'Planet owner forces should be reported at the defended planet coordinates'
+        );
+
+        $ownFleet = collect($defenderFleets)->firstWhere('player_id', $this->currentUserId);
+        $this->assertNotNull($ownFleet, 'Own ACS Defend fleet should be part of the per-fleet breakdown');
+        $this->assertSame(
+            $this->planetService->getPlanetCoordinates()->asString(),
+            $ownFleet['coords'],
+            'ACS Defend fleet origin coordinates should be snapshotted into the report'
+        );
+        $this->assertSame(5, $ownFleet['units']['light_fighter'] ?? 0, 'ACS fleet composition should be stored');
+
+        // The planet owner's rendered report must show the ACS fleet: the aggregated
+        // defender header only names the owner, so both strings below are new.
+        $reportMessage = Message::where('user_id', $buddyUser->id)
+            ->where('battle_report_id', $battleReport->id)
+            ->where('key', 'battle_report')
+            ->first();
+        $this->assertNotNull($reportMessage, 'Battle report message should exist for the planet owner');
+
+        $bodyFull = GameMessageFactory::createGameMessage($reportMessage)->getBodyFull();
+        $this->assertStringContainsString(
+            (string)User::find($this->currentUserId)?->username,
+            $bodyFull,
+            'Report must name every participating defending player'
+        );
+        $this->assertStringContainsString(
+            '[' . $this->planetService->getPlanetCoordinates()->asString() . ']',
+            $bodyFull,
+            'Report must show each participating fleet\'s origin coordinates'
+        );
     }
 
     /**

@@ -43,10 +43,14 @@ are incomplete:
       report, and a first-round wipe sends exactly one lost-contact message per
       participant). `AttackMission.php:447` fixed, `BattleReport.php:145` was
       the message fan-out path.
-- [ ] Show individual participating fleets/defenders in reports
-      (`AttackMission.php:717` data layer — per-fleet data is available in
-      `$battleResult->attackerFleetResults` / `defenderFleetResults`; report
-      view still renders aggregated attacker/defender blocks)
+- [x] Show individual participating fleets/defenders in reports
+      (`AttackMission.php:717` data layer — per-fleet data was available in
+      `$battleResult->attackerFleetResults` / `defenderFleetResults` but unused;
+      battle reports now store a per-fleet breakdown (owning player, origin
+      coordinates snapshotted at report creation, unit composition and losses)
+      and the report view lists each fleet separately under the aggregated
+      totals whenever a side has more than one fleet, matching the original
+      game's ACS combat reports)
 - [x] Reaper debris share for multi-attacker battles — shipped (2026-11-17;
       collected debris pool is split between union fleets by surviving Reaper
       cargo capacity, credited to each fleet's return mission, one harvest

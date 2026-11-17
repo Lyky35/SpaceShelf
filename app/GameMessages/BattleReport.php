@@ -473,7 +473,47 @@ class BattleReport extends GameMessage
             'defense_objects' => ObjectService::getDefenseObjects(),
             'attacker_units_start' => $attacker_units,
             'defender_units_start' => $defender_units,
+            'attacker_fleets' => $this->buildFleetViewSections($battleReportModel->attacker['fleets'] ?? []),
+            'defender_fleets' => $this->buildFleetViewSections($battleReportModel->defender['fleets'] ?? []),
             'rounds' => $rounds,
         ];
+    }
+
+    /**
+     * Convert the per-fleet breakdown stored in battle reports into view-ready fleet
+     * sections with translated unit titles. Only units the fleet carried are listed,
+     * per-unit losses are attached for the report view to mark them.
+     *
+     * @param array $fleetData
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildFleetViewSections(array $fleetData): array
+    {
+        $fleets = [];
+
+        foreach ($fleetData as $fleet) {
+            $units = [];
+            foreach ($fleet['units'] ?? [] as $machineName => $amount) {
+                if ((int)$amount <= 0) {
+                    continue;
+                }
+
+                $unitObject = ObjectService::getUnitObjectByMachineName($machineName);
+                $units[] = [
+                    'id' => $unitObject->id,
+                    'title' => $unitObject->title,
+                    'amount' => (int)$amount,
+                    'lost' => (int)($fleet['lost'][$machineName] ?? 0),
+                ];
+            }
+
+            $fleets[] = [
+                'player_name' => $fleet['player_name'] ?? __('Unknown'),
+                'coords' => $fleet['coords'] ?? '',
+                'units' => $units,
+            ];
+        }
+
+        return $fleets;
     }
 }

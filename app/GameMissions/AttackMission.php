@@ -772,15 +772,6 @@ class AttackMission extends GameMission
             'character_class' => $attackerCharacterClass?->getName(),
         ];
 
-        // TODO: Enhance battle reports to show individual participating fleets/defenders
-        // Currently shows aggregated defender data (combined units, planet owner's tech, single player_id)
-        // Should show:
-        // - Combined fleet totals (current behavior)
-        // - Dropdown/expandable sections for each participating fleet:
-        //   - Planet owner's stationary forces (ships + defenses with their tech levels)
-        //   - Each ACS Defend fleet (units, owner, tech levels)
-        // - Per-fleet losses and survivors
-        // Data available in: $battleResult->defenderFleetResults
         $report->defender = [
             'player_id' => $defenderPlayer->getId(),
             'resource_loss' => $battleResult->defenderResourceLoss->sum(),
@@ -790,6 +781,21 @@ class AttackMission extends GameMission
             'armor_technology' => $battleResult->defenderArmorLevel,
             'character_class' => $defenderCharacterClass?->getName(),
         ];
+
+        // Vanilla battle reports list every participating fleet separately ("Attacker
+        // <player> [<coords>]" per fleet) for ACS battles. Store the per-fleet breakdown
+        // (aggregated blocks above remain for the combined totals) so the report view
+        // can split the attacker and defender sides by fleet.
+        $attackerData = $report->attacker;
+        $attackerData['fleets'] = $this->buildAttackerFleetsForReport($battleResult);
+        $report->attacker = $attackerData;
+
+        $defenderData = $report->defender;
+        $defenderData['fleets'] = $this->buildDefenderFleetsForReport(
+            $battleResult,
+            $defenderPlanet->getPlanetCoordinates()->asString()
+        );
+        $report->defender = $defenderData;
 
         $report->loot = [
             'percentage' => $battleResult->lootPercentage,
@@ -867,6 +873,74 @@ class AttackMission extends GameMission
         $report->save();
 
         return $report->id;
+    }
+
+    /**
+     * Build the per-fleet breakdown for the attacking side of a battle report. The
+     * original game lists every participating ACS fleet separately, so each entry
+     * holds the owning player, the origin coordinates (snapshotted at report
+     * creation time) and the fleet's unit composition and losses.
+     *
+     * @param BattleResult $battleResult
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildAttackerFleetsForReport(BattleResult $battleResult): array
+    {
+        $fleets = [];
+
+        foreach ($battleResult->attackerFleetResults as $fleetResult) {
+            $fleetMission = FleetMission::find($fleetResult->fleetMissionId);
+            if ($fleetMission === null) {
+                continue;
+            }
+
+            $fleets[] = [
+                'player_id' => $fleetResult->playerId,
+                'player_name' => $this->playerServiceFactory->make($fleetResult->playerId, true)->getUsername(false),
+                'coords' => $fleetMission->galaxy_from . ':' . $fleetMission->system_from . ':' . $fleetMission->position_from,
+                'units' => $fleetResult->unitsStart->toArray(),
+                'lost' => $fleetResult->unitsLost->toArray(),
+            ];
+        }
+
+        return $fleets;
+    }
+
+    /**
+     * Build the per-fleet breakdown for the defending side of a battle report. The
+     * planet owner's stationary forces have no fleet mission and keep the defended
+     * planet's coordinates; ACS Defend fleets report their origin coordinates.
+     *
+     * @param BattleResult $battleResult
+     * @param string $planetCoords
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildDefenderFleetsForReport(BattleResult $battleResult, string $planetCoords): array
+    {
+        $fleets = [];
+
+        foreach ($battleResult->defenderFleetResults as $fleetResult) {
+            $coords = $planetCoords;
+
+            if ($fleetResult->fleetMissionId !== 0) {
+                $fleetMission = FleetMission::find($fleetResult->fleetMissionId);
+                if ($fleetMission === null) {
+                    continue;
+                }
+
+                $coords = $fleetMission->galaxy_from . ':' . $fleetMission->system_from . ':' . $fleetMission->position_from;
+            }
+
+            $fleets[] = [
+                'player_id' => $fleetResult->ownerId,
+                'player_name' => $this->playerServiceFactory->make($fleetResult->ownerId, true)->getUsername(false),
+                'coords' => $coords,
+                'units' => $fleetResult->unitsStart->toArray(),
+                'lost' => $fleetResult->unitsLost->toArray(),
+            ];
+        }
+
+        return $fleets;
     }
 
     /**
