@@ -651,4 +651,63 @@ abstract class BattleEngineTestAbstract extends UnitTestCase
         // Assert that defender has lost some rocket launchers.
         $this->assertLessThan($start_rocket_launcher, $lastRound->defenderShips->getAmountByMachineName('rocket_launcher'));
     }
+
+    /**
+     * The defending player's engineer officer halves the defense losses that
+     * survive the universe's base repair rate. At the default 70% repair rate
+     * that lifts recovery to the original game's 85%; at a 0% base rate the
+     * engineer alone recovers half. Repairs are rolled per unit, so the
+     * assertions are bounds, not fixed survivor counts.
+     */
+    public function testEngineerHalvesRemainingDefenseLosses(): void
+    {
+        // Massed rocket launchers; battleships out-stat them every round and
+        // grind the whole line down within the six-round limit.
+        $start_rocket_launcher = 1000;
+        $this->createAndSetPlanetModel([
+            'rocket_launcher' => $start_rocket_launcher,
+        ]);
+
+        $attackerFleet = new UnitCollection();
+        $battleship = ObjectService::getUnitObjectByMachineName('battle_ship');
+        $attackerFleet->addUnit($battleship, 500);
+
+        $originalRepairRate = $this->settingsService->defenseRepairRate();
+        $this->settingsService->set('defense_repair_rate', 70);
+
+        // Without engineer: ~70% of the destroyed line repairs.
+        $battleResult = $this->createBattleEngine($attackerFleet)->simulateBattle();
+        $destroyed = $battleResult->defenderUnitsLost->getAmount();
+        $repaired = $battleResult->repairedDefenses->getAmount();
+
+        $this->assertGreaterThan(900, $destroyed, 'Attacker should wipe out the defense line');
+        $this->assertGreaterThanOrEqual(intdiv(62 * $destroyed, 100), $repaired);
+        $this->assertLessThanOrEqual(intdiv(80 * $destroyed, 100), $repaired);
+
+        // Engineer active: the ~30% losses halve, i.e. ~85% repairs.
+        $this->playerService->getUser()->engineer_expires_at = now()->addWeek();
+
+        $battleResult = $this->createBattleEngine($attackerFleet)->simulateBattle();
+        $destroyed = $battleResult->defenderUnitsLost->getAmount();
+        $repaired = $battleResult->repairedDefenses->getAmount();
+
+        $this->assertGreaterThan(900, $destroyed);
+        $this->assertGreaterThanOrEqual(intdiv(80 * $destroyed, 100), $repaired);
+        $this->assertLessThanOrEqual(intdiv(92 * $destroyed, 100), $repaired);
+
+        // With no base repair at all, the engineer recovers exactly half the
+        // losses — the "halves defense losses" promise independent of the
+        // universe's repair setting.
+        $this->settingsService->set('defense_repair_rate', 0);
+
+        $battleResult = $this->createBattleEngine($attackerFleet)->simulateBattle();
+        $destroyed = $battleResult->defenderUnitsLost->getAmount();
+        $repaired = $battleResult->repairedDefenses->getAmount();
+
+        $this->assertGreaterThan(900, $destroyed);
+        $this->assertGreaterThanOrEqual(intdiv(40 * $destroyed, 100), $repaired);
+        $this->assertLessThanOrEqual(intdiv(60 * $destroyed, 100), $repaired);
+
+        $this->settingsService->set('defense_repair_rate', $originalRepairRate);
+    }
 }
