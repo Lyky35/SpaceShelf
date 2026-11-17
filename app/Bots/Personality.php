@@ -15,6 +15,7 @@ final readonly class Personality
         public float $aggression,
         public float $colonisationBias,
         public float $militaryShare,
+        public float $defenseBias,
         public float $researchDrive,
     ) {
     }
@@ -27,10 +28,11 @@ final readonly class Personality
     public static function fromArray(array $data): self
     {
         return new self(
-            profile: (string) ($data['profile'] ?? 'balanced'),
+            profile: (string) ($data['profile'] ?? 'discoverer'),
             aggression: (float) ($data['aggression'] ?? 0.0),
             colonisationBias: (float) ($data['colonisation_bias'] ?? 0.5),
             militaryShare: (float) ($data['military_share'] ?? 0.1),
+            defenseBias: (float) ($data['defense_bias'] ?? 0.0),
             researchDrive: (float) ($data['research_drive'] ?? 1.0),
         );
     }
@@ -45,6 +47,7 @@ final readonly class Personality
             'aggression' => $this->aggression,
             'colonisation_bias' => $this->colonisationBias,
             'military_share' => $this->militaryShare,
+            'defense_bias' => $this->defenseBias,
             'research_drive' => $this->researchDrive,
         ];
     }

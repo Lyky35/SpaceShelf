@@ -19,7 +19,8 @@ use Throwable;
 
 /**
  * Utility-scored brain, phase 1: economy buildings, research pacing, colony
- * ships + colonisation, solar satellites and a minimal standing fleet.
+ * ships + colonisation, solar satellites, a personality-scaled standing fleet
+ * and tiered planetary defense for bunker-leaning personalities.
  *
  * Heuristics encode the classic OGame ratio rules (mine mix, power coverage,
  * 1:10 robot-factory pacing, storage vs. mine trade-off) and are tunable via
@@ -59,6 +60,22 @@ final class UtilityBrain implements BotBrain
         'deuterium' => 'deuterium_store',
     ];
 
+    /**
+     * Defense unit tiers ordered strongest-first; the brain builds the
+     * strongest tier whose shipyard and research requirements the planet
+     * actually meets. Shield domes and missiles are left out of phase 1.
+     *
+     * @var array<int, string>
+     */
+    private const DEFENSE_TIERS = [
+        'plasma_turret',
+        'gauss_cannon',
+        'ion_cannon',
+        'heavy_laser',
+        'light_laser',
+        'rocket_launcher',
+    ];
+
     public function __construct(
         private BuildingQueueService $buildingQueueService,
         private ResearchQueueService $researchQueueService,
@@ -76,9 +93,10 @@ final class UtilityBrain implements BotBrain
         $actions = 0;
 
         foreach ($snapshot->planets as $planet) {
-            $actions += $this->buildStructures($planet);
+            $actions += $this->buildStructures($planet, $personality);
             $actions += $this->buildResearch($player, $planet, $personality);
             $actions += $this->buildUnits($snapshot, $planet, $personality);
+            $actions += $this->buildDefense($planet, $personality);
         }
 
         $actions += $this->colonise($snapshot, $personality);
@@ -89,7 +107,7 @@ final class UtilityBrain implements BotBrain
     /**
      * Queue up to `build_actions_per_visit` construction items on one planet.
      */
-    private function buildStructures(PlanetService $planet): int
+    private function buildStructures(PlanetService $planet, Personality $personality): int
     {
         $maxActions = (int) config('bots.economy.build_actions_per_visit', 3);
         $actions = 0;
@@ -97,7 +115,7 @@ final class UtilityBrain implements BotBrain
         for ($i = 0; $i < $maxActions; $i++) {
             $added = false;
 
-            foreach ($this->structureCandidateOrder($planet) as $machineName) {
+            foreach ($this->structureCandidateOrder($planet, $personality) as $machineName) {
                 if (!$this->isAffordable($planet, $machineName, withReserve: false)) {
                     continue;
                 }
@@ -129,7 +147,7 @@ final class UtilityBrain implements BotBrain
      *
      * @return array<int, string>
      */
-    private function structureCandidateOrder(PlanetService $planet): array
+    private function structureCandidateOrder(PlanetService $planet, Personality $personality): array
     {
         /** @var array<string, float> $score */
         $score = [];
@@ -193,6 +211,15 @@ final class UtilityBrain implements BotBrain
         // never build colony ships or a fleet.
         if ($planet->getObjectLevel('shipyard') < $planet->getObjectLevel('robot_factory')) {
             $score['shipyard'] = 45.0;
+        }
+
+        // Bunker-class personalities raise the shipyard to the ion-cannon tier
+        // independent of robot factory pacing: defense units are built there.
+        if (
+            $personality->defenseBias >= $this->defenseMinBias()
+            && $planet->getObjectLevel('shipyard') < 4
+        ) {
+            $score['shipyard'] = max($score['shipyard'] ?? 0.0, 50.0);
         }
 
         // Research lab must keep pace with the player's highest research so
@@ -326,6 +353,57 @@ final class UtilityBrain implements BotBrain
         }
 
         return $actions;
+    }
+
+    /**
+     * Planetary defense for bunker-leaning personalities: grow each planet's
+     * defense stock toward `defense_unit_base * defense_bias` units using the
+     * strongest defense tier whose shipyard and research requirements the
+     * planet currently meets. Personalities below `defense_min_bias` never
+     * build defense at all (Generals spend everything on the fleet).
+     */
+    private function buildDefense(PlanetService $planet, Personality $personality): int
+    {
+        if ($personality->defenseBias < $this->defenseMinBias()) {
+            return 0;
+        }
+
+        $target = (int) round(
+            (int) config('bots.military.defense_unit_base', 120) * $personality->defenseBias
+        );
+
+        if (
+            $planet->getDefenseUnits()->getAmount() >= $target
+            || $planet->getObjectLevel('shipyard') < 1
+        ) {
+            return 0;
+        }
+
+        $batchSize = (int) config('bots.military.defense_batch_size', 10);
+
+        // Strongest affordable tier wins; unmet research/shipyard gates or an
+        // unaffordable batch fall through to the next, cheaper tier.
+        foreach (self::DEFENSE_TIERS as $machineName) {
+            if (!ObjectService::objectRequirementsMet($machineName, $planet)) {
+                continue;
+            }
+
+            $queued = $this->queueUnits($planet, $machineName, $batchSize, withReserve: true);
+
+            if ($queued > 0) {
+                return $queued;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Minimum defense_bias at which a personality builds any planetary defense.
+     */
+    private function defenseMinBias(): float
+    {
+        return (float) config('bots.military.defense_min_bias', 0.2);
     }
 
     /**

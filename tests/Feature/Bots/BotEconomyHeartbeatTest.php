@@ -50,7 +50,7 @@ class BotEconomyHeartbeatTest extends IsolatedAccountTestCase
      */
     public function testHeartbeatsGrowEconomyAndResearch(): void
     {
-        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1, '--profile' => 'economizer']));
+        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1, '--profile' => 'collector']));
 
         $bot = Bot::orderByDesc('id')->firstOrFail();
 
@@ -102,7 +102,7 @@ class BotEconomyHeartbeatTest extends IsolatedAccountTestCase
      */
     public function testFirstHeartbeatQueuesAtLeastOneAction(): void
     {
-        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1, '--profile' => 'balanced']));
+        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1, '--profile' => 'discoverer']));
 
         $bot = Bot::orderByDesc('id')->firstOrFail();
 
@@ -123,7 +123,7 @@ class BotEconomyHeartbeatTest extends IsolatedAccountTestCase
      */
     public function testSnapshotBuilderProducesConsistentAggregate(): void
     {
-        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1, '--profile' => 'explorer']));
+        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1, '--profile' => 'discoverer']));
 
         $bot = Bot::orderByDesc('id')->firstOrFail();
 

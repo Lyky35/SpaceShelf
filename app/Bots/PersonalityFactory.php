@@ -37,6 +37,7 @@ final class PersonalityFactory
             aggression: self::jitter((float) $base['aggression']),
             colonisationBias: self::jitter((float) $base['colonisation_bias']),
             militaryShare: self::jitter((float) $base['military_share']),
+            defenseBias: self::jitter((float) $base['defense_bias']),
             researchDrive: self::jitter((float) $base['research_drive']),
         );
     }

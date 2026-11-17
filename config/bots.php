@@ -100,18 +100,26 @@ return [
             'plasma_technology' => 6,
         ],
 
-        // Which personality trait scales which research group's cap.
+        // Which personality trait scales which research group's cap. Defense
+        // tech (turret tiers, shields) follows defense_bias; weapons and all
+        // drive technologies (which also gate colony ships and fighters)
+        // follow aggression.
         'cap_scaling' => [
             'economy' => [
                 'group' => ['energy_technology', 'computer_technology', 'astrophysics'],
                 'trait' => 'researchDrive',
             ],
-            'military' => [
+            'defense' => [
                 'group' => [
-                    'weapon_technology', 'shielding_technology', 'armor_technology',
-                    'laser_technology', 'ion_technology', 'plasma_technology',
-                    'impulse_drive', 'combustion_drive', 'hyperspace_technology',
-                    'espionage_technology',
+                    'laser_technology', 'shielding_technology', 'armor_technology',
+                    'ion_technology',
+                ],
+                'trait' => 'defenseBias',
+            ],
+            'fleet' => [
+                'group' => [
+                    'weapon_technology', 'plasma_technology', 'impulse_drive',
+                    'combustion_drive', 'hyperspace_technology', 'espionage_technology',
                 ],
                 'trait' => 'aggression',
             ],
@@ -124,38 +132,46 @@ return [
 
         // Number of combat units to queue at once when below target.
         'batch_size' => 5,
+
+        // Per-planet defense target: defense_bias * defense_unit_base units.
+        'defense_unit_base' => 120,
+
+        // Number of defense units to queue at once when below target.
+        'defense_batch_size' => 10,
+
+        // Personalities below this defense bias never build planetary defense.
+        'defense_min_bias' => 0.2,
     ],
 
+    // Behavior classes. See docs/BOT-AI-PLAN.md:
+    // - collector: bunker worlds, heavy defense, tiny mostly passive fleet
+    // - general:   fleet building over everything, zero planetary defense
+    // - discoverer: balanced mix of some fleet and some defense
     'personalities' => [
-        'economizer' => [
-            'aggression' => 0.05,
-            'colonisation_bias' => 0.7,
-            'military_share' => 0.05,
+        'collector' => [
+            // Aggression here only paces fleet-group research: drives are
+            // needed for colony ships (impulse 3) and fighters (combustion 1)
+            // even for defensive empires. The tiny fleet is enforced by
+            // military_share.
+            'aggression' => 0.3,
+            'colonisation_bias' => 0.4,
+            'military_share' => 0.04,
+            'defense_bias' => 0.9,
             'research_drive' => 1.0,
         ],
-        'balanced' => [
-            'aggression' => 0.25,
+        'general' => [
+            'aggression' => 0.9,
             'colonisation_bias' => 0.8,
-            'military_share' => 0.2,
-            'research_drive' => 0.9,
+            'military_share' => 0.55,
+            'defense_bias' => 0.0,
+            'research_drive' => 0.85,
         ],
-        'warrior' => [
-            'aggression' => 0.8,
-            'colonisation_bias' => 0.5,
-            'military_share' => 0.45,
-            'research_drive' => 0.8,
-        ],
-        'explorer' => [
-            'aggression' => 0.1,
+        'discoverer' => [
+            'aggression' => 0.35,
             'colonisation_bias' => 1.0,
-            'military_share' => 0.1,
-            'research_drive' => 0.9,
-        ],
-        'pacifist' => [
-            'aggression' => 0.0,
-            'colonisation_bias' => 0.6,
-            'military_share' => 0.05,
-            'research_drive' => 1.1,
+            'military_share' => 0.3,
+            'defense_bias' => 0.4,
+            'research_drive' => 1.0,
         ],
     ],
 ];

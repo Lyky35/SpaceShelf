@@ -50,12 +50,22 @@ class BotCreationTest extends IsolatedAccountTestCase
             $this->assertArrayHasKey($bot->profile, config('bots.personalities'));
             $this->assertNotNull($bot->next_action_at);
             $this->assertTrue($bot->enabled);
+
+            // The bot's behavior class must match its in-game character class.
+            $characterClass = $user->getCharacterClassEnum();
+            $this->assertNotNull($characterClass);
+            $this->assertSame(
+                strtolower($characterClass->name),
+                $bot->profile,
+                sprintf('Bot "%s" has character class %s but plays "%s"', $user->username, $characterClass->getName(), $bot->profile)
+            );
         }
 
         $personality = $bots->firstOrFail()->personality;
         $this->assertArrayHasKey('aggression', $personality);
         $this->assertArrayHasKey('colonisation_bias', $personality);
         $this->assertArrayHasKey('military_share', $personality);
+        $this->assertArrayHasKey('defense_bias', $personality);
         $this->assertArrayHasKey('research_drive', $personality);
 
         // The authenticated (human) test user must not have picked up the bot role.
@@ -70,11 +80,11 @@ class BotCreationTest extends IsolatedAccountTestCase
      */
     public function testCreateBotsRespectsProfileOption(): void
     {
-        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 2, '--profile' => 'warrior']));
+        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 2, '--profile' => 'general']));
 
         $profiles = Bot::pluck('profile')->all();
 
-        $this->assertSame(['warrior', 'warrior'], $profiles);
+        $this->assertSame(['general', 'general'], $profiles);
     }
 
     /**
