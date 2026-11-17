@@ -21,17 +21,19 @@ use OGame\Services\UnitQueueService;
 use Throwable;
 
 /**
- * Utility-scored brain, phase 3: economy buildings, research pacing, colony
+ * Utility-scored brain, phase 4: economy buildings, research pacing, colony
  * ships + colonisation, solar satellites, a personality-scaled standing fleet,
  * tiered planetary defense for bunker-leaning personalities, crawler-based
  * mine harvesting, inter-planet resource transports, debris recycling and —
- * through WarPolicy — fleet saving, espionage scouting and loot raids.
+ * through WarPolicy — fleet saving, espionage scouting and loot raids, plus
+ * a deep space expedition loop with Pathfinder debris salvage through
+ * ExpeditionPolicy.
  *
  * Heuristics encode the classic OGame ratio rules (mine mix, power coverage,
  * 1:10 robot-factory pacing, storage vs. mine trade-off) and are tunable via
  * config/bots.php. Officer upkeep follows the per-profile policy in
- * config/bots.php; war policy tuning lives under bots.war. See
- * docs/BOT-AI-PLAN.md.
+ * config/bots.php; war policy tuning lives under bots.war and expedition
+ * tuning under bots.expedition. See docs/BOT-AI-PLAN.md.
  *
  * Every action is attempted through the same services the HTTP controllers
  * use, and every attempt is guarded: a failed action is logged by the caller
@@ -106,6 +108,7 @@ final class UtilityBrain implements BotBrain
         private ColonisationTargetFinder $colonisationTargetFinder,
         private OfficerService $officerService,
         private WarPolicy $warPolicy,
+        private ExpeditionPolicy $expeditionPolicy,
     ) {
     }
 
@@ -128,6 +131,7 @@ final class UtilityBrain implements BotBrain
         $actions += $this->transportResources($snapshot);
         $actions += $this->recycleDebris($snapshot);
         $actions += $this->warPolicy->conduct($snapshot, $personality);
+        $actions += $this->expeditionPolicy->conduct($snapshot, $personality);
         $actions += $this->hireOfficer($player, $personality);
 
         return $actions;

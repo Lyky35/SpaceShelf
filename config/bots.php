@@ -356,6 +356,49 @@ return [
         ],
     ],
 
+    // Deep space expeditions (docs/BOT-AI-PLAN.md §6). Every profile with
+    // astrophysics explores, but Discoverers do it constantly: their class
+    // bonus is +2 expedition slots and half the expedition combat risk.
+    // This loop is also the bots' only Dark Matter income, which in turn
+    // funds the officer hiring policy below.
+    'expedition' => [
+        'enabled' => true,
+
+        // Chance per brain visit to send an expedition when a slot is
+        // free, astrophysics allows it and the fuel is there.
+        'probability' => [
+            'collector' => 0.4,
+            'general' => 0.7,
+            'discoverer' => 1.0,
+        ],
+
+        // Share of the harbour's strike fleet sent along (15% is inside
+        // the plan's 15-25% band; deep space fights can eat the fleet,
+        // so keep this well below what a war would need).
+        'fleet_share' => 0.15,
+        'min_fleet_size' => 4,
+
+        // The launch planet must still hold this much deuterium after
+        // paying for the round trip — the war machine's fuel reserve.
+        'deuterium_reserve' => 1000,
+
+        // Do not redispatch within this many hours of a fleet coming
+        // home; instant return-to-expedition re-rolls look machine-made.
+        // The fleet sits in deep space for exactly its astrophysics level
+        // in hours, so this only paces the gap between expeditions.
+        'redispatch_cooldown_hours' => 4,
+
+        // Debris from expedition battles settles at position 16 and only
+        // Pathfinders can harvest it. Bots salvage whatever they happen
+        // to have in harbour (expedition ship rewards, later Pathfinder
+        // production once the class-ship item lands).
+        'debris' => [
+            'enabled' => true,
+            'min_value' => 10000,
+            'actions_per_visit' => 1,
+        ],
+    ],
+
     // Officer hiring (docs/BOT-AI-PLAN.md §7). Bots keep one key officer
     // hired via Dark Matter; no DM income yet beyond the initial signup bonus
     // and expedition rewards, so hiring naturally throttles itself.
