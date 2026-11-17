@@ -689,24 +689,6 @@
                             <span class="textlabel">{{ __('t_ingame.layout.menu_officers') }}</span>
                         </a>
                     </li>
-                    <li>
-                        <span class="menu_icon">
-                            <a href="{{ route('shop.index') }}#page=inventory"
-                               class="tooltipRight js_hideTipOnMobile "
-                               target="_self"
-                               title="{{ __('t_ingame.layout.menu_inventory_title') }}">
-                                <div class="menuImage shop {{(Request::is('shop') ? 'highlighted' : '') }}">
-                                </div>
-                            </a>
-                        </span>
-                        <a class="menubutton premiumHighligt {{(Request::is('shop') ? 'selected' : '') }}"
-                           href="{{ route('shop.index') }}"
-                           accesskey=""
-                           target="_self"
-                        >
-                            <span class="textlabel">{{ __('t_ingame.layout.menu_shop') }}</span>
-                        </a>
-                    </li>
                 </ul>
 
                 @if ($attackBlockActive)
@@ -1853,15 +1835,6 @@ However, the Space Dock's engineers think that some of the remains can be salvag
                             @endforeach
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div id="bannerSkyscrapercomponent" class="">
-            <div id="banner_skyscraper" class="desktop" name="banner_skyscraper">
-                <div style="position: relative;">
-                    <a class="tooltipLeft " title="" href="#TODO=shop">
-                        <img src="/img/banners/de0dadddb0285ba78b026ce18fc898.jpg" alt="">
-                    </a>
                 </div>
             </div>
         </div>
