@@ -1,8 +1,9 @@
 # SpaceShelf — TODO
 
-Feature-gap inventory as of 2026-11-17 (after bot phases 0–1, random planet
-names, the Collector/General/Discoverer class rework, the Legor account
-disable, shop-tab removal and the full officer system including its UI).
+Feature-gap inventory as of 2026-11-17 (after bot phases 0–4, random planet
+names, the Collector/General/Discoverer class rework, the removal of the
+Legor account, shop-tab removal and the full officer system including its
+UI).
 Verified against the codebase; file references included.
 
 ## Game engine gaps
@@ -150,11 +151,29 @@ character class. Still missing:
       never scouted or raided; bots are always fair game. See
       `config/bots.php` `bots.war` + `app/Bots/Brain/WarPolicy.php`
       (tests: `tests/Feature/Bots/BotWarAITest.php`).
-- [ ] **Phase 4 — Expeditions**: expedition loop (currently unused Discoverer
-      class bonus)
+- [x] **Phase 4 – Expeditions**: shipped — `ExpeditionPolicy` runs after the
+      war step: personality-gated expedition dispatch (per-profile per-visit
+      odds: discoverer 1.0 / general 0.7 / collector 0.4; astrophysics ≥1
+      gates it exactly like a human fleet and fixes the hold time; the fleet
+      is 15% of the harbour's strike stock launched from the planet that can
+      pay the trip (incl. hold-time burn) and keep a 1000 D war-fuel reserve;
+      the engine's own slot cap throttles it — Discoverers' +2 class slots
+      keep them sailing — and a 4h redispatch cooldown paces the gap after a
+      return, read back from our own finished expedition return missions),
+      plus Pathfinder salvage of expedition battle debris at position 16
+      (stock-gated, ≥10k metal+crystal, fleet sized to the field; recyclers
+      cannot touch deep-space debris). Expedition rewards — including Dark
+      Matter — are the bots' recurring income stream for Phase 5 officer
+      upkeep. See `config/bots.php` `bots.expedition` +
+      `app/Bots/Brain/ExpeditionPolicy.php`
+      (tests: `tests/Feature/Bots/BotExpeditionTest.php`).
 - [ ] **Class ships**: Reaper/Pathfinder still unbuilt by the brain — reapers
-      for Generals, pathfinders for Discoverer expeditions. (Crawlers for the
-      Collector mine bonus shipped with Phase 2.)
+      for Generals, pathfinders for Discoverer expeditions (the salvage loop
+      already uses them whenever they are in harbour; note the engine still
+      hardcodes the Pathfinder expedition Dark Matter bonus off at
+      `ExpeditionMission.php:598` with a stale "not yet implemented" TODO —
+      re-enable it and send a Pathfinder along once brain-built). (Crawlers
+      for the Collector mine bonus shipped with Phase 2.)
 - [x] **Phase 5 — Officer hiring**: shipped — each profile keeps its key
       officer hired (collector→Geologist, general→Admiral,
       discoverer→Technocrat, renew ≤2 days left, DM reserve floor 1000; see
