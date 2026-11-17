@@ -36,7 +36,7 @@ return new class () extends Migration {
             $legorId = DB::table('users')->insertGetId([
                 'id' => 1,
                 'username' => 'Legor',
-                'email' => 'legor@ogamex.local',
+                'email' => 'legor@spaceshelf.local',
                 'password' => Hash::make(Str::random(32)),
                 'lang' => 'en',
                 'time' => now()->timestamp,

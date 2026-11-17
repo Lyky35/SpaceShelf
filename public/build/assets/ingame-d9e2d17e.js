@@ -60638,7 +60638,7 @@ function drawArrows(id) {
     var $elem = $techtree.find(".tech" + this.toString());
     newTree.addEndpoint($elem);
 
-    // TODO OGAMEX: without this additional if check, the techtree throws errors.
+    // TODO SPACESHELF: without this additional if check, the techtree throws errors.
     var elemOffset = $elem.find('a').offset();
     if (elemOffset) {
       var elemLeft = Math.floor(elemOffset.left);
@@ -60659,7 +60659,7 @@ function drawArrows(id) {
       var $source = $techtree.find(".tech" + this.source + " a");
       var $target = $techtree.find(".tech" + this.target + " a");
 
-      // TODO OGAMEX: without this additional if check, the techtree throws errors.
+      // TODO SPACESHELF: without this additional if check, the techtree throws errors.
       var sourceOffset = $source.offset();
       var targetOffset = $target.offset();
 
@@ -60672,7 +60672,7 @@ function drawArrows(id) {
         // the surrounding div with class depth* is the second parent
 
         $source.parent().parent().find('a[data-tech-id]').each(function () {
-          // TODO OGAMEX: without this additional if check, the techtree throws errors.
+          // TODO SPACESHELF: without this additional if check, the techtree throws errors.
           if (coordinates[$(this).attr('data-tech-id')]) {
             coordinates[$(this).attr('data-tech-id')][1] += rowHeight; // 1 == top
             //console.log("RESET "+$(this).attr('data-tech-id') + " "+(coordinates[$(this).attr('data-tech-id')][1]));
@@ -60797,7 +60797,7 @@ function drawArrows(id) {
 
     if (translated[this.target].left < translated[this.source].left) {
       // target is left of the source
-      // TODO OGAMEX: uncommented this because it throws errors while drawing the techtree.
+      // TODO SPACESHELF: uncommented this because it throws errors while drawing the techtree.
       // Even with identical HTML to the original game, it still doesn't work for certain
       // complicated tech trees.
       /*if (!lineInCoordinatesBlocked(translated, translated[this.source].left, translated[this.source].top, translated[this.source].left, translated[this.target].top) && !positionInCoordinatesBlocked(translated, translated[this.source].left, translated[this.target].top) && !lineInCoordinatesBlocked(translated, translated[this.source].left, translated[this.target].top, translated[this.target].left, translated[this.target].top)) {
@@ -60810,7 +60810,7 @@ function drawArrows(id) {
       }*/
     } else if (translated[this.target].left > translated[this.source].left) {
       // target is right of the source
-      // TODO OGAMEX: uncommented this because it throws errors while drawing the techtree.
+      // TODO SPACESHELF: uncommented this because it throws errors while drawing the techtree.
       // Even with identical HTML to the original game, it still doesn't work for certain
       // complicated tech trees.
       /*if (!lineInCoordinatesBlocked(translated, translated[this.source].left, translated[this.source].top, translated[this.source].left, translated[this.target].top) && !positionInCoordinatesBlocked(translated, translated[this.source].left, translated[this.target].top) && !lineInCoordinatesBlocked(translated, translated[this.source].left, translated[this.target].top, translated[this.target].left, translated[this.target].top)) {

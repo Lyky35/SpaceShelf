@@ -3,8 +3,8 @@
 return [
     // ------------------------
     'welcome_message' => [
-        'from' => 'OGameX',
-        'subject' => 'Welcome to OGameX!',
+        'from' => 'SpaceShelf',
+        'subject' => 'Welcome to SpaceShelf!',
         'body' => 'Greetings Emperor :player!
 
 Congratulations on starting your illustrious career. I will be here to guide you through your first steps.
@@ -18,7 +18,7 @@ Then expand your Metal Mine and Crystal Mine to produce vital resources. Otherwi
 You can find more help, tips and tactics here:
 
 Discord Chat: Discord Server
-Forum: OGameX Forum
+Forum: SpaceShelf Forum
 Support: Game Support
 
 You’ll only find current announcements and changes to the game in the forums.

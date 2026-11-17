@@ -57,7 +57,7 @@ class BanTest extends IsolatedAccountTestCase
      */
     public function testBanPlayerWithDuration(): void
     {
-        $this->artisan('ogamex:admin:assign-role', ['username' => $this->currentUsername()]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $this->currentUsername()]);
 
         $target = $this->createTrackedUser();
 
@@ -85,7 +85,7 @@ class BanTest extends IsolatedAccountTestCase
      */
     public function testBanPlayerPermanently(): void
     {
-        $this->artisan('ogamex:admin:assign-role', ['username' => $this->currentUsername()]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $this->currentUsername()]);
 
         $target = $this->createTrackedUser();
 
@@ -111,10 +111,10 @@ class BanTest extends IsolatedAccountTestCase
      */
     public function testAdminCannotBeBanned(): void
     {
-        $this->artisan('ogamex:admin:assign-role', ['username' => $this->currentUsername()]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $this->currentUsername()]);
 
         $targetAdmin = $this->createTrackedUser();
-        $this->artisan('ogamex:admin:assign-role', ['username' => $targetAdmin->username]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $targetAdmin->username]);
 
         $response = $this->post(route('admin.server-administration.ban'), [
             'username' => $targetAdmin->username,
@@ -135,7 +135,7 @@ class BanTest extends IsolatedAccountTestCase
      */
     public function testUnbanPlayer(): void
     {
-        $this->artisan('ogamex:admin:assign-role', ['username' => $this->currentUsername()]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $this->currentUsername()]);
 
         $target = $this->createTrackedUser();
         Ban::create(['user_id' => $target->id, 'reason' => 'Some violation', 'banned_until' => null, 'canceled' => false]);
@@ -157,7 +157,7 @@ class BanTest extends IsolatedAccountTestCase
      */
     public function testVacationModeRemainsAfterUnban(): void
     {
-        $this->artisan('ogamex:admin:assign-role', ['username' => $this->currentUsername()]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $this->currentUsername()]);
 
         $target = $this->createTrackedUser();
         Ban::create(['user_id' => $target->id, 'reason' => 'Some violation', 'banned_until' => null, 'canceled' => false]);
@@ -180,7 +180,7 @@ class BanTest extends IsolatedAccountTestCase
      */
     public function testUnbanLiftsVacationModeUntilRestriction(): void
     {
-        $this->artisan('ogamex:admin:assign-role', ['username' => $this->currentUsername()]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $this->currentUsername()]);
 
         $target = $this->createTrackedUser();
         Ban::create(['user_id' => $target->id, 'reason' => 'Some violation', 'banned_until' => null, 'canceled' => false]);

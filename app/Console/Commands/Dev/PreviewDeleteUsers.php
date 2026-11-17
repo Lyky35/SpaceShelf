@@ -9,7 +9,7 @@ use OGame\Factories\PlayerServiceFactory;
 use OGame\Models\User;
 
 #[Description('Delete all test users (test1-test10) and their associated data.')]
-#[Signature('ogamex:dev:delete-users
+#[Signature('spaceshelf:dev:delete-users
                             {--force : Skip confirmation prompt}')]
 class PreviewDeleteUsers extends Command
 {
@@ -54,7 +54,7 @@ class PreviewDeleteUsers extends Command
     {
         $emails = [];
         for ($i = 1; $i <= 10; $i++) {
-            $emails[] = 'test' . $i . '@ogamex.dev';
+            $emails[] = 'test' . $i . '@spaceshelf.dev';
         }
         return $emails;
     }

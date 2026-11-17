@@ -10,12 +10,12 @@ use OGame\Models\Enums\PlanetType;
 use OGame\Models\Planet;
 use OGame\Models\User;
 
-#[Description('Seed stuck (overdue, unprocessed) fleet missions for admin tool testing. Requires ogamex:dev:seed-users to have been run first.')]
-#[Signature('ogamex:dev:seed-stuck-fleet-missions
+#[Description('Seed stuck (overdue, unprocessed) fleet missions for admin tool testing. Requires spaceshelf:dev:seed-users to have been run first.')]
+#[Signature('spaceshelf:dev:seed-stuck-fleet-missions
                             {--fresh : Clear all unprocessed fleet missions for test users before seeding}')]
 class SeedStuckFleetMissions extends Command
 {
-    private const EMAIL_DOMAIN = 'ogamex.dev';
+    private const EMAIL_DOMAIN = 'spaceshelf.dev';
 
     public function handle(): int
     {
@@ -26,7 +26,7 @@ class SeedStuckFleetMissions extends Command
 
         foreach (['test1', 'test2', 'test3'] as $needed) {
             if (!$users->has($needed)) {
-                $this->error("Required user {$needed} not found. Run ogamex:dev:seed-users first.");
+                $this->error("Required user {$needed} not found. Run spaceshelf:dev:seed-users first.");
                 return self::FAILURE;
             }
         }
@@ -43,7 +43,7 @@ class SeedStuckFleetMissions extends Command
         $planet3 = Planet::where('user_id', $user3->id)->first();
 
         if (!$planet1 || !$planet2 || !$planet3) {
-            $this->error('One or more test users have no planets. Run ogamex:dev:seed-users first.');
+            $this->error('One or more test users have no planets. Run spaceshelf:dev:seed-users first.');
             return self::FAILURE;
         }
 

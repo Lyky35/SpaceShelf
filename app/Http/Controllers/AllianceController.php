@@ -126,7 +126,7 @@ class AllianceController extends OGameController
             'newAjaxToken' => csrf_token(),
             'page' => [
               'stateObj' => [],
-              'title' => 'OGameX',
+              'title' => 'SpaceShelf',
               'url' => route('alliance.index'),
             ],
             'serverTime' => time(),
@@ -176,7 +176,7 @@ class AllianceController extends OGameController
             'newAjaxToken' => csrf_token(),
             'page' => [
                 'stateObj' => [],
-                'title' => 'OGameX',
+                'title' => 'SpaceShelf',
                 'url' => route('alliance.index'),
             ],
             'serverTime' => time(),
@@ -226,7 +226,7 @@ class AllianceController extends OGameController
             'newAjaxToken' => csrf_token(),
             'page' => [
                 'stateObj' => [],
-                'title' => 'OGameX',
+                'title' => 'SpaceShelf',
                 'url' => route('alliance.index'),
             ],
             'serverTime' => time(),
@@ -283,7 +283,7 @@ class AllianceController extends OGameController
                 'newAjaxToken' => csrf_token(),
                 'page' => [
                     'stateObj' => [],
-                    'title' => 'OGameX',
+                    'title' => 'SpaceShelf',
                     'url' => route('alliance.index'),
                 ],
                 'serverTime' => time(),
@@ -346,7 +346,7 @@ class AllianceController extends OGameController
             'newAjaxToken' => csrf_token(),
             'page' => [
                 'stateObj' => [],
-                'title' => 'OGameX',
+                'title' => 'SpaceShelf',
                 'url' => route('alliance.index'),
             ],
             'serverTime' => time(),
@@ -394,7 +394,7 @@ class AllianceController extends OGameController
             'newAjaxToken' => csrf_token(),
             'page' => [
                 'stateObj' => [],
-                'title' => 'OGameX',
+                'title' => 'SpaceShelf',
                 'url' => route('alliance.index'),
             ],
             'serverTime' => time(),
@@ -465,7 +465,7 @@ class AllianceController extends OGameController
             'newAjaxToken' => csrf_token(),
             'page' => [
                 'stateObj' => [],
-                'title' => 'OGameX',
+                'title' => 'SpaceShelf',
                 'url' => route('alliance.index'),
             ],
             'serverTime' => time(),
@@ -527,7 +527,7 @@ class AllianceController extends OGameController
             'newAjaxToken' => csrf_token(),
             'page' => [
                 'stateObj' => [],
-                'title' => 'OGameX',
+                'title' => 'SpaceShelf',
                 'url' => route('alliance.index', ['alliance_id' => $alliance_id]),
             ],
             'serverTime' => time(),

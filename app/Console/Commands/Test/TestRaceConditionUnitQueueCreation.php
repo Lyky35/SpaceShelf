@@ -26,7 +26,7 @@ use OGame\Services\ObjectService;
  * - With protection: Only 1 request succeeds, the others fail with "not enough resources"
  */
 #[Description('Issue parallel unit queue creation requests to test race conditions.')]
-#[Signature('ogamex:test:race-condition-unitqueue-creation')]
+#[Signature('spaceshelf:test:race-condition-unitqueue-creation')]
 class TestRaceConditionUnitQueueCreation extends TestCommand
 {
     /**

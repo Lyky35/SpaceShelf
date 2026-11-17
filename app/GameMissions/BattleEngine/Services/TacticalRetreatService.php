@@ -24,7 +24,7 @@ use OGame\Services\PlayerService;
  * - ACS defend fleets count for points but cannot flee
  * - Deuterium cost = 1.5 × fuel for a 100% flight to a neighbouring planet position (slot)
  * - Ends at 500,000 general points; inactive fleets do not flee; honourable fights do not flee
- *   (honour system not yet implemented in OGameX)
+ *   (honour system not yet implemented in SpaceShelf)
  */
 class TacticalRetreatService
 {

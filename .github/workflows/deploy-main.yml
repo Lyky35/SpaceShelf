@@ -14,7 +14,7 @@ env:
 
 jobs:
   deploy:
-    name: Deploy to main.ogamex.dev
+    name: Deploy to main.spaceshelf.dev
     runs-on: [self-hosted, ctogx]
 
     concurrency:
@@ -23,7 +23,7 @@ jobs:
 
     environment:
       name: main
-      url: https://main.ogamex.dev
+      url: https://main.spaceshelf.dev
 
     steps:
       - name: Pull latest changes
@@ -32,7 +32,7 @@ jobs:
 
       - name: Pull prebuilt images
         working-directory: ${{ env.DEPLOY_DIR }}
-        run: docker compose -f docker-compose.prod.yml pull ogamex-phpmyadmin
+        run: docker compose -f docker-compose.prod.yml pull spaceshelf-phpmyadmin
 
       - name: Build and start stack
         working-directory: ${{ env.DEPLOY_DIR }}
@@ -43,5 +43,5 @@ jobs:
 
       - name: Output deployment info
         run: |
-          echo "::notice::Deployed main branch to https://main.ogamex.dev"
+          echo "::notice::Deployed main branch to https://main.spaceshelf.dev"
           echo "Commit: ${{ github.sha }}"

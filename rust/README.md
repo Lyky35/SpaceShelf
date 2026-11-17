@@ -11,7 +11,7 @@ If you want to make changes to the Rust code, you can do so by editing the files
 > Note: The Rust code is compiled automatically during the Docker container startup, so no Rust compiled code is committed to the repository. You only have to run the `compile.sh` script if you want to compile the Rust code manually during development and testing. Checking in the new Rust source code is enough.
 
 ```bash
-# Execute compile.sh (from app root) within ogamex-app Docker container.
+# Execute compile.sh (from app root) within spaceshelf-app Docker container.
 ./rust/compile.sh
 ```
 

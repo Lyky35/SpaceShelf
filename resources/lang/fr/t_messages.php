@@ -2,8 +2,8 @@
 
 return [
     'welcome_message' => [
-        'from' => 'OGameX',
-        'subject' => 'Bienvenue sur OGameX !',
+        'from' => 'SpaceShelf',
+        'subject' => 'Bienvenue sur SpaceShelf !',
         'body' => 'Salutations Empereur :player !
 
 Félicitations pour le début de votre illustre carrière. Je serai là pour vous guider dans vos premiers pas.
@@ -17,7 +17,7 @@ Développez ensuite votre mine de métal et votre mine de cristal pour produire 
 Vous pouvez trouver plus d’aide, de conseils et de tactiques ici :
 
 Chat Discord : serveur Discord
-Forum : Forum OGameX
+Forum : Forum SpaceShelf
 Assistance : assistance au jeu
 
 Vous ne trouverez que les annonces actuelles et les modifications apportées au jeu dans les forums.

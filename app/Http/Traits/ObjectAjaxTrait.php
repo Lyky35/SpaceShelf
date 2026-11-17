@@ -327,7 +327,7 @@ trait ObjectAjaxTrait
             'newAjaxToken' => csrf_token(),
             'page' => [
                 'stateObj' => [],
-                'title' => 'OGameX',
+                'title' => 'SpaceShelf',
                 'url' => route('resources.index'),
             ],
             'serverTime' => time(),

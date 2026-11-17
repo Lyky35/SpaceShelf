@@ -1,12 +1,12 @@
 services:
 
   # MariaDB Service
-  ogamex-db:
+  spaceshelf-db:
     image: mariadb:11.3.2-jammy
     restart: unless-stopped
     tty: true
     volumes:
-     - ogame-dbdata:/var/lib/mysql
+     - spaceshelf-dbdata:/var/lib/mysql
      - ./mysql/my.cnf:/etc/mysql/my.cnf
     ports:
       - "${DB_EXTERNAL_PORT:-3306}:3306"
@@ -21,7 +21,7 @@ services:
           - ogame-db
 
   # PHP Service
-  ogamex-app:
+  spaceshelf-app:
     volumes:
       - ./:/var/www
       - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
@@ -46,10 +46,10 @@ services:
     networks:
       - app-network
     depends_on:
-      - ogamex-db
+      - spaceshelf-db
 
   # Scheduler
-  ogamex-scheduler:
+  spaceshelf-scheduler:
     build:
       context: .
       dockerfile: Dockerfile
@@ -62,11 +62,11 @@ services:
     networks:
       - app-network
     depends_on:
-      ogamex-app:
+      spaceshelf-app:
         condition: service_healthy
 
   # Queue
-  ogamex-queue-worker:
+  spaceshelf-queue-worker:
     build:
       context: .
       dockerfile: Dockerfile
@@ -79,11 +79,11 @@ services:
     networks:
       - app-network
     depends_on:
-      ogamex-app:
+      spaceshelf-app:
         condition: service_healthy
 
   # Nginx Service
-  ogamex-webserver:
+  spaceshelf-webserver:
     image: nginx:alpine
     restart: unless-stopped
     tty: true
@@ -97,11 +97,11 @@ services:
     networks:
       - app-network
     depends_on:
-      ogamex-app:
+      spaceshelf-app:
         condition: service_healthy
 
   # Reverb WebSocket Server
-  ogamex-reverb:
+  spaceshelf-reverb:
     build:
       context: .
       dockerfile: Dockerfile
@@ -116,11 +116,11 @@ services:
     networks:
       - app-network
     depends_on:
-      ogamex-app:
+      spaceshelf-app:
         condition: service_healthy
 
   # PhpMyAdmin
-  ogamex-phpmyadmin:
+  spaceshelf-phpmyadmin:
     image: phpmyadmin
     restart: always
     ports:
@@ -139,5 +139,5 @@ networks:
 
 # Volumes
 volumes:
-  ogame-dbdata:
+  spaceshelf-dbdata:
     driver: local

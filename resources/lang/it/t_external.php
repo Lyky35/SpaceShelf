@@ -63,7 +63,7 @@ return [
         'terms'          => 'T&C',
         'contact'        => 'Contatti',
         'rules'          => 'Regole',
-        'copyright'      => '© OGameX. Tutti i diritti riservati.',
+        'copyright'      => '© SpaceShelf. Tutti i diritti riservati.',
     ],
 
     // Stringhe JS inline

@@ -28,7 +28,7 @@ class AdminTest extends IsolatedAccountTestCase
         if ($authUser === null) {
             $this->fail('Not authenticated.');
         }
-        $this->artisan('ogamex:admin:remove-role', ['username' => $authUser->username]);
+        $this->artisan('spaceshelf:admin:remove-role', ['username' => $authUser->username]);
 
         // Verify that on overview page the admin bar doesn't show up.
         $response = $this->get('/overview');
@@ -52,7 +52,7 @@ class AdminTest extends IsolatedAccountTestCase
         if ($authUser === null) {
             $this->fail('Not authenticated.');
         }
-        $this->artisan('ogamex:admin:assign-role', ['username' => $authUser->username]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $authUser->username]);
 
         // Verify that on overview page the admin bar shows up.
         $response = $this->get('/overview');

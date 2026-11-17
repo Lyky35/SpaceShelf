@@ -54,7 +54,7 @@ jobs:
         with:
           timeout_minutes: 10
           max_attempts: 3
-          command: docker compose exec -T ogamex-app ./vendor/bin/pest --shard=${{ matrix.shard }}/3 --parallel
+          command: docker compose exec -T spaceshelf-app ./vendor/bin/pest --shard=${{ matrix.shard }}/3 --parallel
 
   race-condition:
     runs-on: ubuntu-latest
@@ -77,7 +77,7 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           command: |
-            docker compose exec -T ogamex-app php artisan ogamex:test:race-condition-unitqueue
-            docker compose exec -T ogamex-app php artisan ogamex:test:race-condition-game-mission
-            docker compose exec -T ogamex-app php artisan ogamex:test:race-condition-fleet-dispatch
-            docker compose exec -T ogamex-app php artisan ogamex:test:race-condition-unitqueue-creation
+            docker compose exec -T spaceshelf-app php artisan spaceshelf:test:race-condition-unitqueue
+            docker compose exec -T spaceshelf-app php artisan spaceshelf:test:race-condition-game-mission
+            docker compose exec -T spaceshelf-app php artisan spaceshelf:test:race-condition-fleet-dispatch
+            docker compose exec -T spaceshelf-app php artisan spaceshelf:test:race-condition-unitqueue-creation

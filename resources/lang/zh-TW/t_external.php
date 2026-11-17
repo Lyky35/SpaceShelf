@@ -51,7 +51,7 @@ return [
         'terms'          => '服務條款',
         'contact'        => '聯絡我們',
         'rules'          => '規則',
-        'copyright'      => '© OGameX. 版權所有。',
+        'copyright'      => '© SpaceShelf. 版權所有。',
     ],
 
     'js' => [

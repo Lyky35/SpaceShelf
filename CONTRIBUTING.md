@@ -1,22 +1,22 @@
 # Contributing
 Contributions are **welcome** and will be fully **credited**. There are various ways to contribute:
 
-- Report bugs or request new features/improvements via the [Issues](https://github.com/lanedirt/ogamex/issues) page.
-- Start a discussion around new ideas or suggestions on the [Discussions](https://github.com/lanedirt/ogamex/discussions) page.
-- Contribute code via Pull Requests on [Github](https://github.com/lanedirt/ogamex).
+- Report bugs or request new features/improvements via the [Issues](https://github.com/lanedirt/spaceshelf/issues) page.
+- Start a discussion around new ideas or suggestions on the [Discussions](https://github.com/lanedirt/spaceshelf/discussions) page.
+- Contribute code via Pull Requests on [Github](https://github.com/lanedirt/spaceshelf).
 
 ## Issues
 Before submitting a new issue, please check the issues and pull requests to avoid duplicates.
 
 ## Discussions
-If you have an idea or suggestion, feel free to start a discussion on the [Discussions](https://github.com/lanedirt/ogamex/discussions) page. This is a great way to get feedback and discuss new ideas before submitting a pull request.
+If you have an idea or suggestion, feel free to start a discussion on the [Discussions](https://github.com/lanedirt/spaceshelf/discussions) page. This is a great way to get feedback and discuss new ideas before submitting a pull request.
 
 ## Pull Requests
-If you would like to contribute via pull requests, a good way to get started is to filter the issues list by the [good first issues](https://github.com/lanedirt/OGameX/labels/good%20first%20issue) label. This label is used for issues that are easy to fix and a good starting point for new contributors.
+If you would like to contribute via pull requests, a good way to get started is to filter the issues list by the [good first issues](https://github.com/lanedirt/SpaceShelf/labels/good%20first%20issue) label. This label is used for issues that are easy to fix and a good starting point for new contributors.
 
-[![good first issues open](https://img.shields.io/github/issues/lanedirt/OGameX/good%20first%20issue.svg?logo=github)](https://github.com/lanedirt/OGameX/issues?q=is%3Aopen+is%3Aissue+label%3A"good+first+issue")
+[![good first issues open](https://img.shields.io/github/issues/lanedirt/SpaceShelf/good%20first%20issue.svg?logo=github)](https://github.com/lanedirt/SpaceShelf/issues?q=is%3Aopen+is%3Aissue+label%3A"good+first+issue")
 
-Refer to the [Installation section](https://github.com/lanedirt/OGameX#installation) in the main README.md for how to get your local development environment setup.
+Refer to the [Installation section](https://github.com/lanedirt/SpaceShelf#installation) in the main README.md for how to get your local development environment setup.
 
 ### Before you open a PR
 
@@ -73,7 +73,7 @@ $ composer run stan
 ```
 
 ### 5. Laravel unit and feature tests
-Your PR should include feature or unit tests where possible to cover the changes you made. OGameX uses the default Laravel testing framework which covers feature and unit tests by default.
+Your PR should include feature or unit tests where possible to cover the changes you made. SpaceShelf uses the default Laravel testing framework which covers feature and unit tests by default.
 To run the tests locally, you can use the following command:
 
 ```
@@ -87,17 +87,17 @@ $ composer run tests -- --filter PlanetServiceTest
 ```
 
 ### 6. Custom race condition tests
-If you are working on a feature that might introduce race conditions, please include tests that cover these scenarios. OGameX already contains some custom tests that can be run via php artisan commands. These tests support running multiple requests in parallel and in multiple iterations in order to simulate conditions that could cause race conditions.
+If you are working on a feature that might introduce race conditions, please include tests that cover these scenarios. SpaceShelf already contains some custom tests that can be run via php artisan commands. These tests support running multiple requests in parallel and in multiple iterations in order to simulate conditions that could cause race conditions.
 
 These tests are located in the `app/Console/Commands/Test/` directory and can be run using the following command:
 
 ```bash
-$ php artisan ogamex:test:race-condition-unitqueue
-$ php artisan ogamex:test:race-condition-game-mission
+$ php artisan spaceshelf:test:race-condition-unitqueue
+$ php artisan spaceshelf:test:race-condition-game-mission
 ```
 
 ### 7. Run CSS and JS build
-OGameX uses Vite to compile the CSS and JS assets. Before submitting a PR, make sure to run the following command to compile the assets.
+SpaceShelf uses Vite to compile the CSS and JS assets. Before submitting a PR, make sure to run the following command to compile the assets.
 
 ```
 $ npm run build
@@ -111,7 +111,7 @@ $ npm run dev
 
 ## AI-Assisted Contributions
 
-AI-assisted contributions are welcome at OGameX, and many of us use AI tooling in our own workflow. What matters is the quality of what you submit, not how you wrote it. That said, **AI-assisted contributions are held to the same bar as any other contribution.** In the past we have received PRs that were clearly unreviewed AI output: code that didn't fit the project, broke existing behavior, or showed no understanding of the game mechanics it was trying to implement. These create a heavy burden on reviewers and will be closed without detailed review.
+AI-assisted contributions are welcome at SpaceShelf, and many of us use AI tooling in our own workflow. What matters is the quality of what you submit, not how you wrote it. That said, **AI-assisted contributions are held to the same bar as any other contribution.** In the past we have received PRs that were clearly unreviewed AI output: code that didn't fit the project, broke existing behavior, or showed no understanding of the game mechanics it was trying to implement. These create a heavy burden on reviewers and will be closed without detailed review.
 
 If you use a coding agent, point it at [AGENTS.md](AGENTS.md), which contains the project's build commands, repository layout, and conventions.
 
@@ -119,7 +119,7 @@ If you use a coding agent, point it at [AGENTS.md](AGENTS.md), which contains th
 
 1. **Understand what you are submitting.** You don't need to have written every line by hand, but you must be able to explain what your code does and why. During review, you are the one answering questions, not your AI agent. If you cannot explain a change, it is not ready.
 
-2. **Understand the game.** OGameX is a faithful recreation of OGame. Contributions that get game mechanics wrong (fleet timing, combat formulas, resource calculations, building requirements, research dependencies) will not be merged regardless of code quality. If you are not familiar with how a feature works in OGame, research it first or ask in Discussions before writing code.
+2. **Understand the game.** SpaceShelf is a faithful recreation of OGame. Contributions that get game mechanics wrong (fleet timing, combat formulas, resource calculations, building requirements, research dependencies) will not be merged regardless of code quality. If you are not familiar with how a feature works in OGame, research it first or ask in Discussions before writing code.
 
 3. **Test for real.** Run the application and verify your change works in the browser. "It compiles" or "the tests pass" is not sufficient. Confirm the feature actually behaves correctly in the running game, and include screenshots or a brief description of your manual testing in the PR.
 

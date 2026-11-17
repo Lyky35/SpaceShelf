@@ -52,7 +52,7 @@ This command tells `act` to use the `catthehacker/ubuntu:full-latest` Docker ima
 
 ## Debugging Specific Workflow
 
-To run and debug the docker compose build step for OGameX using a more complete runner image, use the following command:
+To run and debug the docker compose build step for SpaceShelf using a more complete runner image, use the following command:
 
 ```bash
 gh act -W .github/workflows/run-tests-docker-compose-prod.yml -P ubuntu-latest=catthehacker/ubuntu:full-latest

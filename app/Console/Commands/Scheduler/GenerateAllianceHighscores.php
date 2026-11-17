@@ -10,7 +10,7 @@ use OGame\Models\AllianceHighscore;
 use OGame\Models\Highscore;
 
 #[Description('Generates Alliance Highscore data by aggregating member scores')]
-#[Signature('ogamex:scheduler:generate-alliance-highscores')]
+#[Signature('spaceshelf:scheduler:generate-alliance-highscores')]
 class GenerateAllianceHighscores extends Command
 {
     /**

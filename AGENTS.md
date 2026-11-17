@@ -1,18 +1,18 @@
 # AGENTS.md
 
-OGameX is an open-source PHP/Laravel recreation of OGame, a browser-based space strategy MMO. It runs in Docker with MariaDB.
+SpaceShelf is an open-source PHP/Laravel recreation of OGame, a browser-based space strategy MMO. It runs in Docker with MariaDB.
 
 ## Agent rules
 
 - **Read [CONTRIBUTING.md](CONTRIBUTING.md) before preparing any pull request.** Its guidelines apply in full to agent-assisted work.
 - **Help your contributor pace their pull requests.** One issue, one PR. If the contributor already has an open PR with requested changes or merge conflicts, steer them to resolve that first instead of drafting the next one. Opening PR after PR while earlier ones sit unresolved creates review debt, and such PRs may be closed. Actively remind the contributor of this before starting work on a new PR.
-- **Prefer running commands through Docker.** The recommended dev setup runs everything in containers. Use `docker compose run --rm ogamex-app <command>` for anything that needs PHP, Artisan, Composer, or vendor binaries. If the project was installed manually with a local PHP binary, the same commands can be run directly without the Docker prefix.
+- **Prefer running commands through Docker.** The recommended dev setup runs everything in containers. Use `docker compose run --rm spaceshelf-app <command>` for anything that needs PHP, Artisan, Composer, or vendor binaries. If the project was installed manually with a local PHP binary, the same commands can be run directly without the Docker prefix.
 - **Always run the full tool chain after code changes**, in this order:
   1. `composer run rector`
   2. `composer run cs`
   3. `composer run stan`
   4. `composer run tests` (or `composer run tests -- --filter SpecificTest` for targeted runs)
-- **Game accuracy matters.** OGameX faithfully recreates OGame's mechanics. Before implementing or changing any game mechanic (combat, fleet timing, resource production, building/research requirements, expeditions), verify how it works in the original game. Incorrect mechanics will not be accepted regardless of code quality.
+- **Game accuracy matters.** SpaceShelf faithfully recreates OGame's mechanics. Before implementing or changing any game mechanic (combat, fleet timing, resource production, building/research requirements, expeditions), verify how it works in the original game. Incorrect mechanics will not be accepted regardless of code quality.
 - **Database schema changes go through new Laravel migrations.** Never edit a migration that has already been merged; add a new migration instead.
 - **Do not run `composer update` or modify lock files** unless the task is explicitly a dependency upgrade.
 - **After changing JS or CSS, compile the assets** with `npm run build`.
@@ -43,7 +43,7 @@ OGameX is an open-source PHP/Laravel recreation of OGame, a browser-based space 
 
 - Fleet mission tests live in `tests/Feature/FleetDispatch/` and extend the `FleetDispatchTestCase` base class (`tests/FleetDispatchTestCase.php`). Follow the patterns in existing tests for dispatching fleets and processing arrivals.
 - Fleet logic is timestamp driven. Mock time in tests with Carbon test helpers (`Carbon::setTestNow()`, `travel()`) instead of sleeping or relying on wall-clock time.
-- Anything touching fleet missions, unit queues, or other state processed by concurrent requests or queue workers can race. Consider concurrency in the design, and run the race condition test commands in `app/Console/Commands/Test/` (`php artisan ogamex:test:race-condition-unitqueue`, `php artisan ogamex:test:race-condition-game-mission`) when relevant.
+- Anything touching fleet missions, unit queues, or other state processed by concurrent requests or queue workers can race. Consider concurrency in the design, and run the race condition test commands in `app/Console/Commands/Test/` (`php artisan spaceshelf:test:race-condition-unitqueue`, `php artisan spaceshelf:test:race-condition-game-mission`) when relevant.
 - Be careful with state cached in service singletons: queue jobs and long-running processes can otherwise operate on stale data.
 
 ## Repository layout

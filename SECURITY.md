@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Currently, OGameX is still in development and has not yet reached a stable version. As such, only the latest version is supported.
+Currently, SpaceShelf is still in development and has not yet reached a stable version. As such, only the latest version is supported.
 
 | Version | Supported                                      |
 |---------|------------------------------------------------|

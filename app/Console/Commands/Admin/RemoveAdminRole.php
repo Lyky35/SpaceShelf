@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use OGame\Models\User;
 
 #[Description('Remove the admin role from a specified username')]
-#[Signature('ogamex:admin:remove-role {username}')]
+#[Signature('spaceshelf:admin:remove-role {username}')]
 class RemoveAdminRole extends Command
 {
     /**

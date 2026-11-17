@@ -11,8 +11,8 @@
       \____/ \_____|\__,_|_| |_| |_|\___/_/ \_\
      ===========================================
 
-     Powered by OGameX - Explore the universe! Conquer your enemies!
-     GitHub: https://github.com/lanedirt/OGameX
+     Powered by SpaceShelf - Explore the universe! Conquer your enemies!
+     GitHub: https://github.com/lanedirt/SpaceShelf
      Version: {{ \OGame\Facades\GitInfoUtil::getAppVersionBranchCommit() }}
 
     This application is released under the MIT License. For more details, visit the GitHub repository.
@@ -21,15 +21,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta name="language" content="{{ app()->getLocale() }}"/>
-    <meta name="author" content="OGameX"/>
-    <meta name="publisher" content="OGameX"/>
-    <meta name="copyright" content="OGameX"/>
+    <meta name="author" content="SpaceShelf"/>
+    <meta name="publisher" content="SpaceShelf"/>
+    <meta name="copyright" content="SpaceShelf"/>
     <meta name="audience" content="all"/>
     <meta name="Expires" content="never"/>
     <meta name="Keywords"
           content="Game, Browser, online, for free, legendary, MMOG, Science fiction, space, space ship"/>
     <meta name="Description"
-          content="OGameX - The legendary game in the space! Discover the universe together with thousands of players."/>
+          content="SpaceShelf - The legendary game in the space! Discover the universe together with thousands of players."/>
     <meta name="robots" content="index,follow"/>
     <meta name="Revisit" content="After 14 days"/>
     <title>{{ config('app.name', 'Laravel') }}</title>

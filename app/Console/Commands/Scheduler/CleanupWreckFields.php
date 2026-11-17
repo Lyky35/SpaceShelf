@@ -14,7 +14,7 @@ use OGame\Services\SettingsService;
 use OGame\Services\WreckFieldService;
 
 #[Description('Clean up expired wreck fields and process completed repairs')]
-#[Signature('ogamex:scheduler:cleanup-wreckfields')]
+#[Signature('spaceshelf:scheduler:cleanup-wreckfields')]
 class CleanupWreckFields extends Command
 {
     public function __construct(private readonly SettingsService $settingsService)

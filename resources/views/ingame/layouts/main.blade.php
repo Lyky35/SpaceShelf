@@ -13,8 +13,8 @@
       \____/ \_____|\__,_|_| |_| |_|\___/_/ \_\
      ===========================================
 
-     Powered by OGameX - Explore the universe! Conquer your enemies!
-     GitHub: https://github.com/lanedirt/OGameX
+     Powered by SpaceShelf - Explore the universe! Conquer your enemies!
+     GitHub: https://github.com/lanedirt/SpaceShelf
      Version: {{ \OGame\Facades\GitInfoUtil::getAppVersionBranchCommit() }}
 
     This application is released under the MIT License. For more details, visit the GitHub repository.
@@ -1891,8 +1891,8 @@ However, the Space Dock's engineers think that some of the remains can be salvag
             <a href="#TODO_changelog&ajax=1" class="tooltip js_hideTipOnMobile overlay" data-class="noXScrollbar"
                data-overlay-iframe="true" data-iframe-width="680" data-overlay-title="{{ __('t_ingame.layout.patch_notes') }}">
                 {{ \OGame\Facades\GitInfoUtil::getAppVersion() }}</a>
-            <a class="homeLink" href="https://github.com/lanedirt/ogamex" target="_blank">©
-                OGameX. {{ __('t_ingame.layout.all_rights_reserved') }}</a>
+            <a class="homeLink" href="https://github.com/lanedirt/spaceshelf" target="_blank">©
+                SpaceShelf. {{ __('t_ingame.layout.all_rights_reserved') }}</a>
         </div>
         <div class="fright textRight">
             <a href="{{ route('serversettings.overlay') }}" class="overlay"

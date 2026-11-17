@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\DB;
 use OGame\Models\Planet;
 use OGame\Models\User;
 
-#[Description('Seed fleet mission records to trigger all three bot-detection signals. Requires ogamex:dev:seed-users to have been run first.')]
-#[Signature('ogamex:dev:seed-bot-detection
+#[Description('Seed fleet mission records to trigger all three bot-detection signals. Requires spaceshelf:dev:seed-users to have been run first.')]
+#[Signature('spaceshelf:dev:seed-bot-detection
                             {--fresh : Clear existing fleet missions for test users before seeding}')]
 class SeedBotDetectionData extends Command
 {
-    private const EMAIL_DOMAIN = 'ogamex.dev';
+    private const EMAIL_DOMAIN = 'spaceshelf.dev';
 
     public function handle(): int
     {
@@ -24,13 +24,13 @@ class SeedBotDetectionData extends Command
         $users = User::where('email', 'like', '%@' . self::EMAIL_DOMAIN)->get()->keyBy('username');
 
         if ($users->isEmpty()) {
-            $this->error('No test users found. Run ogamex:dev:seed-users first.');
+            $this->error('No test users found. Run spaceshelf:dev:seed-users first.');
             return self::FAILURE;
         }
 
         foreach (['test2', 'test3', 'test4'] as $needed) {
             if (!$users->has($needed)) {
-                $this->error("Required user {$needed} not found. Run ogamex:dev:seed-users first.");
+                $this->error("Required user {$needed} not found. Run spaceshelf:dev:seed-users first.");
                 return self::FAILURE;
             }
         }
@@ -54,7 +54,7 @@ class SeedBotDetectionData extends Command
         $planet4 = Planet::where('user_id', $test4->id)->first();
 
         if (!$planet2 || !$planet3 || !$planet4) {
-            $this->error('One or more test users have no planets. Run ogamex:dev:seed-users first.');
+            $this->error('One or more test users have no planets. Run spaceshelf:dev:seed-users first.');
             return self::FAILURE;
         }
 

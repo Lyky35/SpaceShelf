@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use OGame\Models\User;
 
 #[Description('Assign the admin role to a specified username')]
-#[Signature('ogamex:admin:assign-role {username}')]
+#[Signature('spaceshelf:admin:assign-role {username}')]
 class AssignAdminRole extends Command
 {
     /**

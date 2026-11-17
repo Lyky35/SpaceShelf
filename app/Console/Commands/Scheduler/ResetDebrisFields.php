@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use OGame\Models\DebrisField;
 
 #[Description('Resets (deletes) empty debris fields. In OGame, this happens weekly on Monday at 1:00 AM.')]
-#[Signature('ogamex:scheduler:reset-debris-fields')]
+#[Signature('spaceshelf:scheduler:reset-debris-fields')]
 class ResetDebrisFields extends Command
 {
     /**

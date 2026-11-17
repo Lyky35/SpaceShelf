@@ -2,8 +2,8 @@
 
 return [
     'welcome_message' => [
-        'from' => 'OGameX',
-        'subject' => '歡迎來到 OGameX！',
+        'from' => 'SpaceShelf',
+        'subject' => '歡迎來到 SpaceShelf！',
         'body' => '皇帝 :player，您好！
 
 恭喜您開始了輝煌的職業生涯。我將在此引導您完成最初的幾個步驟。
@@ -17,7 +17,7 @@ return [
 您可以在這裡找到更多幫助、提示和策略：
 
 Discord 聊天：Discord 伺服器
-論壇：OGameX 論壇
+論壇：SpaceShelf 論壇
 支援：遊戲支援
 
 您只能在論壇中找到當前公告和遊戲變更。

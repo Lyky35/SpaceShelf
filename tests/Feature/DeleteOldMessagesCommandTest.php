@@ -42,7 +42,7 @@ class DeleteOldMessagesCommandTest extends TestCase
         $recentMessage = $this->createInboxMessage(Date::now()->subDays(7)->addSecond());
 
         // @phpstan-ignore-next-line
-        $this->artisan('ogamex:scheduler:delete-old-messages')->assertSuccessful();
+        $this->artisan('spaceshelf:scheduler:delete-old-messages')->assertSuccessful();
 
         $this->assertDatabaseMissing('messages', ['id' => $oldMessage->id]);
         $this->assertDatabaseMissing('messages', ['id' => $cutoffMessage->id]);
@@ -58,7 +58,7 @@ class DeleteOldMessagesCommandTest extends TestCase
         $recentMessage = $this->createChatMessage(Date::now()->subDays(7)->addSecond());
 
         // @phpstan-ignore-next-line
-        $this->artisan('ogamex:scheduler:delete-old-messages')->assertSuccessful();
+        $this->artisan('spaceshelf:scheduler:delete-old-messages')->assertSuccessful();
 
         // Old messages remain in the database (soft-deleted) but are hidden from users.
         $this->assertSoftDeleted('chat_messages', ['id' => $oldMessage->id]);

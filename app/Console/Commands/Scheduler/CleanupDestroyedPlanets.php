@@ -13,7 +13,7 @@ use OGame\Models\Planet;
 use Throwable;
 
 #[Description('Permanently deletes destroyed planets/moons that have been flagged for at least 24 hours (daily 3:00 purge).')]
-#[Signature('ogamex:scheduler:cleanup-destroyed-planets')]
+#[Signature('spaceshelf:scheduler:cleanup-destroyed-planets')]
 class CleanupDestroyedPlanets extends Command
 {
     /**

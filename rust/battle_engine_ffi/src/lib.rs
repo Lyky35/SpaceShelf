@@ -1,11 +1,11 @@
 //! # Battle Engine FFI
 //!
-//! `battle_engine_ffi` is the Rust implementation of the OGameX battle engine.
+//! `battle_engine_ffi` is the Rust implementation of the SpaceShelf battle engine.
 //!
 //! This Rust library is called from the PHP client RustBattleEngine.php via FFI (Foreign Function Interface)
 //! and takes the battle input in JSON, processes the battle rounds and returns the battle output in JSON.
 //!
-//! This battle engine is functionally equivalent to the OGameX PHP battle engine but is optimized
+//! This battle engine is functionally equivalent to the SpaceShelf PHP battle engine but is optimized
 //! for performance and memory usage. It is up to 200x faster than the equivalent PHP implementation
 //! and uses up to 10x less memory.
 //!

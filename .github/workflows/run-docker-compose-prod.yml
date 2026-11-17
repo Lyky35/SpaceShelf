@@ -68,16 +68,16 @@ jobs:
             # Exit with error if any service failed
             if [ "$failed" = true ]; then
               # Get container logs
-              echo "Container Logs ogamex-app:"
-              docker compose logs ogamex-app
-              echo "Container Logs ogamex-db:"
-              docker compose logs ogamex-db
-              echo "Container Logs ogamex-webserver:"
-              docker compose logs ogamex-webserver
-              echo "Container Logs ogamex-scheduler:"
-              docker compose logs ogamex-scheduler
-              echo "Container Logs ogamex-queue-worker:"
-              docker compose logs ogamex-queue-worker
+              echo "Container Logs spaceshelf-app:"
+              docker compose logs spaceshelf-app
+              echo "Container Logs spaceshelf-db:"
+              docker compose logs spaceshelf-db
+              echo "Container Logs spaceshelf-webserver:"
+              docker compose logs spaceshelf-webserver
+              echo "Container Logs spaceshelf-scheduler:"
+              docker compose logs spaceshelf-scheduler
+              echo "Container Logs spaceshelf-queue-worker:"
+              docker compose logs spaceshelf-queue-worker
 
               # Restart containers for next test in case of failure
               docker compose restart

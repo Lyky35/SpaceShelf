@@ -9,7 +9,7 @@ use OGame\Models\ChatMessage;
 use OGame\Models\Message;
 
 #[Description('Deletes player inbox messages and archives chat messages older than the retention period.')]
-#[Signature('ogamex:scheduler:delete-old-messages')]
+#[Signature('spaceshelf:scheduler:delete-old-messages')]
 class DeleteOldMessages extends Command
 {
     private const RETENTION_DAYS = 7;

@@ -39,9 +39,9 @@ jobs:
 
           # Build the PHPUnit command
           if [ -n "$TEST_FILTER" ]; then
-            PHPUNIT_CMD="docker compose exec -T ogamex-app php vendor/bin/phpunit --filter $TEST_FILTER --stop-on-failure"
+            PHPUNIT_CMD="docker compose exec -T spaceshelf-app php vendor/bin/phpunit --filter $TEST_FILTER --stop-on-failure"
           else
-            PHPUNIT_CMD="docker compose exec -T ogamex-app php vendor/bin/phpunit --stop-on-failure"
+            PHPUNIT_CMD="docker compose exec -T spaceshelf-app php vendor/bin/phpunit --stop-on-failure"
           fi
 
           echo "Command: $PHPUNIT_CMD"

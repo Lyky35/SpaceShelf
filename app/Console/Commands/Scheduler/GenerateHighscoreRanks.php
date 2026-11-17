@@ -14,7 +14,7 @@ use OGame\Models\User;
 use OGame\Services\SettingsService;
 
 #[Description('Generates Highscore rank data for players and alliances')]
-#[Signature('ogamex:scheduler:generate-highscore-ranks')]
+#[Signature('spaceshelf:scheduler:generate-highscore-ranks')]
 class GenerateHighscoreRanks extends Command
 {
     /**

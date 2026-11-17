@@ -18,7 +18,7 @@ env:
 
 jobs:
   deploy:
-    name: Deploy to release.ogamex.dev
+    name: Deploy to release.spaceshelf.dev
     runs-on: [self-hosted, ctogx]
 
     concurrency:
@@ -27,7 +27,7 @@ jobs:
 
     environment:
       name: release
-      url: https://release.ogamex.dev
+      url: https://release.spaceshelf.dev
 
     steps:
       - name: Determine tag to deploy
@@ -54,7 +54,7 @@ jobs:
 
       - name: Pull prebuilt images
         working-directory: ${{ env.DEPLOY_DIR }}
-        run: docker compose -f docker-compose.prod.yml pull ogamex-phpmyadmin
+        run: docker compose -f docker-compose.prod.yml pull spaceshelf-phpmyadmin
 
       - name: Build and start stack
         working-directory: ${{ env.DEPLOY_DIR }}
@@ -64,4 +64,4 @@ jobs:
         run: docker system prune -af
 
       - name: Output deployment info
-        run: echo "::notice::Deployed ${{ steps.tag.outputs.tag }} to https://release.ogamex.dev"
+        run: echo "::notice::Deployed ${{ steps.tag.outputs.tag }} to https://release.spaceshelf.dev"

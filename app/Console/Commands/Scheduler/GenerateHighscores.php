@@ -11,7 +11,7 @@ use OGame\Models\User;
 use OGame\Services\HighscoreService;
 
 #[Description('Generates Highscore data')]
-#[Signature('ogamex:scheduler:generate-highscores')]
+#[Signature('spaceshelf:scheduler:generate-highscores')]
 class GenerateHighscores extends Command
 {
     /**

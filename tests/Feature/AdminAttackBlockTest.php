@@ -20,7 +20,7 @@ class AdminAttackBlockTest extends IsolatedAccountTestCase
         if ($user === null) {
             $this->fail('No authenticated user found.');
         }
-        $this->artisan('ogamex:admin:assign-role', ['username' => $user->username]);
+        $this->artisan('spaceshelf:admin:assign-role', ['username' => $user->username]);
     }
 
     /**

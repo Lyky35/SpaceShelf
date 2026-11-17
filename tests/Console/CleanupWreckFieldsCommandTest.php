@@ -85,7 +85,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $wreckField->save();
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Verify the wreck field was deleted
         $wreckFieldAfter = WreckField::where('galaxy', $this->planet->galaxy)
@@ -119,7 +119,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $initialShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Refresh the planet from the database
         $this->planet->refresh();
@@ -151,7 +151,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $initialShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         $this->planet->refresh();
 
@@ -182,7 +182,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $initialShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Verify wreck field still exists
         $wreckFieldAfter = WreckField::where('galaxy', $this->planet->galaxy)
@@ -227,7 +227,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $initialCruisers = $this->getPlanetUnitAmount($this->planet, 'cruiser');
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Get final ship counts
         $this->planet->refresh();
@@ -271,7 +271,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $wreckField2->save();
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Verify expired wreck field was deleted
         $wreckField1After = WreckField::where('galaxy', 1)
@@ -308,7 +308,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $wreckField->save();
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Verify the wreck field still exists
         $wreckFieldAfter = WreckField::where('galaxy', $this->planet->galaxy)
@@ -340,7 +340,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
 
         $initialShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
 
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         $this->planet->refresh();
         $finalShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
@@ -369,7 +369,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
 
         $initialShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
 
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         $this->planet->refresh();
         $finalShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
@@ -398,7 +398,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
 
         $initialShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
 
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         $this->planet->refresh();
         $this->assertEquals($initialShips, $this->getPlanetUnitAmount($this->planet, 'light_fighter'));
@@ -428,7 +428,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
 
         $initialShips = $this->getPlanetUnitAmount($this->planet, 'light_fighter');
 
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         $this->planet->refresh();
         $this->assertEquals($initialShips, $this->getPlanetUnitAmount($this->planet, 'light_fighter'));
@@ -458,7 +458,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $wreckField->save();
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Verify the message was sent to the player
         $message = Message::where('user_id', $this->user->id)
@@ -493,7 +493,7 @@ class CleanupWreckFieldsCommandTest extends TestCase
         $wreckField->save();
 
         // Run the command
-        $this->artisan('ogamex:scheduler:cleanup-wreckfields');
+        $this->artisan('spaceshelf:scheduler:cleanup-wreckfields');
 
         // Verify no message was sent
         $message = Message::where('user_id', $this->user->id)

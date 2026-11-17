@@ -27,7 +27,7 @@ use OGame\Services\ObjectService;
  * - With protection: Only 1 request succeeds, the others fail with "not enough units"
  */
 #[Description('Issue parallel fleet dispatch requests to test race conditions for fleet sending.')]
-#[Signature('ogamex:test:race-condition-fleet-dispatch')]
+#[Signature('spaceshelf:test:race-condition-fleet-dispatch')]
 class TestRaceConditionFleetDispatch extends TestCommand
 {
     /**

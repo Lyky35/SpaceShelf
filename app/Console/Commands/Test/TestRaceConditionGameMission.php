@@ -23,7 +23,7 @@ use RuntimeException;
  * for 1 transport mission.
  */
 #[Description('Issue parallel requests to test race conditions for game mission processing.')]
-#[Signature('ogamex:test:race-condition-game-mission')]
+#[Signature('spaceshelf:test:race-condition-game-mission')]
 class TestRaceConditionGameMission extends TestCommand
 {
     /**

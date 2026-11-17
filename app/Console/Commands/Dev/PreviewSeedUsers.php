@@ -21,7 +21,7 @@ use OGame\Services\PlanetService;
 use RuntimeException;
 
 #[Description('Seed the database with test users. Recreates users on each run.')]
-#[Signature('ogamex:dev:seed-users
+#[Signature('spaceshelf:dev:seed-users
                             {--password=test : Password for all test accounts}')]
 class PreviewSeedUsers extends Command
 {
@@ -30,7 +30,7 @@ class PreviewSeedUsers extends Command
      *
      * @var string
      */
-    private const EMAIL_DOMAIN = 'ogamex.dev';
+    private const EMAIL_DOMAIN = 'spaceshelf.dev';
 
     /**
      * The user configurations.

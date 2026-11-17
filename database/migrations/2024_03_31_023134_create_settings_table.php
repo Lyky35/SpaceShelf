@@ -22,7 +22,7 @@ return new class () extends Migration {
         // Insert an initial record that should always exist in the settings table.
         DB::table('settings')->insert([
             'key' => 'game_name',
-            'value' => 'OGameX',
+            'value' => 'SpaceShelf',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

@@ -21,7 +21,7 @@ use OGame\Services\UnitQueueService;
  * tests that cover cases using parallel requests.
  */
 #[Description('Issue parallel requests to test race conditions for unit queue planet updates.')]
-#[Signature('ogamex:test:race-condition-unitqueue')]
+#[Signature('spaceshelf:test:race-condition-unitqueue')]
 class TestRaceConditionUnitQueue extends TestCommand
 {
     /**

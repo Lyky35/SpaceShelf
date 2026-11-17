@@ -46,7 +46,7 @@ return [
         'terms' => 'Conditions générales',
         'contact' => 'Contact',
         'rules' => 'Règles',
-        'copyright' => '© OGameX. Tous droits réservés.',
+        'copyright' => '© SpaceShelf. Tous droits réservés.',
     ],
     'js' => [
         'login' => 'Se connecter',

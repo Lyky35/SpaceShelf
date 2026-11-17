@@ -13,7 +13,7 @@ use OGame\Models\User;
  * Reset a user's password when requested or for testing purposes.
  */
 #[Description('Reset a user\'s password.')]
-#[Signature('ogamex:admin:reset-password {username-or-email} {--random}')]
+#[Signature('spaceshelf:admin:reset-password {username-or-email} {--random}')]
 class ResetUserPassword extends Command
 {
     /**

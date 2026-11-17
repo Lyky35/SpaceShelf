@@ -316,7 +316,7 @@ class DestroyedPlanetTest extends IsolatedAccountTestCase
         $this->assertDatabaseHas('planets', ['id' => $planetId]);
 
         // @phpstan-ignore-next-line
-        $this->artisan('ogamex:scheduler:cleanup-destroyed-planets')->assertSuccessful();
+        $this->artisan('spaceshelf:scheduler:cleanup-destroyed-planets')->assertSuccessful();
 
         $this->assertDatabaseMissing('planets', ['id' => $planetId]);
     }
@@ -332,7 +332,7 @@ class DestroyedPlanetTest extends IsolatedAccountTestCase
         $this->secondPlanetService->applyDestroyedFlag((int) Date::now()->subHours(1)->timestamp);
 
         // @phpstan-ignore-next-line
-        $this->artisan('ogamex:scheduler:cleanup-destroyed-planets')->assertSuccessful();
+        $this->artisan('spaceshelf:scheduler:cleanup-destroyed-planets')->assertSuccessful();
 
         $this->assertDatabaseHas('planets', [
             'id' => $planetId,
@@ -418,7 +418,7 @@ class DestroyedPlanetTest extends IsolatedAccountTestCase
         $abandonedPlanet->applyDestroyedFlag((int) Date::now()->subHours(25)->timestamp);
 
         // @phpstan-ignore-next-line
-        $this->artisan('ogamex:scheduler:cleanup-destroyed-planets')->assertSuccessful();
+        $this->artisan('spaceshelf:scheduler:cleanup-destroyed-planets')->assertSuccessful();
 
         $this->assertDatabaseMissing('planets', ['id' => $abandonedId]);
 
@@ -473,7 +473,7 @@ class DestroyedPlanetTest extends IsolatedAccountTestCase
         $abandonedPlanet->applyDestroyedFlag((int) Date::now()->subHours(25)->timestamp);
 
         // @phpstan-ignore-next-line
-        $this->artisan('ogamex:scheduler:cleanup-destroyed-planets')->assertSuccessful();
+        $this->artisan('spaceshelf:scheduler:cleanup-destroyed-planets')->assertSuccessful();
 
         $this->assertDatabaseMissing('planets', ['id' => $abandonedId]);
 
@@ -544,7 +544,7 @@ class DestroyedPlanetTest extends IsolatedAccountTestCase
         $moon->applyDestroyedFlag($destroyedAt);
 
         // @phpstan-ignore-next-line
-        $this->artisan('ogamex:scheduler:cleanup-destroyed-planets')->assertSuccessful();
+        $this->artisan('spaceshelf:scheduler:cleanup-destroyed-planets')->assertSuccessful();
 
         $this->assertDatabaseMissing('planets', ['id' => $abandonedId]);
         $this->assertDatabaseMissing('planets', ['id' => $moonId]);

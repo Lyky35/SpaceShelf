@@ -65,7 +65,7 @@ jobs:
               '',
               '| Status | URL | Commit |',
               '|--------|-----|--------|',
-              `| :x: Destroyed | ~~pr-${prNumber}.preview.ogamex.dev~~ | - |`,
+              `| :x: Destroyed | ~~pr-${prNumber}.preview.spaceshelf.dev~~ | - |`,
               '',
               '---',
               '*Preview environment has been cleaned up.*'

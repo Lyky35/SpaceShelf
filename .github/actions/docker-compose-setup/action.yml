@@ -1,5 +1,5 @@
 name: 'Docker Compose Setup'
-description: 'Sets up Docker Compose environment for OGameX testing'
+description: 'Sets up Docker Compose environment for SpaceShelf testing'
 
 runs:
   using: 'composite'
@@ -22,10 +22,10 @@ runs:
     - name: Wait for application to be ready (max 60 seconds)
       shell: bash
       run: |
-        timeout 60 bash -c 'until docker compose exec -T ogamex-app php artisan migrate:status > /dev/null 2>&1; do echo "Waiting for application to be ready..." && sleep 2; done'
+        timeout 60 bash -c 'until docker compose exec -T spaceshelf-app php artisan migrate:status > /dev/null 2>&1; do echo "Waiting for application to be ready..." && sleep 2; done'
 
     - name: Set storage permissions inside container
       shell: bash
       run: |
-        docker compose exec -T ogamex-app chmod -R 775 storage/
-        docker compose exec -T ogamex-app chown -R www-data:www-data storage/
+        docker compose exec -T spaceshelf-app chmod -R 775 storage/
+        docker compose exec -T spaceshelf-app chown -R www-data:www-data storage/

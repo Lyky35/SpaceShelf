@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use OGame\Services\DarkMatterService;
 
 #[Description('Process Dark Matter regeneration for all eligible users')]
-#[Signature('ogamex:scheduler:darkmatter-regenerate')]
+#[Signature('spaceshelf:scheduler:darkmatter-regenerate')]
 class DarkMatterRegenerateCommand extends Command
 {
     /**
