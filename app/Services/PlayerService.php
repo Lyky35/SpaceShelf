@@ -929,16 +929,18 @@ class PlayerService
             ResearchQueue::where('planet_id', $planetId)->delete();
             BuildingQueue::where('planet_id', $planetId)->delete();
             UnitQueue::where('planet_id', $planetId)->delete();
-            // Delete all fleet missions.
-            // Get all fleet missions for this planet then loop through them and delete them.
-            // TODO: this might be a performance bottleneck if there are many missions. Consider using a bulk delete compatible
-            // with the foreign key constraints instead.
-            $missions = FleetMission::where('planet_id_from', $planetId)->orWhere('planet_id_to', $planetId)->get();
-            foreach ($missions as $mission) {
-                // Delete any that have this mission as their parent.
-                FleetMission::where('parent_id', $mission->id)->delete();
-                // Delete mission itself.
-                $mission->delete();
+            // Delete all fleet missions involving this planet. The parent_id foreign
+            // key (return missions pointing at their outbound mission) does not
+            // cascade, so children must go before their parents: collect the involved
+            // mission IDs once, then bulk-delete their children and finally the
+            // involved missions themselves, instead of querying row by row.
+            $involvedMissionIds = FleetMission::where('planet_id_from', $planetId)
+                ->orWhere('planet_id_to', $planetId)
+                ->pluck('id');
+
+            if ($involvedMissionIds->isNotEmpty()) {
+                FleetMission::whereIn('parent_id', $involvedMissionIds)->delete();
+                FleetMission::whereIn('id', $involvedMissionIds)->delete();
             }
         }
 

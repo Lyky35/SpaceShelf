@@ -87,8 +87,12 @@ are incomplete:
       command fails identically on unmodified HEAD, so its remaining race is
       unrelated to this change)
 - [ ] Espionage: validate probe slot 16 edge case (`EspionageMission.php:494`)
-- [ ] Bulk-delete mission rows to avoid per-mission bottleneck
-      (`PlayerService.php:914`)
+- [x] Bulk-delete mission rows to avoid per-mission bottleneck
+      (`PlayerService.php:914`) — shipped (2026-11-17; `PlayerService::delete()`
+      now collects the involved mission IDs once per planet and issues two bulk
+      `DELETE`s — children via `parent_id` first, then the involved rows —
+      matching the row-by-row behavior for the realistic two-level
+      outbound/return chains; covered by the new `PlayerServiceDeleteTest`)
 - [ ] Unit/feature tests for battle report edge cases (deleted planets,
       attacker/defender research levels) and fractional-resource updates
       (`BattleReport.php:119/335`, `PlanetService.php:1395/1400`)
