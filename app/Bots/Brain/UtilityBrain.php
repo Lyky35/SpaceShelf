@@ -4,6 +4,7 @@ namespace OGame\Bots\Brain;
 
 use Exception;
 use OGame\Bots\Personality;
+use OGame\Enums\Officer;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\Resources;
@@ -11,6 +12,7 @@ use OGame\Services\BuildingQueueService;
 use OGame\Services\ColonisationTargetFinder;
 use OGame\Services\FleetMissionService;
 use OGame\Services\ObjectService;
+use OGame\Services\OfficerService;
 use OGame\Services\PlanetService;
 use OGame\Services\PlayerService;
 use OGame\Services\ResearchQueueService;
@@ -24,7 +26,8 @@ use Throwable;
  *
  * Heuristics encode the classic OGame ratio rules (mine mix, power coverage,
  * 1:10 robot-factory pacing, storage vs. mine trade-off) and are tunable via
- * config/bots.php. War/scouting/expedition policies are later phases; see
+ * config/bots.php. Officer upkeep follows the per-profile policy in
+ * config/bots.php; war/scouting/expedition policies are later phases; see
  * docs/BOT-AI-PLAN.md.
  *
  * Every action is attempted through the same services the HTTP controllers
@@ -81,6 +84,7 @@ final class UtilityBrain implements BotBrain
         private ResearchQueueService $researchQueueService,
         private UnitQueueService $unitQueueService,
         private ColonisationTargetFinder $colonisationTargetFinder,
+        private OfficerService $officerService,
     ) {
     }
 
@@ -100,6 +104,7 @@ final class UtilityBrain implements BotBrain
         }
 
         $actions += $this->colonise($snapshot, $personality);
+        $actions += $this->hireOfficer($player, $personality);
 
         return $actions;
     }
@@ -464,6 +469,41 @@ final class UtilityBrain implements BotBrain
         }
 
         return 0;
+    }
+
+    /**
+     * Keep the profile's key officer hired (docs/BOT-AI-PLAN.md §7): renew
+     * once the current period is down to the configured window, and never
+     * spend Dark Matter that would take the bot below the DM reserve floor.
+     */
+    private function hireOfficer(PlayerService $player, Personality $personality): int
+    {
+        $officer = Officer::tryFrom(
+            (string) config('bots.officers.profile_mapping.' . $personality->profile, '')
+        );
+        if ($officer === null) {
+            return 0;
+        }
+
+        $user = $player->getUser();
+
+        $renewWindow = (int) config('bots.officers.renew_within_days', 2);
+        if ($this->officerService->getRemainingDays($user, $officer) > $renewWindow) {
+            return 0;
+        }
+
+        $cost = $this->officerService->getHireCost($officer);
+        if ($user->dark_matter < $cost + (int) config('bots.officers.dm_reserve', 1000)) {
+            return 0;
+        }
+
+        try {
+            $this->officerService->hire($user, $officer);
+            return 1;
+        } catch (Exception) {
+            // Lost the Dark Matter to a concurrent debit; retry next heartbeat.
+            return 0;
+        }
     }
 
     /**

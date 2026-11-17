@@ -55,11 +55,11 @@ class OfficerHireTest extends IsolatedAccountTestCase
 
         // Hire button rendered under each officer
         $response->assertSee('Hire for 1 week');
-        $this->assertStringContainsString('name="officer" value="admiral"', $response->getContent());
-        $this->assertStringContainsString('name="officer" value="geologist"', $response->getContent());
+        $this->assertStringContainsString('name="officer" value="admiral"', (string) $response->getContent());
+        $this->assertStringContainsString('name="officer" value="geologist"', (string) $response->getContent());
 
         // Top bar officer icons are inactive (no colored "on" sprite frame)
-        $this->assertStringNotContainsString('admiral js_hideTipOnMobile on', $response->getContent());
+        $this->assertStringNotContainsString('admiral js_hideTipOnMobile on', (string) $response->getContent());
     }
 
     public function testPremiumPageShowsActiveOfficerStatus(): void
@@ -77,7 +77,7 @@ class OfficerHireTest extends IsolatedAccountTestCase
         $response->assertSee('Active for 5 more days');
 
         // Top bar admiral icon shows the colored (active) sprite frame
-        $this->assertStringContainsString('admiral js_hideTipOnMobile on', $response->getContent());
+        $this->assertStringContainsString('admiral js_hideTipOnMobile on', (string) $response->getContent());
     }
 
     // ==================== Hire flow ====================

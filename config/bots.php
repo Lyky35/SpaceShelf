@@ -174,4 +174,23 @@ return [
             'research_drive' => 1.0,
         ],
     ],
+
+    // Officer hiring (docs/BOT-AI-PLAN.md §7). Bots keep one key officer
+    // hired via Dark Matter; no DM income yet beyond the initial signup bonus
+    // and expedition rewards, so hiring naturally throttles itself.
+    'officers' => [
+        // Officer each behavior profile keeps hired. Commanding Staff
+        // (buy-all) and Commander (pure UI perks) are never bought.
+        'profile_mapping' => [
+            'collector' => 'geologist',   // +10% mine production on the bunker worlds
+            'general' => 'admiral',       // +2 fleet slots, better tactical retreat
+            'discoverer' => 'technocrat', // -25% research time, +2 espionage levels
+        ],
+
+        // Renew the officer only once its period is down to this many days.
+        'renew_within_days' => 2,
+
+        // Never spend Dark Matter that would leave the bot below this reserve.
+        'dm_reserve' => 1000,
+    ],
 ];
