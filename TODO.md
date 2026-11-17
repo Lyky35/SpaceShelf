@@ -77,8 +77,15 @@ are incomplete:
 
 ### 4. Robustness / correctness debt (~72 TODOs, notable ones)
 
-- [ ] DB transaction wrappers in `PlayerService` (`:685`, `:1816` area
-      `PlanetService`) and related queue-service paths
+- [x] DB transaction wrappers in `PlayerService` (`:685`, `:1816` area
+      `PlanetService`) and related queue-service paths — shipped (2026-11-17;
+      the two `@TODO: add DB transaction wrapper` markers were in
+      `PlayerService::updateResearchQueue()` and
+      `PlanetService::updateUnitQueue()`, now both wrapped in
+      `DB::transaction()` so queue completion, level/unit awarding and next-item
+      scheduling commit atomically; the `spaceshelf:test:race-condition-unitqueue`
+      command fails identically on unmodified HEAD, so its remaining race is
+      unrelated to this change)
 - [ ] Espionage: validate probe slot 16 edge case (`EspionageMission.php:494`)
 - [ ] Bulk-delete mission rows to avoid per-mission bottleneck
       (`PlayerService.php:914`)

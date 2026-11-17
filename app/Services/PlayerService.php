@@ -697,21 +697,26 @@ class PlayerService
         $queue = resolve(ResearchQueueService::class);
         $research_queue = $queue->retrieveFinishedForUser($this);
 
-        // @TODO: add DB transaction wrapper
-        foreach ($research_queue as $item) {
-            // Get object information of research object.
-            $object = ObjectService::getResearchObjectById($item->object_id);
+        // Completing a research item updates the research level, marks the queue
+        // record as processed and immediately starts the next queued research item;
+        // all of it must commit atomically so a crash cannot leave a finished item
+        // unprocessed (double research) or a processed item without its level.
+        DB::transaction(function () use ($research_queue, $queue): void {
+            foreach ($research_queue as $item) {
+                // Get object information of research object.
+                $object = ObjectService::getResearchObjectById($item->object_id);
 
-            // Update planet and update level of the building that has been processed.
-            $this->setResearchLevel($object->machine_name, $item->object_level_target);
+                // Update planet and update level of the building that has been processed.
+                $this->setResearchLevel($object->machine_name, $item->object_level_target);
 
-            // Update build queue record
-            $item->processed = 1;
-            $item->save();
+                // Update build queue record
+                $item->processed = 1;
+                $item->save();
 
-            // Build the next item in queue (if there is any)
-            $queue->start($this, $item->time_end);
-        }
+                // Build the next item in queue (if there is any)
+                $queue->start($this, $item->time_end);
+            }
+        });
 
         if ($save_user) {
             $this->user->save();
