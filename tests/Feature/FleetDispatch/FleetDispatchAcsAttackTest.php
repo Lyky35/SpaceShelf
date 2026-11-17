@@ -13,6 +13,7 @@ use OGame\Models\Enums\PlanetType;
 use OGame\Models\FleetMission;
 use OGame\Models\FleetUnion;
 use OGame\Models\FleetUnionInvite;
+use OGame\Models\Message;
 use OGame\Models\Planet;
 use OGame\Models\Resources;
 use OGame\Models\User;
@@ -550,6 +551,129 @@ class FleetDispatchAcsAttackTest extends FleetDispatchTestCase
         $attackerStartUnits = $battleReport->attacker['units'] ?? [];
         $totalAttackerUnits = array_sum($attackerStartUnits);
         $this->assertGreaterThanOrEqual(35, $totalAttackerUnits, 'Both fleets should participate in battle (at least 20 + 15 light fighters)');
+    }
+
+    /**
+     * Send an initiator attack fleet, create a union with the ally and join the
+     * ally's fleet to it. Used by the ACS battle report delivery tests.
+     *
+     * @return array{0: FleetMission, 1: FleetMission} Initiator and ally fleet missions
+     */
+    private function dispatchUnionAttack(int $initiatorFighters, int $allyFighters): array
+    {
+        // Send initiator attack fleet
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), $initiatorFighters);
+        $this->dispatchFleet($this->targetPlanet()->getPlanetCoordinates(), $unitCollection, new Resources(0, 0, 0, 0), PlanetType::Planet);
+
+        $fleetMissionService = resolve(FleetMissionService::class);
+        $initiatorMission = $fleetMissionService->getActiveFleetMissionsForCurrentPlayer()->first();
+        $this->assertNotNull($initiatorMission, 'No initiator mission found.');
+
+        $this->post('/ajax/fleet/union/create', [
+            'fleetID' => $initiatorMission->id,
+            'groupname' => 'BattleUnion',
+            'unionUsers' => $this->allyUser()->username,
+            '_token' => csrf_token(),
+        ]);
+        $initiatorMission->refresh();
+        $unionId = $initiatorMission->union_id;
+
+        // Send ally's fleet to join the union
+        $allyFleet = new UnitCollection();
+        $allyFleet->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), $allyFighters);
+
+        $allyFleetMissionService = resolve(FleetMissionService::class, ['player' => $this->allyPlanet()->getPlayer()]);
+        $allyMission = $allyFleetMissionService->createNewFromPlanet(
+            $this->allyPlanet(),
+            $this->targetPlanet()->getPlanetCoordinates(),
+            PlanetType::Planet,
+            1, // Attack
+            $allyFleet,
+            new Resources(0, 0, 0, 0),
+            10, // 100% speed
+            0
+        );
+
+        $fleetUnionService = resolve(FleetUnionService::class);
+        $union = FleetUnion::find($unionId);
+        $this->assertNotNull($union, 'Union not found.');
+        $fleetUnionService->joinUnion($union, $allyMission);
+
+        return [$initiatorMission, $allyMission];
+    }
+
+    /**
+     * Vanilla OGame ACS: every union member that dispatched a fleet receives the
+     * same combined combat report, not just the initiator and the defender.
+     */
+    public function testAcsAttackBattleReportSentToAllUnionMembers(): void
+    {
+        $this->basicSetup();
+        $this->createTargetPlayer();
+        $this->createAllyPlayer();
+
+        // Weak defense so both attacking fleets have survivors.
+        $this->targetPlanet()->addUnit('rocket_launcher', 5);
+
+        [$initiatorMission, $allyMission] = $this->dispatchUnionAttack(20, 15);
+
+        // Advance time to arrival
+        $arrivalTime = max($initiatorMission->time_arrival, $allyMission->time_arrival);
+        $this->travelTo(Date::createFromTimestamp($arrivalTime + 10));
+        $this->playerSetAllMessagesRead();
+        $this->get('/overview');
+
+        $battleReport = BattleReport::orderBy('id', 'desc')->first();
+        $this->assertNotNull($battleReport, 'Battle report should be created for ACS attack');
+
+        // Same combat report must reach initiator, ally and defender, exactly once each.
+        foreach ([$this->currentUserId, $this->allyUser()->id, $this->targetUser()->id] as $recipientId) {
+            $this->assertSame(
+                1,
+                Message::where('user_id', $recipientId)->where('battle_report_id', $battleReport->id)->count(),
+                sprintf('Player %d should have exactly one copy of the battle report', $recipientId)
+            );
+        }
+    }
+
+    /**
+     * When the whole union is wiped in the first round, each participant gets the
+     * simplified "fleet lost contact" message exactly once (no duplicate to the
+     * initiator), and the defender still receives the full battle report.
+     */
+    public function testAcsAttackFirstRoundWipeSendsLostContactToEachParticipantOnce(): void
+    {
+        $this->basicSetup();
+        $this->createTargetPlayer();
+        $this->createAllyPlayer();
+
+        // Plasma turrets vastly outclass the fighters: attackers lose everything in round 1.
+        $this->targetPlanet()->addUnit('plasma_turret', 30);
+
+        [$initiatorMission, $allyMission] = $this->dispatchUnionAttack(5, 5);
+
+        // Advance time to arrival
+        $arrivalTime = max($initiatorMission->time_arrival, $allyMission->time_arrival);
+        $this->travelTo(Date::createFromTimestamp($arrivalTime + 10));
+        $this->playerSetAllMessagesRead();
+        $this->get('/overview');
+
+        // Each attacker learns about the loss exactly once.
+        foreach ([$this->currentUserId, $this->allyUser()->id] as $attackerId) {
+            $this->assertSame(
+                1,
+                Message::where('user_id', $attackerId)->where('key', 'fleet_lost_contact')->count(),
+                sprintf('Player %d should get exactly one fleet lost contact message', $attackerId)
+            );
+        }
+
+        $battleReport = BattleReport::orderBy('id', 'desc')->first();
+        $this->assertNotNull($battleReport, 'Defender should still receive the full battle report');
+        $this->assertSame(
+            1,
+            Message::where('user_id', $this->targetUser()->id)->where('battle_report_id', $battleReport->id)->count()
+        );
     }
 
     /**

@@ -444,23 +444,40 @@ class AttackMission extends GameMission
             }
         }
 
-        // TODO: In multi-attacker ACS battles, send battle report to all participating players,
-        // not just the initiator. Currently only the initiator and defender receive it.
+        $isMultiAttackerBattle = count($battleResult->attackerFleetResults) > 1;
+
         if ($attackerDestroyedFirstRound) {
-            // Send simplified "fleet lost contact" message to attacker (no fleet or tech info)
-            $coordinates = '[coordinates]' . $defenderPlanet->getPlanetCoordinates()->asString() . '[/coordinates]';
-            $this->messageService->sendSystemMessageToPlayer($attackerPlayer, FleetLostContact::class, [
-                'coordinates' => $coordinates,
-            ]);
+            // Single attacker: send simplified "fleet lost contact" message here (no fleet
+            // or tech info). Multi-attacker ACS battles already sent one per destroyed fleet
+            // in the attacker results loop above.
+            if (!$isMultiAttackerBattle) {
+                $coordinates = '[coordinates]' . $defenderPlanet->getPlanetCoordinates()->asString() . '[/coordinates]';
+                $this->messageService->sendSystemMessageToPlayer($attackerPlayer, FleetLostContact::class, [
+                    'coordinates' => $coordinates,
+                ]);
+            }
 
             // Send full battle report to defender
             $reportId = $this->createBattleReport($attackerPlayer, $defenderPlanet, $battleResult, $collectedDebris, $attackerCollectedDebris, $defenderCollectedDebris);
             $this->messageService->sendBattleReportMessageToPlayer($defenderPlayer, $reportId);
         } else {
-            // Normal behavior: send battle report to both attacker and defender
+            // Normal behavior: send battle report to all attackers and the defender.
             $reportId = $this->createBattleReport($attackerPlayer, $defenderPlanet, $battleResult, $collectedDebris, $attackerCollectedDebris, $defenderCollectedDebris);
-            // Send to attacker.
-            $this->messageService->sendBattleReportMessageToPlayer($attackerPlayer, $reportId);
+
+            // Vanilla OGame ACS: every union member that dispatched a fleet to the battle
+            // receives the same combined combat report, not just the initiator.
+            $notifiedPlayerIds = [];
+            foreach ($battleResult->attackerFleetResults as $fleetResult) {
+                if (isset($notifiedPlayerIds[$fleetResult->playerId])) {
+                    continue; // Same player can only appear once per union, but be defensive.
+                }
+                $notifiedPlayerIds[$fleetResult->playerId] = true;
+                $this->messageService->sendBattleReportMessageToPlayer(
+                    $this->playerServiceFactory->make($fleetResult->playerId),
+                    $reportId
+                );
+            }
+
             // Send to defender.
             $this->messageService->sendBattleReportMessageToPlayer($defenderPlayer, $reportId);
         }
