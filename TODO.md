@@ -205,7 +205,12 @@ smaller-items list below.
       (`shield_dome_target`), a missile silo raised through the scored building
       pass (`abm_silo_level`), and an ABM stock capped by `abm_target` and the
       engine's 10-per-silo-level storage.
-- [ ] Moon play for bots (build/defend moons; moon destruction not planned)
+- [x] Moon play for bots — shipped (2026-11-17; every owned moon gets the
+      lunar facility line (lunar base, sensor phalanx, then robot factory and
+      shipyard, which this fork gates moon defense behind) and defensive
+      personalities garrison half their planetary combat target there. Moons
+      produce nothing, so `transportResources()` ships the development plan's
+      cost from storage-saturated planets. Moon destruction remains out of scope.)
 - [ ] Headless arrival sweeper for idle accounts (fairness; open decision #6
       in the plan doc)
 
