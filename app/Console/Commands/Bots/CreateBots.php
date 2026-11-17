@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 use OGame\Actions\Fortify\CreateNewUser;
 use OGame\Bots\BotRegistry;
 use OGame\Bots\PersonalityFactory;
+use OGame\Bots\PlanetNameGenerator;
+use OGame\Factories\PlayerServiceFactory;
 use OGame\Models\Bot;
 use OGame\Models\User;
 
@@ -29,8 +31,12 @@ class CreateBots extends Command
      * @param BotRegistry $botRegistry
      * @return int
      */
-    public function handle(CreateNewUser $createNewUser, BotRegistry $botRegistry): int
-    {
+    public function handle(
+        CreateNewUser $createNewUser,
+        BotRegistry $botRegistry,
+        PlanetNameGenerator $planetNameGenerator,
+        PlayerServiceFactory $playerServiceFactory,
+    ): int {
         $count = (int) $this->option('count');
         if ($count < 1) {
             $this->error('Option --count must be at least 1.');
@@ -70,6 +76,10 @@ class CreateBots extends Command
                 'enabled' => true,
                 'next_action_at' => now()->addMinutes($botRegistry->firstActionDelayMinutes()),
             ]);
+
+            // The engine names fresh-account planets "Homeworld"; give the bot
+            // account human-looking planet names right away.
+            $planetNameGenerator->nameAll($playerServiceFactory->make($user->id, true));
 
             $created[] = [
                 'username' => $user->username,

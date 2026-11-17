@@ -148,6 +148,31 @@ class BotEconomyHeartbeatTest extends IsolatedAccountTestCase
     }
 
     /**
+     * Assert that a heartbeat renames planets that carry the engine default
+     * name (e.g. a freshly colonised planet the engine auto-named "Colony").
+     */
+    public function testHeartbeatRenamesEngineDefaultPlanets(): void
+    {
+        $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1]));
+
+        $bot = Bot::orderByDesc('id')->firstOrFail();
+
+        /** @var PlayerServiceFactory $playerServiceFactory */
+        $playerServiceFactory = resolve(PlayerServiceFactory::class);
+
+        $home = $playerServiceFactory->make($bot->user_id, true)->planets->first();
+        $this->assertNotNull($home);
+        $home->setPlanetName('Colony');
+
+        Bus::dispatchSync(new BotHeartbeatJob($bot->id));
+
+        $home = $playerServiceFactory->make($bot->user_id, true)->planets->first();
+        $this->assertNotNull($home);
+        $this->assertNotSame('Colony', $home->getPlanetName());
+        $this->assertMatchesRegularExpression('/^[a-zA-Z0-9-_ ]{2,20}$/', $home->getPlanetName());
+    }
+
+    /**
      * Sum the tracked building levels on a planet.
      */
     private function sumStructureLevels(PlanetService $planet): int

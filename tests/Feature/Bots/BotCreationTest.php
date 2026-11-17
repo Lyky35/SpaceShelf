@@ -3,6 +3,7 @@
 namespace Tests\Feature\Bots;
 
 use Illuminate\Support\Facades\Artisan;
+use OGame\Bots\PlanetNameGenerator;
 use OGame\Models\Bot;
 use OGame\Models\Planet;
 use Tests\IsolatedAccountTestCase;
@@ -36,7 +37,15 @@ class BotCreationTest extends IsolatedAccountTestCase
 
             // Full game account: the normal registration pipeline must have
             // placed a home planet for the bot.
-            $this->assertGreaterThanOrEqual(1, Planet::where('user_id', $user->id)->count());
+            $planetNames = Planet::where('user_id', $user->id)->pluck('name')->all();
+            $this->assertNotEmpty($planetNames);
+
+            // Bot planets must not keep the engine's tell-tale defaults and
+            // must satisfy the engine's own planet-name validation rules.
+            foreach ($planetNames as $planetName) {
+                $this->assertNotContains($planetName, ['Homeworld', 'Colony']);
+                $this->assertMatchesRegularExpression('/^[a-zA-Z0-9-_ ]{2,20}$/', $planetName);
+            }
 
             $this->assertArrayHasKey($bot->profile, config('bots.personalities'));
             $this->assertNotNull($bot->next_action_at);
@@ -66,5 +75,28 @@ class BotCreationTest extends IsolatedAccountTestCase
         $profiles = Bot::pluck('profile')->all();
 
         $this->assertSame(['warrior', 'warrior'], $profiles);
+    }
+
+    /**
+     * Assert that the planet name generator only ever produces names that pass
+     * the engine's planet name validation and are never an engine default.
+     */
+    public function testPlanetNameGeneratorProducesValidNames(): void
+    {
+        $generator = resolve(PlanetNameGenerator::class);
+
+        $names = [];
+        for ($i = 0; $i < 200; $i++) {
+            $name = $generator->generate();
+
+            $this->assertMatchesRegularExpression('/^[a-zA-Z0-9-_ ]{2,20}$/', $name);
+            $this->assertNotContains($name, ['Homeworld', 'Colony']);
+
+            $names[] = $name;
+        }
+
+        // With such a large pool of candidates the sample should be free of
+        // duplicates (the generator avoids collisions with existing planets).
+        $this->assertGreaterThan(150, count(array_unique($names)));
     }
 }

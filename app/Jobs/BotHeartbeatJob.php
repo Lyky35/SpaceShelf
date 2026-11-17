@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use OGame\Bots\BotRegistry;
 use OGame\Bots\Brain\BotBrain;
 use OGame\Bots\Brain\SnapshotBuilder;
+use OGame\Bots\PlanetNameGenerator;
 use OGame\Factories\PlayerServiceFactory;
 use OGame\Models\Bot;
 use OGame\Services\PlayerService;
@@ -59,6 +60,7 @@ class BotHeartbeatJob implements ShouldQueue
         SnapshotBuilder $snapshotBuilder,
         BotBrain $botBrain,
         BotRegistry $botRegistry,
+        PlanetNameGenerator $planetNameGenerator,
     ): void {
         $bot = Bot::find($this->botId);
         if ($bot === null || !$bot->enabled) {
@@ -72,6 +74,10 @@ class BotHeartbeatJob implements ShouldQueue
 
             $this->simulateLogin($player);
 
+            // Rename planets the engine auto-labelled (e.g. freshly colonised
+            // "Colony" planets) so the bot empire looks organic.
+            $renamedPlanets = $planetNameGenerator->nameAll($player);
+
             $actions = $botBrain->play(
                 $snapshotBuilder->build($player),
                 $bot->personalityObject()
@@ -79,7 +85,12 @@ class BotHeartbeatJob implements ShouldQueue
 
             $botRegistry->markHeartbeatComplete($bot, $actions);
 
-            Log::debug(sprintf('SpaceShelf bot %d: heartbeat completed with %d actions.', $bot->id, $actions));
+            Log::debug(sprintf(
+                'SpaceShelf bot %d: heartbeat completed with %d actions (%d planets renamed).',
+                $bot->id,
+                $actions,
+                $renamedPlanets
+            ));
         } catch (Throwable $exception) {
             Log::warning(sprintf(
                 'SpaceShelf bot %d: heartbeat failed: %s',
