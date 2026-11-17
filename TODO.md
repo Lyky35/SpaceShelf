@@ -118,9 +118,12 @@ are incomplete:
 
 ## Bot AI roadmap (docs/BOT-AI-PLAN.md phases 2–6)
 
-Phases 0–1 shipped: heartbeat, economy brain, colonisation, random planet
-names, Collector/General/Discoverer behavior classes wired to the in-game
-character class. Still missing:
+Phases 0–6 are all shipped: heartbeat, economy brain, colonisation, random
+planet names, Collector/General/Discoverer behavior classes wired to the
+in-game character class, fleet growth, war & spy AI, expeditions with
+Pathfinder class ships, officer hiring, and the admin Bots page plus the
+`spaceshelf:bot:report` tuning harness. Remaining polish lives in the
+smaller-items list below.
 
 - [x] **Phase 2 — Fleet & growth**: shipped — inter-planet transports move a
       resource from storage-saturated planets with no own demand to planets
@@ -167,22 +170,30 @@ character class. Still missing:
       upkeep. See `config/bots.php` `bots.expedition` +
       `app/Bots/Brain/ExpeditionPolicy.php`
       (tests: `tests/Feature/Bots/BotExpeditionTest.php`).
-- [ ] **Class ships**: Reaper/Pathfinder still unbuilt by the brain — reapers
-      for Generals, pathfinders for Discoverer expeditions (the salvage loop
-      already uses them whenever they are in harbour; note the engine still
-      hardcodes the Pathfinder expedition Dark Matter bonus off at
-      `ExpeditionMission.php:598` with a stale "not yet implemented" TODO —
-      re-enable it and send a Pathfinder along once brain-built). (Crawlers
-      for the Collector mine bonus shipped with Phase 2.)
+- [x] **Class ships**: shipped — Generals build a small Reaper pack
+      (`bots.classships.reaper_stock_target`, home planet) and Discoverers a
+      Pathfinder pack (`pathfinder_stock_target`); the expedition policy rides
+      exactly one Pathfinder when stock exceeds `bots.expedition.pathfinder_reserve`
+      (`ExpeditionPolicy::expeditionFleet()`). The Pathfinder expedition Dark
+      Matter bonus is enabled in `ExpeditionMission` (verified against the
+      original game: a Pathfinder doubles positive expedition finds;
+      `FleetDispatchExpeditionTest` covers both DM bands). (Crawlers for the
+      Collector mine bonus shipped with Phase 2.)
 - [x] **Phase 5 — Officer hiring**: shipped — each profile keeps its key
       officer hired (collector→Geologist, general→Admiral,
       discoverer→Technocrat, renew ≤2 days left, DM reserve floor 1000; see
       `config/bots.php` `officers` + `UtilityBrain::hireOfficer()`). Throttled
       by DM income: bots currently only have the 8000 signup bonus, so
       sustainable upkeep needs Phase 4 expedition rewards.
-- [ ] **Phase 6 — Scale & tuning**: admin panel "Bots" page (list / enable /
-      edit personality — today this needs artisan/tinker), simulation tuning
-      harness, optional per-bot highscore opt-out
+- [x] **Phase 6 — Scale & tuning**: shipped — admin "Bots" page
+      (`/admin/bots`: pause/resume, profile switch that re-jitters the
+      personality and syncs the character class — class sync rides the
+      engine's cost/active-fleet rules and flashes an error when it cannot
+      apply; per-bot highscore opt-out via `bots.hide_from_highscore`,
+      filtered in `HighscoreService` with the hidden count in the cache key),
+      and `spaceshelf:bot:report` as the tuning harness: live per-profile
+      score, mission-mix and Dark Matter income instead of a separate
+      simulator. Profile→class map now lives in `PersonalityFactory::CLASS_MAP`.
 
 ### Smaller bot items
 
