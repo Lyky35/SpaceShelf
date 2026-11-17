@@ -52,6 +52,11 @@ class OfficerHireTest extends IsolatedAccountTestCase
         // No officers hired yet
         $response->assertSee('0 of 5');
         $response->assertSee('Not hired');
+
+        // Hire button rendered under each officer
+        $response->assertSee('Hire for 1 week');
+        $this->assertStringContainsString('name="officer" value="admiral"', $response->getContent());
+        $this->assertStringContainsString('name="officer" value="geologist"', $response->getContent());
     }
 
     public function testPremiumPageShowsActiveOfficerStatus(): void

@@ -64,8 +64,22 @@
                                     </a>
                                 </div>
                                 <div class="remaining tooltip" title="{{ __('t_ingame.premium.cost_per_week') }}">
-                                    <span class="remDate">{{ __('t_ingame.premium.cost_dm', ['cost' => number_format($officerData['cost'], 0, ',', '.')]) }}</span>
+                                    <span class="remDate">
+                                        @if($officerData['remainingDays'] > 0)
+                                            {{ __('t_ingame.premium.status_active', ['days' => $officerData['remainingDays']]) }}
+                                        @else
+                                            {{ __('t_ingame.premium.status_not_hired') }}
+                                        @endif
+                                    </span>
                                 </div>
+                                <form method="POST" action="{{ route('premium.officer.hire') }}" style="clear: both; margin-top: 4px; text-align: center;">
+                                    @csrf
+                                    <input type="hidden" name="officer" value="{{ $officerData['officer']->value }}">
+                                    <input type="hidden" name="weeks" value="1">
+                                    <input type="submit" class="btn_blue" style="width: 95%; font-size: 11px;"
+                                        value="{{ __('t_ingame.premium.hire') }}"
+                                        @if($darkMatter < $officerData['cost']) disabled title="{{ __('t_ingame.premium.hire_insufficient_dm') }}" @endif>
+                                </form>
                             </div>
                         </li>
                     @endforeach
@@ -91,42 +105,6 @@
                 </ul>
                 <br class="clearfloat">
                 <div class="footer"></div>
-
-                <table class="officerHireTable">
-                    <thead>
-                        <tr>
-                            <th>{{ __('t_ingame.premium.officer') }}</th>
-                            <th>{{ __('t_ingame.premium.cost_per_week') }}</th>
-                            <th>{{ __('t_ingame.premium.status') }}</th>
-                            <th>&nbsp;</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($officerRows as $officerData)
-                            <tr>
-                                <td>{{ __('t_ingame.premium.officer_' . $officerData['officer']->value) }}</td>
-                                <td>{{ __('t_ingame.premium.cost_dm', ['cost' => number_format($officerData['cost'], 0, ',', '.')]) }}</td>
-                                <td>
-                                    @if($officerData['remainingDays'] > 0)
-                                        {{ __('t_ingame.premium.status_active', ['days' => $officerData['remainingDays']]) }}
-                                    @else
-                                        {{ __('t_ingame.premium.status_not_hired') }}
-                                    @endif
-                                </td>
-                                <td>
-                                    <form method="POST" action="{{ route('premium.officer.hire') }}">
-                                        @csrf
-                                        <input type="hidden" name="officer" value="{{ $officerData['officer']->value }}">
-                                        <input type="hidden" name="weeks" value="1">
-                                        <button type="submit" @if($darkMatter < $officerData['cost']) disabled title="{{ __('t_ingame.premium.hire_insufficient_dm') }}" @endif>
-                                            {{ __('t_ingame.premium.hire') }}
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
