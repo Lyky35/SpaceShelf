@@ -1,5 +1,6 @@
 <?php
 
+use OGame\Console\Commands\Bots\TickBots;
 use OGame\Console\Commands\Scheduler\CleanupDestroyedPlanets;
 use OGame\Console\Commands\Scheduler\CleanupWreckFields;
 use OGame\Console\Commands\Scheduler\DarkMatterRegenerateCommand;
@@ -40,3 +41,7 @@ Schedule::command(CleanupDestroyedPlanets::class)->dailyAt('03:00')->withoutOver
 
 // Process Dark Matter regeneration every 5 minutes
 Schedule::command(DarkMatterRegenerateCommand::class)->everyFiveMinutes()->withoutOverlapping();
+
+// Dispatch bot player heartbeats; individual bots reschedule themselves with
+// randomized gaps so activity is naturally smeared across the day.
+Schedule::command(TickBots::class)->everyMinute()->withoutOverlapping();

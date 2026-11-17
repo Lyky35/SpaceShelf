@@ -6,6 +6,8 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use OGame\Bots\Brain\BotBrain;
+use OGame\Bots\Brain\UtilityBrain;
 use OGame\Exceptions\Handler;
 use OGame\Factories\PlanetServiceFactory;
 use OGame\Factories\PlayerServiceFactory;
@@ -60,5 +62,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(ExceptionHandler::class, Handler::class);
+
+        // Swap the bot brain implementation here to experiment with new
+        // decision engines (see docs/BOT-AI-PLAN.md).
+        $this->app->bind(BotBrain::class, UtilityBrain::class);
     }
 }

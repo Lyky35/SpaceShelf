@@ -1,0 +1,161 @@
+<?php
+
+/*
+|--------------------------------------------------------------------------
+| Autonomous bot players (NPCs)
+|--------------------------------------------------------------------------
+|
+| Bots are full game accounts driven by a scheduled heartbeat that mimics a
+| player logging in, queueing build/research/ship actions and dispatching
+| fleets, then logging off again.
+|
+| See docs/BOT-AI-PLAN.md for the full design.
+|
+*/
+
+return [
+    // Master switch. When false, the tick command dispatches nothing.
+    'enabled' => env('BOTS_ENABLED', true),
+
+    // Maximum number of bot heartbeats to dispatch per scheduler tick.
+    'tick_max_dispatch' => 25,
+
+    // Spread dispatched heartbeats over this many seconds so bots do not all
+    // wake up in the exact same second.
+    'dispatch_spread_seconds' => 40,
+
+    'heartbeat' => [
+        // Delay before the very first heartbeat after bot creation (minutes).
+        'first_delay_minutes' => [1, 30],
+
+        // Gap between two heartbeats, i.e. how long the bot "stays logged off"
+        // (minutes). Randomized per heartbeat to look organic.
+        'next_delay_minutes' => [45, 90],
+    ],
+
+    'colonisation' => [
+        // Maximum system distance from the home planet a bot will colonize.
+        'max_system_distance' => 12,
+    ],
+
+    'economy' => [
+        // Target share of total resource production per resource. The brain
+        // mines whichever resource lags behind this ratio the most.
+        'targets' => [
+            'metal' => 2.4,
+            'crystal' => 1.2,
+            'deuterium' => 0.4,
+        ],
+
+        // When resource storage exceeds this fraction of its capacity, a
+        // corresponding storage building gets priority.
+        'storage_build_saturation' => 0.85,
+
+        // Below this energy-satisfaction factor (0-100) power plants are built.
+        'energy_floor_factor' => 100,
+
+        // Maximum number of buildings/research/units a bot queues per visit.
+        'build_actions_per_visit' => 3,
+
+        // Never spend more than (1 - reserve_fraction) of stockpiled resources
+        // in a single heartbeat.
+        'reserve_fraction' => 0.1,
+
+        // Rough OGame pacing rule: one robot factory per N mine levels.
+        'robot_factory_ratio' => 10,
+    ],
+
+    'research' => [
+        // Research order. The first affordable + researchable item wins.
+        'priority' => [
+            'energy_technology',
+            'computer_technology',
+            'astrophysics',
+            'laser_technology',
+            'impulse_drive',
+            'combustion_drive',
+            'hyperspace_technology',
+            'espionage_technology',
+            'weapon_technology',
+            'shielding_technology',
+            'armor_technology',
+            'ion_technology',
+            'plasma_technology',
+        ],
+
+        // Hard caps per research, scaled by personality (see below).
+        'caps' => [
+            'energy_technology' => 17,
+            'computer_technology' => 15,
+            'astrophysics' => 20,
+            'impulse_drive' => 10,
+            'combustion_drive' => 10,
+            'hyperspace_technology' => 10,
+            'espionage_technology' => 8,
+            'weapon_technology' => 15,
+            'shielding_technology' => 15,
+            'armor_technology' => 15,
+            'laser_technology' => 12,
+            'ion_technology' => 8,
+            'plasma_technology' => 6,
+        ],
+
+        // Which personality trait scales which research group's cap.
+        'cap_scaling' => [
+            'economy' => [
+                'group' => ['energy_technology', 'computer_technology', 'astrophysics'],
+                'trait' => 'researchDrive',
+            ],
+            'military' => [
+                'group' => [
+                    'weapon_technology', 'shielding_technology', 'armor_technology',
+                    'laser_technology', 'ion_technology', 'plasma_technology',
+                    'impulse_drive', 'combustion_drive', 'hyperspace_technology',
+                    'espionage_technology',
+                ],
+                'trait' => 'aggression',
+            ],
+        ],
+    ],
+
+    'military' => [
+        // Standing fleet target: 200 * military_share * planet_count units.
+        'unit_value_base' => 200,
+
+        // Number of combat units to queue at once when below target.
+        'batch_size' => 5,
+    ],
+
+    'personalities' => [
+        'economizer' => [
+            'aggression' => 0.05,
+            'colonisation_bias' => 0.7,
+            'military_share' => 0.05,
+            'research_drive' => 1.0,
+        ],
+        'balanced' => [
+            'aggression' => 0.25,
+            'colonisation_bias' => 0.8,
+            'military_share' => 0.2,
+            'research_drive' => 0.9,
+        ],
+        'warrior' => [
+            'aggression' => 0.8,
+            'colonisation_bias' => 0.5,
+            'military_share' => 0.45,
+            'research_drive' => 0.8,
+        ],
+        'explorer' => [
+            'aggression' => 0.1,
+            'colonisation_bias' => 1.0,
+            'military_share' => 0.1,
+            'research_drive' => 0.9,
+        ],
+        'pacifist' => [
+            'aggression' => 0.0,
+            'colonisation_bias' => 0.6,
+            'military_share' => 0.05,
+            'research_drive' => 1.1,
+        ],
+    ],
+];

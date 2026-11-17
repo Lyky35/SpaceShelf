@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use OGame\Bots\BotRegistry;
 use OGame\Factories\GameMissionFactory;
 use OGame\Factories\PlayerServiceFactory;
 use OGame\Http\Controllers\OGameController;
@@ -95,18 +96,28 @@ class ServerAdministrationController extends OGameController
             return $groups;
         });
 
+        // NPC bot accounts are excluded from all detection signals below:
+        // detection targets human cheaters, not bots we control deliberately.
+        $botUserIds = resolve(BotRegistry::class)->botUserIds();
+
         // Re-hydrate User models fresh on every request — never stored in the cache.
         $allIpUserIds = collect($ipGroupsRaw)->flatMap(fn ($g) => $g['user_ids'])->unique()->toArray();
         $ipUsers      = User::whereIn('id', $allIpUserIds)->get()->keyBy('id');
 
         $sharedIpGroups = collect($ipGroupsRaw)
             ->filter(fn ($group) => !in_array($group['ip'], $dismissedIps, true))
-            ->map(fn ($group) => [
-                'ip'             => $group['ip'],
-                'type'           => $group['type'],
-                'users'          => collect($group['user_ids'])->map(fn ($id) => $ipUsers->get($id))->filter()->values(),
-                'cross_missions' => collect($group['cross_missions'])->map(fn ($m) => (object) $m),
-            ])
+            ->map(function ($group) use ($ipUsers, $botUserIds) {
+                $humanUserIds = collect($group['user_ids'])
+                    ->reject(fn (int $id) => in_array((int) $id, $botUserIds, true));
+
+                return [
+                    'ip'             => $group['ip'],
+                    'type'           => $group['type'],
+                    'users'          => $humanUserIds->map(fn ($id) => $ipUsers->get($id))->filter()->values(),
+                    'cross_missions' => collect($group['cross_missions'])->map(fn ($m) => (object) $m),
+                ];
+            })
+            ->filter(fn (array $group) => $group['users']->count() >= 2)
             ->values();
 
         // --- Currently active bans ---
@@ -132,7 +143,7 @@ class ServerAdministrationController extends OGameController
         $suspectUsers = User::whereIn('id', array_keys($suspectSignals))->get()->keyBy('id');
 
         $allSuspects = collect($suspectSignals)
-            ->filter(fn ($entry, $userId) => isset($suspectUsers[$userId]))
+            ->filter(fn ($entry, $userId) => isset($suspectUsers[$userId]) && !in_array((int) $userId, $botUserIds, true))
             ->map(fn ($entry, $userId) => array_merge($entry, ['user' => $suspectUsers[$userId]]))
             ->sortByDesc(fn ($entry) => count($entry['signals']))
             ->values();
