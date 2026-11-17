@@ -7,6 +7,7 @@ use OGame\Enums\FleetSpeedType;
 use OGame\GameMessages\DebrisFieldHarvest;
 use OGame\GameMessages\FleetLostContact;
 use OGame\GameMissions\Abstracts\GameMission;
+use OGame\GameMissions\BattleEngine\Models\AttackerFleetResult;
 use OGame\GameMissions\BattleEngine\Models\BattleResult;
 use OGame\GameMissions\BattleEngine\PhpBattleEngine;
 use OGame\GameMissions\BattleEngine\RustBattleEngine;
@@ -247,12 +248,12 @@ class AttackMission extends GameMission
                     // Fleet survived - create return mission with survivors
                     $fleetOwner = $this->playerServiceFactory->make($fleetResult->playerId);
 
-                    // TODO: Include Reaper-collected debris share for multi-attacker battles.
-                    // Currently Reaper debris collection only works for single-attacker path.
+                    // Return resources: carried cargo + loot share + Reaper debris share.
+                    // The free-cargo cap below keeps the total within survivor capacity.
                     $totalResources = new Resources(
-                        $fleetResult->survivingCargo->metal->get() + $fleetResult->lootShare->metal->get(),
-                        $fleetResult->survivingCargo->crystal->get() + $fleetResult->lootShare->crystal->get(),
-                        $fleetResult->survivingCargo->deuterium->get() + $fleetResult->lootShare->deuterium->get(),
+                        $fleetResult->survivingCargo->metal->get() + $fleetResult->lootShare->metal->get() + $fleetResult->debrisShare->metal->get(),
+                        $fleetResult->survivingCargo->crystal->get() + $fleetResult->lootShare->crystal->get() + $fleetResult->debrisShare->crystal->get(),
+                        $fleetResult->survivingCargo->deuterium->get() + $fleetResult->lootShare->deuterium->get() + $fleetResult->debrisShare->deuterium->get(),
                         0
                     );
 
@@ -308,45 +309,75 @@ class AttackMission extends GameMission
         $defenderCollectedDebris = new Resources(0, 0, 0, 0);
         $characterClassService = app(CharacterClassService::class);
 
-        // Attacker Reaper collection
+        // Attacker Reaper collection. Every surviving Reaper collects debris up to its
+        // owner's cargo capacity; in ACS battles the collected pool is split between the
+        // attacking fleets by surviving Reaper capacity share.
         $attackerDebrisCollectionPercentage = $characterClassService->getReaperDebrisCollectionPercentage($attackerPlayer->getUser());
-        if ($attackerDebrisCollectionPercentage > 0 && $battleResult->attackerUnitsResult->getAmountByMachineName('reaper') > 0) {
-            // Calculate 30% of the debris to be collected automatically
-            $collectionAmount = new Resources(
-                (int)($battleResult->debris->metal->get() * $attackerDebrisCollectionPercentage),
-                (int)($battleResult->debris->crystal->get() * $attackerDebrisCollectionPercentage),
-                (int)($battleResult->debris->deuterium->get() * $attackerDebrisCollectionPercentage),
-                0
-            );
-
-            // Calculate Reaper cargo capacity
+        if ($attackerDebrisCollectionPercentage > 0) {
             $reaperObject = ObjectService::getShipObjectByMachineName('reaper');
-            $reaperCount = $battleResult->attackerUnitsResult->getAmountByMachineName('reaper');
-            $reaperCargoCapacity = $reaperObject->properties->capacity->calculate($attackerPlayer)->totalValue * $reaperCount;
 
-            // Limit collected debris to Reaper cargo capacity
-            // (Can collect maximum 30% of debris OR Reaper capacity, whichever is lower)
-            if ($collectionAmount->sum() <= $reaperCargoCapacity) {
-                $attackerCollectedDebris = $collectionAmount;
-            } else {
-                // Distribute the 30% debris amount across Reaper capacity
-                $attackerCollectedDebris = LootService::distributeLoot($collectionAmount, $reaperCargoCapacity);
+            // Per-fleet surviving Reaper cargo capacity, keyed by fleet mission ID.
+            $fleetReaperCapacity = [];
+            $totalReaperCapacity = 0;
+            foreach ($battleResult->attackerFleetResults as $fleetResult) {
+                $fleetReaperCount = $fleetResult->unitsResult->getAmountByMachineName('reaper');
+                if ($fleetReaperCount <= 0) {
+                    continue;
+                }
+                $fleetOwner = $this->playerServiceFactory->make($fleetResult->playerId);
+                $capacity = (int)($reaperObject->properties->capacity->calculate($fleetOwner)->totalValue * $fleetReaperCount);
+                if ($capacity <= 0) {
+                    continue;
+                }
+                $fleetReaperCapacity[$fleetResult->fleetMissionId] = $capacity;
+                $totalReaperCapacity += $capacity;
             }
-        }
 
-        // For single-attacker battles, loot and carried resources already occupy part of the
-        // surviving fleet cargo. Cap automatic Reaper collection to only the remaining free
-        // space so excess debris stays in the debris field instead of disappearing.
-        if (count($battleResult->attackerFleetResults) === 1 && $attackerCollectedDebris->sum() > 0) {
-            $singleFleetResult = $battleResult->attackerFleetResults[0];
-            $remainingCargoCapacity = $battleResult->attackerUnitsResult->getTotalCargoCapacity($attackerPlayer);
-            $availableForCollectedDebris = max(
-                0,
-                (int)($remainingCargoCapacity - $singleFleetResult->survivingCargo->sum() - $singleFleetResult->lootShare->sum())
-            );
+            if ($totalReaperCapacity > 0) {
+                // Calculate 30% of the debris to be collected automatically
+                $collectionAmount = new Resources(
+                    (int)($battleResult->debris->metal->get() * $attackerDebrisCollectionPercentage),
+                    (int)($battleResult->debris->crystal->get() * $attackerDebrisCollectionPercentage),
+                    (int)($battleResult->debris->deuterium->get() * $attackerDebrisCollectionPercentage),
+                    0
+                );
 
-            if ($attackerCollectedDebris->sum() > $availableForCollectedDebris) {
-                $attackerCollectedDebris = LootService::distributeLoot($attackerCollectedDebris, $availableForCollectedDebris);
+                // Limit collected debris to Reaper cargo capacity
+                // (Can collect maximum 30% of debris OR Reaper capacity, whichever is lower)
+                if ($collectionAmount->sum() <= $totalReaperCapacity) {
+                    $attackerCollectedDebris = $collectionAmount;
+                } else {
+                    // Distribute the 30% debris amount across Reaper capacity
+                    $attackerCollectedDebris = LootService::distributeLoot($collectionAmount, $totalReaperCapacity);
+                }
+
+                // Loot and carried resources already occupy part of the surviving fleets'
+                // cargo space. Cap automatic Reaper collection to the remaining free space
+                // so excess debris stays in the debris field instead of disappearing.
+                $availableForCollectedDebris = 0;
+                foreach ($battleResult->attackerFleetResults as $fleetResult) {
+                    if ($fleetResult->completelyDestroyed || !$fleetResult->hasSurvivors()) {
+                        continue;
+                    }
+                    $fleetOwner = $this->playerServiceFactory->make($fleetResult->playerId);
+                    $remainingCargoCapacity = $fleetResult->unitsResult->getTotalCargoCapacity($fleetOwner);
+                    $availableForCollectedDebris += max(
+                        0,
+                        (int)($remainingCargoCapacity - $fleetResult->survivingCargo->sum() - $fleetResult->lootShare->sum())
+                    );
+                }
+
+                if ($attackerCollectedDebris->sum() > $availableForCollectedDebris) {
+                    $attackerCollectedDebris = LootService::distributeLoot($attackerCollectedDebris, $availableForCollectedDebris);
+                }
+
+                // Split the collected debris between the fleets by Reaper capacity share.
+                $this->distributeDebrisByCapacity(
+                    $battleResult->attackerFleetResults,
+                    $fleetReaperCapacity,
+                    $totalReaperCapacity,
+                    $attackerCollectedDebris
+                );
             }
         }
 
@@ -482,26 +513,36 @@ class AttackMission extends GameMission
             $this->messageService->sendBattleReportMessageToPlayer($defenderPlayer, $reportId);
         }
 
-        // Send Reaper auto-collection message to attacker if debris was collected
+        // Send Reaper auto-collection message to each attacking fleet whose Reapers collected
+        // a debris share (ACS unions: one message per participating player).
         if ($attackerCollectedDebris->sum() > 0) {
             $reaperObject = ObjectService::getShipObjectByMachineName('reaper');
-            $reaperCount = $battleResult->attackerUnitsResult->getAmountByMachineName('reaper');
-            $reaperCargoCapacity = $reaperObject->properties->capacity->calculate($attackerPlayer)->totalValue * $reaperCount;
 
-            $this->messageService->sendSystemMessageToPlayer($attackerPlayer, DebrisFieldHarvest::class, [
-                'from' => '[planet]' . $mission->planet_id_from . '[/planet]',
-                'to' => '[debrisfield]' . $defenderPlanet->getPlanetCoordinates()->asString(). '[/debrisfield]',
-                'coordinates' => '[coordinates]' . $defenderPlanet->getPlanetCoordinates()->asString() . '[/coordinates]',
-                'ship_name' => $reaperObject->title,
-                'ship_amount' => $reaperCount,
-                'storage_capacity' => $reaperCargoCapacity,
-                'metal' => $battleResult->debris->metal->get(),
-                'crystal' => $battleResult->debris->crystal->get(),
-                'deuterium' => $battleResult->debris->deuterium->get(),
-                'harvested_metal' => $attackerCollectedDebris->metal->get(),
-                'harvested_crystal' => $attackerCollectedDebris->crystal->get(),
-                'harvested_deuterium' => $attackerCollectedDebris->deuterium->get(),
-            ]);
+            foreach ($battleResult->attackerFleetResults as $fleetResult) {
+                if ($fleetResult->debrisShare->sum() <= 0) {
+                    continue;
+                }
+
+                $fleetOwner = $this->playerServiceFactory->make($fleetResult->playerId);
+                $fleetReaperCount = $fleetResult->unitsResult->getAmountByMachineName('reaper');
+                $reaperCargoCapacity = (int)($reaperObject->properties->capacity->calculate($fleetOwner)->totalValue * $fleetReaperCount);
+                $originPlanetId = FleetMission::find($fleetResult->fleetMissionId)?->planet_id_from;
+
+                $this->messageService->sendSystemMessageToPlayer($fleetOwner, DebrisFieldHarvest::class, [
+                    'from' => '[planet]' . $originPlanetId . '[/planet]',
+                    'to' => '[debrisfield]' . $defenderPlanet->getPlanetCoordinates()->asString(). '[/debrisfield]',
+                    'coordinates' => '[coordinates]' . $defenderPlanet->getPlanetCoordinates()->asString() . '[/coordinates]',
+                    'ship_name' => $reaperObject->title,
+                    'ship_amount' => $fleetReaperCount,
+                    'storage_capacity' => $reaperCargoCapacity,
+                    'metal' => $battleResult->debris->metal->get(),
+                    'crystal' => $battleResult->debris->crystal->get(),
+                    'deuterium' => $battleResult->debris->deuterium->get(),
+                    'harvested_metal' => $fleetResult->debrisShare->metal->get(),
+                    'harvested_crystal' => $fleetResult->debrisShare->crystal->get(),
+                    'harvested_deuterium' => $fleetResult->debrisShare->deuterium->get(),
+                ]);
+            }
         }
 
         // Send Reaper auto-collection message to defender if debris was collected
@@ -826,5 +867,70 @@ class AttackMission extends GameMission
         $report->save();
 
         return $report->id;
+    }
+
+    /**
+     * Split the union-wide debris automatically collected by Reaper ships across the
+     * attacking fleets proportionally to their surviving Reaper cargo capacity. The
+     * rounding remainder goes to the fleet with the largest capacity, so the shares
+     * always sum exactly to the collected amount.
+     *
+     * @param array<AttackerFleetResult> $fleetResults
+     * @param array<int, int> $fleetReaperCapacity Fleet mission ID => surviving Reaper cargo capacity
+     * @param int $totalReaperCapacity
+     * @param Resources $collectedDebris
+     * @return void
+     */
+    private function distributeDebrisByCapacity(
+        array $fleetResults,
+        array $fleetReaperCapacity,
+        int $totalReaperCapacity,
+        Resources $collectedDebris
+    ): void {
+        if ($totalReaperCapacity <= 0 || $collectedDebris->sum() <= 0) {
+            return;
+        }
+
+        // Fleet with the largest Reaper capacity receives the rounding remainder.
+        $largestFleetMissionId = 0;
+        $largestCapacity = 0;
+        foreach ($fleetReaperCapacity as $fleetMissionId => $capacity) {
+            if ($capacity > $largestCapacity) {
+                $largestCapacity = $capacity;
+                $largestFleetMissionId = $fleetMissionId;
+            }
+        }
+
+        $sharesByFleet = [];
+        foreach ($fleetResults as $fleetResult) {
+            $capacity = $fleetReaperCapacity[$fleetResult->fleetMissionId] ?? 0;
+            if ($capacity <= 0) {
+                continue;
+            }
+
+            $sharesByFleet[$fleetResult->fleetMissionId] = [
+                'metal' => (int)floor($collectedDebris->metal->get() * $capacity / $totalReaperCapacity),
+                'crystal' => (int)floor($collectedDebris->crystal->get() * $capacity / $totalReaperCapacity),
+                'deuterium' => (int)floor($collectedDebris->deuterium->get() * $capacity / $totalReaperCapacity),
+            ];
+        }
+
+        if (isset($sharesByFleet[$largestFleetMissionId])) {
+            $sharesByFleet[$largestFleetMissionId]['metal'] +=
+                $collectedDebris->metal->get() - array_sum(array_column($sharesByFleet, 'metal'));
+            $sharesByFleet[$largestFleetMissionId]['crystal'] +=
+                $collectedDebris->crystal->get() - array_sum(array_column($sharesByFleet, 'crystal'));
+            $sharesByFleet[$largestFleetMissionId]['deuterium'] +=
+                $collectedDebris->deuterium->get() - array_sum(array_column($sharesByFleet, 'deuterium'));
+        }
+
+        foreach ($fleetResults as $fleetResult) {
+            $shares = $sharesByFleet[$fleetResult->fleetMissionId] ?? null;
+            if ($shares === null) {
+                continue;
+            }
+
+            $fleetResult->debrisShare = new Resources($shares['metal'], $shares['crystal'], $shares['deuterium'], 0);
+        }
     }
 }

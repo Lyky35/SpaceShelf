@@ -559,11 +559,15 @@ class FleetDispatchAcsAttackTest extends FleetDispatchTestCase
      *
      * @return array{0: FleetMission, 1: FleetMission} Initiator and ally fleet missions
      */
-    private function dispatchUnionAttack(int $initiatorFighters, int $allyFighters): array
+    private function dispatchUnionAttack(int $initiatorUnits, int $allyUnits, string $machineName = 'light_fighter'): array
     {
+        // Fuel for the journey: the initiator dispatches through the HTTP fleet flow,
+        // which needs deuterium on the home planet.
+        $this->planetAddResources(new Resources(0, 0, 50000, 0));
+
         // Send initiator attack fleet
         $unitCollection = new UnitCollection();
-        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), $initiatorFighters);
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName($machineName), $initiatorUnits);
         $this->dispatchFleet($this->targetPlanet()->getPlanetCoordinates(), $unitCollection, new Resources(0, 0, 0, 0), PlanetType::Planet);
 
         $fleetMissionService = resolve(FleetMissionService::class);
@@ -581,7 +585,7 @@ class FleetDispatchAcsAttackTest extends FleetDispatchTestCase
 
         // Send ally's fleet to join the union
         $allyFleet = new UnitCollection();
-        $allyFleet->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), $allyFighters);
+        $allyFleet->addUnit(ObjectService::getUnitObjectByMachineName($machineName), $allyUnits);
 
         $allyFleetMissionService = resolve(FleetMissionService::class, ['player' => $this->allyPlanet()->getPlayer()]);
         $allyMission = $allyFleetMissionService->createNewFromPlanet(
@@ -673,6 +677,76 @@ class FleetDispatchAcsAttackTest extends FleetDispatchTestCase
         $this->assertSame(
             1,
             Message::where('user_id', $this->targetUser()->id)->where('battle_report_id', $battleReport->id)->count()
+        );
+    }
+
+    /**
+     * ACS unions with Reapers share the automatically collected debris: every union
+     * member that harvested a share gets its own debris field harvest message, and the
+     * harvested shares sum exactly to the union-wide collected debris (no debris
+     * disappearing into thin air, which was the previous multi-attacker bug).
+     */
+    public function testAcsAttackReaperDebrisSharedAcrossUnionMembers(): void
+    {
+        $this->basicSetup();
+        $this->createTargetPlayer();
+        $this->createAllyPlayer();
+
+        // Full debris from destroyed ships, and the defender stands its ground.
+        resolve(SettingsService::class)->set('debris_field_from_ships', 100);
+        $this->targetUser()->tactical_retreat_ratio = 0;
+        $this->targetUser()->save();
+
+        // Cruisers provide the debris when destroyed.
+        $this->targetPlanet()->addUnit('cruiser', 5);
+
+        // Reapers must physically be on both dispatching planets.
+        $this->planetService->addUnit('reaper', 10);
+        $this->planetService->save();
+        $this->planetService->reloadPlanet();
+        $this->allyPlanet()->addUnit('reaper', 10);
+        $this->allyPlanet()->save();
+        $this->allyPlanet()->reloadPlanet();
+
+        [$initiatorMission, $allyMission] = $this->dispatchUnionAttack(10, 10, 'reaper');
+
+        // Advance time to arrival
+        $arrivalTime = max($initiatorMission->time_arrival, $allyMission->time_arrival);
+        $this->travelTo(Date::createFromTimestamp($arrivalTime + 10));
+        $this->playerSetAllMessagesRead();
+        $this->get('/overview');
+
+        $battleReport = BattleReport::orderBy('id', 'desc')->first();
+        $this->assertNotNull($battleReport, 'Battle report should be created for ACS attack');
+
+        $attackerCollected = (int)($battleReport->debris['attacker_collected_metal'] ?? 0)
+            + (int)($battleReport->debris['attacker_collected_crystal'] ?? 0)
+            + (int)($battleReport->debris['attacker_collected_deuterium'] ?? 0);
+        $this->assertGreaterThan(0, $attackerCollected, 'Union Reapers should have auto-collected debris');
+
+        // Every union member that harvested gets at most one harvest message, at least
+        // one harvest message exists, and the shares sum to exactly the collected total.
+        $harvestMessages = Message::whereIn('user_id', [$this->currentUserId, $this->allyUser()->id])
+            ->where('key', 'debris_field_harvest')
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $harvestMessages->count());
+        foreach ([$this->currentUserId, $this->allyUser()->id] as $userId) {
+            $this->assertLessThanOrEqual(1, $harvestMessages->where('user_id', $userId)->count(), 'No duplicate harvest messages');
+        }
+
+        $summedHarvest = 0;
+        foreach ($harvestMessages as $harvestMessage) {
+            $this->assertNotNull($harvestMessage->params);
+            $summedHarvest += (int)$harvestMessage->params['harvested_metal']
+                + (int)$harvestMessage->params['harvested_crystal']
+                + (int)$harvestMessage->params['harvested_deuterium'];
+        }
+
+        $this->assertSame(
+            $attackerCollected,
+            $summedHarvest,
+            'Harvested shares across union members must sum to the union-wide collected debris'
         );
     }
 

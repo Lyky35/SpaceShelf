@@ -36,6 +36,11 @@ class AttackerFleetResult
     public Resources $lootShare;
 
     /**
+     * @var Resources This fleet's share of the debris automatically collected by surviving Reaper ships.
+     */
+    public Resources $debrisShare;
+
+    /**
      * @var Resources Cargo resources that survived (proportional to surviving cargo capacity).
      */
     public Resources $survivingCargo;
@@ -59,6 +64,7 @@ class AttackerFleetResult
         $this->unitsLost = new UnitCollection();
         $this->resourceLoss = new Resources(0, 0, 0, 0);
         $this->lootShare = new Resources(0, 0, 0, 0);
+        $this->debrisShare = new Resources(0, 0, 0, 0);
         $this->survivingCargo = new Resources(0, 0, 0, 0);
         $this->completelyDestroyed = false;
     }
