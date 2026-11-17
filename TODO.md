@@ -100,9 +100,20 @@ are incomplete:
       `DELETE`s — children via `parent_id` first, then the involved rows —
       matching the row-by-row behavior for the realistic two-level
       outbound/return chains; covered by the new `PlayerServiceDeleteTest`)
-- [ ] Unit/feature tests for battle report edge cases (deleted planets,
+- [x] Unit/feature tests for battle report edge cases (deleted planets,
       attacker/defender research levels) and fractional-resource updates
-      (`BattleReport.php:119/335`, `PlanetService.php:1395/1400`)
+      (`BattleReport.php:119/335`, `PlanetService.php:1395/1400`) — shipped
+      (2026-11-17; new tests: `testBattleReportRendersAfterTargetPlanetDeletion`
+      (report falls back to stored coordinates after the production
+      `permanentlyDeletePlanet()` purge),
+      `testBattleReportShowsAttackerAndDefenderResearchLevels` (both sides'
+      snapshotted tech render as ×10 percent),
+      `testDispatchFleetResourcesArriveAtDestination` (transport cargo lands on
+      the destination), `testUpdateResourcesAccumulatesFractionalProduction`
+      (30 updates × 30s at 30/h still yields 30) and
+      `testBulkResourceUpdateIsCappedAtStorageLimit` (2 days' production stops
+      at the storage cap); the stale TODO comments in
+      `BattleReport.php`/`PlanetService.php` are replaced accordingly)
 
 ## Bot AI roadmap (docs/BOT-AI-PLAN.md phases 2–6)
 

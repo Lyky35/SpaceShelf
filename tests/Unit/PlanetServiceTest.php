@@ -3,7 +3,9 @@
 namespace Tests\Unit;
 
 use Exception;
+use Illuminate\Support\Facades\Date;
 use OGame\Models\Enums\ResourceType;
+use OGame\Models\Planet;
 use OGame\Models\Resources;
 use Tests\UnitTestCase;
 
@@ -101,6 +103,64 @@ class PlanetServiceTest extends UnitTestCase
             'crystal' => $this->planetService->crystal()->get(),
             'deuterium' => $this->planetService->deuterium()->get(),
         ]);
+    }
+
+    /**
+     * Create a bare planet model with explicit production values for resource
+     * update tests, bypassing the building-based production recalculation.
+     */
+    private function createPlanetWithProduction(int $metalProduction, int $currentMetal, int $startTimestamp): void
+    {
+        $planet = Planet::factory()->make([
+            'id' => 1,
+            'metal' => $currentMetal,
+            'crystal' => 0,
+            'deuterium' => 0,
+            'metal_production' => $metalProduction,
+            'crystal_production' => 0,
+            'deuterium_production' => 0,
+            'metal_max' => 1000,
+            'crystal_max' => 1000,
+            'deuterium_max' => 1000,
+            'time_last_update' => $startTimestamp,
+        ]);
+
+        $this->planetService->setPlanet($planet);
+    }
+
+    /**
+     * Verify that frequent updates with sub-integer production deltas accumulate
+     * correctly: a planet producing 30 metal/hour that is updated every 30 seconds
+     * must end up with 30 metal after one hour, not zero.
+     */
+    public function testUpdateResourcesAccumulatesFractionalProduction(): void
+    {
+        $startTimestamp = 1700000000;
+        $this->createPlanetWithProduction(30, 0, $startTimestamp);
+
+        // Simulate the planet being updated every 30 seconds for one hour. Every
+        // single update only adds 0.25 metal, which must not be rounded away.
+        for ($elapsed = 30; $elapsed <= 3600; $elapsed += 30) {
+            $this->planetService->updateResourcesUntil($startTimestamp + $elapsed, false);
+        }
+
+        $this->assertEqualsWithDelta(30, $this->planetService->metal()->get(), 0.01);
+    }
+
+    /**
+     * Verify that resources added in bulk (e.g. after days of inactivity) respect
+     * the storage limit: production beyond the limit must not be credited.
+     */
+    public function testBulkResourceUpdateIsCappedAtStorageLimit(): void
+    {
+        $startTimestamp = (int) Date::now()->subDays(2)->timestamp;
+        $this->createPlanetWithProduction(30, 900, $startTimestamp);
+
+        // Two days of 30/hour production would add 1440 metal, but the planet only
+        // has room for 100 on top of the stored 900.
+        $this->planetService->updateResources(false);
+
+        $this->assertEquals(1000, $this->planetService->metal()->get());
     }
 
     /**

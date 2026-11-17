@@ -116,8 +116,10 @@ class BattleReport extends GameMessage
         // Sanity check to make sure the battle report model is loaded.
         $battleReportModel = $this->loadBattleReportModel();
 
-        // TODO: add feature test for code below and check edgecases, such as when the planet has been deleted and
-        // does not exist anymore. What should we show in that case?
+        // A deleted planet (e.g. purged after destruction) must not break the
+        // report: the fallback path below renders the stored coordinates instead
+        // of the planet name. Covered by FleetDispatchAttackTest::
+        // testBattleReportRendersAfterTargetPlanetDeletion().
 
         // Load planet by coordinate. Planet may be null if it was destroyed (e.g. after a
         // successful moon destruction). In that case we fall back to the coordinates and
@@ -141,10 +143,10 @@ class BattleReport extends GameMessage
             $defender_name = $defender->getUsername(false);
         }
 
-        // Handle attacker
-        // TODO: ACS Attack sends multiple attacking fleets (one per union member). The battle report
-        // currently only renders a single attacker entry. Per-player ship counts, losses, and the
-        // round-start fleet breakdown need to be extended to show all participating attackers.
+        // Handle attacker. ACS Attack sends multiple attacking fleets: the entry
+        // below carries the aggregated attacker totals, while the per-fleet
+        // breakdown stored as `attacker['fleets']` / `defender['fleets']` in the
+        // report model is rendered as separate sections for every participant.
         $attackerPlayerId = $battleReportModel->attacker['player_id'] ?? 0;
         $attackerPlanetId = $battleReportModel->attacker['planet_id'] ?? null;
 
@@ -332,8 +334,9 @@ class BattleReport extends GameMessage
             $tacticalRetreatDeuteriumCost = (int)$battleReportModel->general['tactical_retreat']['deuterium_cost'];
         }
 
-        // Load attacker player
-        // TODO: add unit test for attacker/defender research levels.
+        // Combat tech levels are snapshotted into the battle report at battle
+        // creation and shown as ten times the researched level in percent. Covered
+        // by FleetDispatchAttackTest::testBattleReportShowsAttackerAndDefenderResearchLevels().
         $attacker_weapons = ($battleReportModel->attacker['weapon_technology'] ?? 0) * 10;
         $attacker_shields = ($battleReportModel->attacker['shielding_technology'] ?? 0) * 10;
         $attacker_armor = ($battleReportModel->attacker['armor_technology'] ?? 0) * 10;

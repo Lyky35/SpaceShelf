@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use OGame\Factories\GameMessageFactory;
 use OGame\Factories\PlanetServiceFactory;
 use OGame\GameMissions\AttackMission;
 use OGame\GameObjects\Models\Units\UnitCollection;
@@ -211,6 +212,105 @@ class FleetDispatchAttackTest extends FleetDispatchTestCase
         } else {
             $this->fail('Defender has not received a battle report after combat.');
         }
+    }
+
+    /**
+     * The battle report must render the attacker's and defender's combat research
+     * levels that were snapshotted at battle creation, shown as ten times the
+     * technology level in percent (the foreign fixture planet has no combat research,
+     * so its side renders 0% entries).
+     */
+    public function testBattleReportShowsAttackerAndDefenderResearchLevels(): void
+    {
+        $this->basicSetup();
+
+        // Distinct levels so every rendered tech percentage is unambiguous.
+        $this->playerSetResearchLevel('weapon_technology', objectLevel: 4);
+        $this->playerSetResearchLevel('shielding_technology', objectLevel: 3);
+        $this->playerSetResearchLevel('armor_technology', objectLevel: 2);
+
+        // Send fleet to a nearby foreign planet.
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), 5);
+        $foreignPlanet = $this->sendMissionToOtherPlayerPlanet($unitCollection, new Resources(0, 0, 0, 0));
+
+        // Get just dispatched fleet mission service.
+        $fleetMissionService = resolve(FleetMissionService::class, ['player' => $this->planetService->getPlayer()]);
+
+        // Set time to fleet mission duration + 1 second.
+        $fleetMissionDuration = $fleetMissionService->calculateFleetMissionDuration($this->planetService, $foreignPlanet->getPlanetCoordinates(), $unitCollection, resolve(AttackMission::class));
+        $this->travel($fleetMissionDuration + 1)->seconds();
+        $this->playerSetAllMessagesRead();
+        $this->get('/overview')->assertStatus(200);
+
+        $messageAttacker = Message::where('user_id', $this->planetPlayer()->getId())
+            ->where('key', 'battle_report')
+            ->orderByDesc('id')
+            ->first();
+        $this->assertNotNull($messageAttacker, 'Attacker has not received a battle report.');
+
+        $bodyFull = GameMessageFactory::createGameMessage($messageAttacker)->getBodyFull();
+
+        // Attacker tech levels are rendered as ten times the researched level.
+        $this->assertStringContainsString('Weapons: 40%', $bodyFull, 'Attacker weapon technology is not rendered.');
+        $this->assertStringContainsString('Shields: 30%', $bodyFull, 'Attacker shielding technology is not rendered.');
+        $this->assertStringContainsString('Armour: 20%', $bodyFull, 'Attacker armor technology is not rendered.');
+
+        // The unresearched foreign defender renders 0% entries for its side.
+        $this->assertStringContainsString('Weapons: 0%', $bodyFull, 'Defender weapon technology is not rendered.');
+        $this->assertStringContainsString('Shields: 0%', $bodyFull, 'Defender shielding technology is not rendered.');
+        $this->assertStringContainsString('Armour: 0%', $bodyFull, 'Defender armor technology is not rendered.');
+    }
+
+    /**
+     * Battle reports must remain readable when the target planet no longer exists
+     * (e.g. it was permanently deleted in the daily purge). The report falls back to
+     * the coordinates stored in the battle report model instead of the planet name.
+     */
+    public function testBattleReportRendersAfterTargetPlanetDeletion(): void
+    {
+        $this->basicSetup();
+
+        // Send fleet to a nearby foreign planet.
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('light_fighter'), 5);
+        $foreignPlanet = $this->sendMissionToOtherPlayerPlanet($unitCollection, new Resources(0, 0, 0, 0));
+
+        // Use a unique name so the report's planet-name fallback can be told apart
+        // from the attacker's own planet, which uses the same default name.
+        $foreignPlanet->setPlanetName('ProbedTargetBase');
+        $foreignPlanetName = $foreignPlanet->getPlanetName();
+        $foreignCoordinates = $foreignPlanet->getPlanetCoordinates()->asString();
+
+        // Get just dispatched fleet mission service.
+        $fleetMissionService = resolve(FleetMissionService::class, ['player' => $this->planetService->getPlayer()]);
+
+        // Set time to fleet mission duration + 1 second.
+        $fleetMissionDuration = $fleetMissionService->calculateFleetMissionDuration($this->planetService, $foreignPlanet->getPlanetCoordinates(), $unitCollection, resolve(AttackMission::class));
+        $this->travel($fleetMissionDuration + 1)->seconds();
+        $this->playerSetAllMessagesRead();
+        $this->get('/overview')->assertStatus(200);
+
+        $messageAttacker = Message::where('user_id', $this->planetPlayer()->getId())
+            ->where('key', 'battle_report')
+            ->orderByDesc('id')
+            ->first();
+        $this->assertNotNull($messageAttacker, 'Attacker has not received a battle report.');
+        $this->assertNotNull($messageAttacker->battle_report_id, 'Attacker message has no battle report attached.');
+
+        // While the planet still exists, the report renders its name.
+        $bodyBefore = GameMessageFactory::createGameMessage($messageAttacker)->getBodyFull();
+        $this->assertStringContainsString($foreignPlanetName, $bodyBefore, 'Battle report does not name the target planet while it exists.');
+
+        // Permanently delete the target planet using the production purge routine,
+        // which teleports the fleet away and anonymizes foreign key references.
+        $foreignPlanet->permanentlyDeletePlanet();
+
+        // Rendering must still succeed: the name is gone and the report falls back
+        // to the coordinates stored in the battle report.
+        $bodyAfter = GameMessageFactory::createGameMessage($messageAttacker)->getBodyFull();
+        $this->assertStringNotContainsString($foreignPlanetName, $bodyAfter, 'Deleted planet name is still rendered in the battle report.');
+        $this->assertStringContainsString($foreignCoordinates, $bodyAfter, 'Battle report does not fall back to the stored coordinates.');
     }
 
     /**

@@ -1397,16 +1397,11 @@ class PlanetService
      *   but can be set to FALSE when update happens in bulk and the caller method calls
      *   the save planet itself to prevent on unnecessary multiple updates.
      */
-    // TODO: add unittest to check that updating fractional resources
-    // e.g. if planet has production of 30/hour.. that when it updates
-    // every 30 seconds it still gets the 30 per hour overall instead
-    // of getting 0 because every update the added resource rounds down to 0.
-
-    // TODO: add unittest to check that adding resources to planet via transport
-    // missions works correctly and that the resources are added to the planet.
-    // But that resources are not added by mine production. And that when resources
-    // are added in bulk e.g. after 2 days of inactivity it still maxes out at the
-    // storage limit.
+    // Fractional production across frequent updates, bulk production stopping at
+    // the storage limit and transport cargo landing on the destination are covered
+    // by PlanetServiceTest::testUpdateResourcesAccumulatesFractionalProduction(),
+    // testBulkResourceUpdateIsCappedAtStorageLimit() and FleetDispatchTransportTest::
+    // testDispatchFleetResourcesArriveAtDestination().
     public function updateResources(bool $save_planet = true): void
     {
         $current_time = (int)Date::now()->timestamp;

@@ -213,6 +213,44 @@ class FleetDispatchTransportTest extends FleetDispatchTestCase
     }
 
     /**
+     * Verify that the transported resources are actually added to the destination
+     * planet's stock on arrival. Only the transport delivery must account for the
+     * increase; the destination planet's own mine production alone cannot explain it.
+     */
+    public function testDispatchFleetResourcesArriveAtDestination(): void
+    {
+        $this->basicSetup();
+
+        // Send a small cargo with resources to a foreign planet.
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('small_cargo'), 1);
+        $foreignPlanet = $this->sendMissionToOtherPlayerPlanet($unitCollection, new Resources(1000, 500, 0, 0));
+
+        $metalBefore = $foreignPlanet->metal()->get();
+        $crystalBefore = $foreignPlanet->crystal()->get();
+
+        // Increase time by 10 hours to ensure the mission is done.
+        $this->travel(10)->hours();
+
+        // Do a request to trigger the update logic.
+        $response = $this->get('/overview');
+        $response->assertStatus(200);
+
+        $foreignPlanet->reloadPlanet();
+        $metalAfter = $foreignPlanet->metal()->get();
+        $crystalAfter = $foreignPlanet->crystal()->get();
+
+        // The full transported amount must have arrived on the foreign planet.
+        $this->assertGreaterThanOrEqual($metalBefore + 1000, $metalAfter, 'Transported metal was not added to the destination planet.');
+        $this->assertGreaterThanOrEqual($crystalBefore + 500, $crystalAfter, 'Transported crystal was not added to the destination planet.');
+
+        // And the increase must stay within transport plus whatever the (near empty)
+        // foreign planet's own mine production can produce in the elapsed time.
+        $maxProductionGain = $foreignPlanet->getMetalProductionPerHour() * 12;
+        $this->assertLessThanOrEqual($metalBefore + 1000 + $maxProductionGain, $metalAfter, 'Metal increased beyond transport plus mine production.');
+    }
+
+    /**
      * Verify that dispatching a fleet launches a return trip and brings back units to origin planet.
      */
     public function testDispatchFleetReturnTrip(): void
