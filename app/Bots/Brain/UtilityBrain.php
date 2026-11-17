@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use OGame\Bots\Personality;
 use OGame\Enums\Officer;
 use OGame\GameObjects\Models\Units\UnitCollection;
+use OGame\Models\BuildingQueue;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\Resources;
 use OGame\Models\UnitQueue;
@@ -129,8 +130,9 @@ final class UtilityBrain implements BotBrain
             $actions += $this->buildDefense($planet, $personality);
         }
 
+        $actions += $this->developMoons($snapshot, $personality);
         $actions += $this->colonise($snapshot, $personality);
-        $actions += $this->transportResources($snapshot);
+        $actions += $this->transportResources($snapshot, $personality);
         $actions += $this->recycleDebris($snapshot);
         $actions += $this->warPolicy->conduct($snapshot, $personality);
         $actions += $this->expeditionPolicy->conduct($snapshot, $personality);
@@ -762,7 +764,7 @@ final class UtilityBrain implements BotBrain
      * production can cover. A planet with scarce resources never ships them
      * out, so transports never starve their own economy.
      */
-    private function transportResources(BrainSnapshot $snapshot): int
+    private function transportResources(BrainSnapshot $snapshot, Personality $personality): int
     {
         $maxMissions = (int) config('bots.transport.actions_per_visit', 1);
         $coverHours = (float) config('bots.transport.demand_cover_hours', 6);
@@ -770,7 +772,7 @@ final class UtilityBrain implements BotBrain
         $keepFraction = (float) config('bots.transport.source_keep_fraction', 0.4);
         $minAmount = (float) config('bots.transport.min_amount', 5000);
 
-        /** @var array<int, array<string, float>> $demand Per planet id: resource => needed amount. */
+        /** @var array<int, array<string, float>> $demand Per planet or moon id: resource => needed amount. */
         $demand = [];
         /** @var array<int, array<string, float>> $supply Per planet id: resource => sendable amount. */
         $supply = [];
@@ -797,6 +799,26 @@ final class UtilityBrain implements BotBrain
                     if ($sendable > 0) {
                         $supply[$planetId][$resource] = $sendable;
                     }
+                }
+            }
+        }
+
+        // Moons have no production of their own, so their demand comes from
+        // the development plan rather than the queue backlog alone: a broke
+        // moon could never afford the first build that would create backlog
+        // to signal demand. Whatever is already queued counts as covered.
+        foreach ($snapshot->moons as $moon) {
+            $moonId = $moon->getPlanetId();
+            $plan = $this->moonConstructionPlan($moon, $personality);
+            $backlog = $snapshot->queuedBacklog[$moonId] ?? new Resources(0, 0, 0, 0);
+
+            foreach (self::RESOURCES as $resource) {
+                $shortfall = $plan->$resource->get()
+                    + $backlog->$resource->get()
+                    - $moon->getResources()->$resource->get();
+
+                if ($shortfall > 0) {
+                    $demand[$moonId][$resource] = $shortfall;
                 }
             }
         }
@@ -828,7 +850,7 @@ final class UtilityBrain implements BotBrain
             }
 
             /** @var PlanetService $target */
-            foreach ($snapshot->planets as $target) {
+            foreach (array_merge($snapshot->planets, $snapshot->moons) as $target) {
                 if ($missions >= $maxMissions) {
                     break;
                 }
@@ -867,6 +889,7 @@ final class UtilityBrain implements BotBrain
                 }
 
                 $shipsNeeded = (int) ceil($total / $capacity);
+
                 $shipsAvailable = $source->getShipUnits()->getAmountByMachineName('large_cargo');
 
                 if ($shipsAvailable < 1) {
@@ -909,7 +932,7 @@ final class UtilityBrain implements BotBrain
                     $fleetMissionService->createNewFromPlanet(
                         $source,
                         $target->getPlanetCoordinates(),
-                        PlanetType::Planet,
+                        $target->getPlanetType(),
                         self::MISSION_TYPE_TRANSPORT,
                         $units,
                         new Resources(
@@ -945,6 +968,165 @@ final class UtilityBrain implements BotBrain
         }
 
         return $actions + $missions;
+    }
+
+    /**
+     * Moon play: raise the facility line and a defense garrison on every
+     * owned moon. This fork gates moon defense builds behind the same
+     * shipyard and robot factory levels as on planets, so the bot raises
+     * those too; jump gates stay a late-game human toy.
+     */
+    private function developMoons(BrainSnapshot $snapshot, Personality $personality): int
+    {
+        $actions = 0;
+
+        foreach ($snapshot->moons as $moon) {
+            $actions += $this->developMoon($moon, $personality);
+        }
+
+        return $actions;
+    }
+
+    /**
+     * One moon visit: lunar base line first, then the moon defense garrison
+     * at half the personality's planetary combat target. Funding arrives via
+     * transportResources() shipping `moonConstructionPlan` to the moon.
+     */
+    private function developMoon(PlanetService $moon, Personality $personality): int
+    {
+        $facilityLine = [
+            'lunar_base' => (int) config('bots.moon.lunar_base_target', 3),
+            'sensor_phalanx' => (int) config('bots.moon.sensor_phalanx_target', 1),
+            'robot_factory' => (int) config('bots.moon.robot_factory_target', 2),
+            'shipyard' => (int) config('bots.moon.shipyard_target', 2),
+        ];
+
+        foreach ($facilityLine as $machineName => $target) {
+            if ($this->queueStructureUpToLevel($moon, $machineName, $target)) {
+                return 1;
+            }
+        }
+
+        if ($personality->defenseBias < $this->defenseMinBias()) {
+            return 0;
+        }
+
+        $garrisonTarget = intdiv($this->defenseTarget($personality), 2);
+
+        if ($this->combatDefenseAmount($moon) >= $garrisonTarget) {
+            return 0;
+        }
+
+        $batchSize = (int) config('bots.military.defense_batch_size', 10);
+
+        foreach (self::DEFENSE_TIERS as $machineName) {
+            if (!ObjectService::objectRequirementsMet($machineName, $moon)) {
+                continue;
+            }
+
+            $queued = $this->queueUnits($moon, $machineName, $batchSize, withReserve: false);
+
+            if ($queued > 0) {
+                return $queued;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Resource cost of the moon's unfinished development plan: the facility
+     * levels still missing plus the defense garrison still missing (priced
+     * at the cheapest tier). This is the moon's funding signal for
+     * transportResources(); moons cannot signal through queue backlog alone
+     * because that needs a first build they cannot afford.
+     */
+    private function moonConstructionPlan(PlanetService $moon, Personality $personality): Resources
+    {
+        $plan = new Resources(0, 0, 0, 0);
+
+        $targets = [
+            'lunar_base' => (int) config('bots.moon.lunar_base_target', 3),
+            'sensor_phalanx' => (int) config('bots.moon.sensor_phalanx_target', 1),
+            'robot_factory' => (int) config('bots.moon.robot_factory_target', 2),
+            'shipyard' => (int) config('bots.moon.shipyard_target', 2),
+        ];
+
+        foreach ($targets as $machineName => $target) {
+            $current = (int) $moon->getObjectLevel($machineName);
+
+            if ($target <= $current) {
+                continue;
+            }
+
+            $remaining = ObjectService::getObjectCumulativeCost($machineName, $target);
+            $spent = ObjectService::getObjectCumulativeCost($machineName, $current);
+
+            $plan->add(new Resources(
+                $remaining->metal->get() - $spent->metal->get(),
+                $remaining->crystal->get() - $spent->crystal->get(),
+                $remaining->deuterium->get() - $spent->deuterium->get(),
+                0,
+            ));
+        }
+
+        if ($personality->defenseBias >= $this->defenseMinBias()) {
+            $garrisonTarget = intdiv($this->defenseTarget($personality), 2);
+            $missing = $garrisonTarget - $this->combatDefenseAmount($moon);
+
+            if ($missing > 0) {
+                // Rocket launcher is the cheapest tier; its unit price is the
+                // garrison budget proxy for both facility funding math and
+                // transport demand.
+                $price = ObjectService::getObjectRawPrice('rocket_launcher');
+
+                $plan->add(new Resources(
+                    (int) ($price->metal->get() * $missing),
+                    (int) ($price->crystal->get() * $missing),
+                    0,
+                    0,
+                ));
+            }
+        }
+
+        return $plan;
+    }
+
+    /**
+     * Queue the next level of a structure unless the configured target — or
+     * the level already in the queue — is reached. In-flight rows count so a
+     * funded moon cannot stack one level past its target.
+     */
+    private function queueStructureUpToLevel(PlanetService $planet, string $machineName, int $target): bool
+    {
+        if ($target <= 0) {
+            return false;
+        }
+
+        $objectId = ObjectService::getObjectByMachineName($machineName)->id;
+        $level = (int) $planet->getObjectLevel($machineName);
+
+        $queuedLevels = (int) BuildingQueue::where('planet_id', $planet->getPlanetId())
+            ->where('object_id', $objectId)
+            ->where('processed', 0)
+            ->count();
+
+        if ($level + $queuedLevels >= $target) {
+            return false;
+        }
+
+        if (!$this->isAffordable($planet, $machineName, withReserve: false)) {
+            return false;
+        }
+
+        try {
+            $this->buildingQueueService->add($planet, $objectId);
+
+            return true;
+        } catch (Exception) {
+            // Queue full, no fields or requirements unmet; retry next visit.
+            return false;
+        }
     }
 
     /**

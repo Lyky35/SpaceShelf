@@ -334,6 +334,17 @@ return [
         'abm_silo_level' => 2,
     ],
 
+    // Moon play: every owned moon gets this facility line built out, and
+    // defensive personalities also garrison half their planetary combat
+    // defense there. Moons produce nothing, so transportResources() ships
+    // the plan's cost from storage-saturated planets.
+    'moon' => [
+        'lunar_base_target' => 3,
+        'sensor_phalanx_target' => 1,
+        'robot_factory_target' => 2,
+        'shipyard_target' => 2,
+    ],
+
     // Class ships: the engine builds the Reaper only for Generals and the
     // Pathfinder only for Discoverers (ObjectService::objectCharacterClassMet).
     // The brain keeps a small pack of them on the home planet: reapers raise

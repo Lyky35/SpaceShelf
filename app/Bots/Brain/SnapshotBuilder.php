@@ -68,6 +68,8 @@ final class SnapshotBuilder
             foreach (self::MILITARY_UNITS as $unit) {
                 $militaryUnits += $shipUnits->getAmountByMachineName($unit);
             }
+
+            $queuedBacklog[$moon->getPlanetId()] = $this->queuedBacklog($moon->getPlanetId());
         }
 
         return new BrainSnapshot(

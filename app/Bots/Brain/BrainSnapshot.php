@@ -19,7 +19,7 @@ final readonly class BrainSnapshot
      * @param int $colonyShipsInStock Total colony ships across all planets.
      * @param int $militaryUnitCount Total combat ships across all planets.
      * @param array<int, Resources> $queuedBacklog Sum of unfinished build/research/unit
-     *        queue costs per owned planet, keyed by planet id.
+     *        queue costs per owned planet or moon, keyed by planet id.
      * @param array<int, Resources> $debrisFields Debris field resources at owned
      *        planets' coordinates, keyed by planet id. Only planets with debris
      *        are present.
