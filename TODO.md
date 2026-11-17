@@ -82,9 +82,12 @@ character class. Still missing:
 - [ ] **Class ships**: accounts unlock Crawler/Reaper/Pathfinder, brain does
       not build them yet — crawlers for Collector mine bonuses, reapers for
       Generals, pathfinders for Discoverer expeditions
-- [ ] **Phase 5 — Officer hiring**: no longer blocked — human officer hiring is
-      live; add a bot-side hiring policy to the brains (e.g. General → Admiral,
-      Discoverer → Technocrat, budget guard against burning all DM)
+- [x] **Phase 5 — Officer hiring**: shipped — each profile keeps its key
+      officer hired (collector→Geologist, general→Admiral,
+      discoverer→Technocrat, renew ≤2 days left, DM reserve floor 1000; see
+      `config/bots.php` `officers` + `UtilityBrain::hireOfficer()`). Throttled
+      by DM income: bots currently only have the 8000 signup bonus, so
+      sustainable upkeep needs Phase 4 expedition rewards.
 - [ ] **Phase 6 — Scale & tuning**: admin panel "Bots" page (list / enable /
       edit personality — today this needs artisan/tinker), simulation tuning
       harness, optional per-bot highscore opt-out
