@@ -3,11 +3,13 @@
 namespace OGame\Bots\Brain;
 
 use Exception;
+use Illuminate\Support\Facades\DB;
 use OGame\Bots\Personality;
 use OGame\Enums\Officer;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\Resources;
+use OGame\Models\UnitQueue;
 use OGame\Services\BuildingQueueService;
 use OGame\Services\CharacterClassService;
 use OGame\Services\ColonisationTargetFinder;
@@ -255,6 +257,23 @@ final class UtilityBrain implements BotBrain
             $score['shipyard'] = max($score['shipyard'] ?? 0.0, 50.0);
         }
 
+        // Defensive worlds want an ABM stock, and the missile silo is both
+        // its prerequisite building and its storage. Riding the scored list
+        // (instead of queuing the silo from the defense pass) lets it win a
+        // slot against the economy instead of being starved by it forever.
+        // Gated on the combat tier target so early growth is not traded away
+        // for depth, and priced far above every other candidate because it
+        // only needs two levels — an unmissable one-off detour, not a
+        // permanent rival for queue slots.
+        if (
+            $personality->defenseBias >= $this->defenseMinBias()
+            && (int) config('bots.military.abm_target', 20) > 0
+            && $planet->getObjectLevel('missile_silo') < (int) config('bots.military.abm_silo_level', 2)
+            && $this->combatDefenseAmount($planet) >= $this->defenseTarget($personality)
+        ) {
+            $score['missile_silo'] = 1000.0;
+        }
+
         // Research lab must keep pace with the player's highest research so
         // research queue slots never stall the research line.
         $player = $planet->getPlayer();
@@ -496,10 +515,12 @@ final class UtilityBrain implements BotBrain
 
     /**
      * Planetary defense for bunker-leaning personalities: grow each planet's
-     * defense stock toward `defense_unit_base * defense_bias` units using the
-     * strongest defense tier whose shipyard and research requirements the
-     * planet currently meets. Personalities below `defense_min_bias` never
-     * build defense at all (Generals spend everything on the fleet).
+     * combat defense stock toward `defense_unit_base * defense_bias` units
+     * using the strongest defense tier whose shipyard and research
+     * requirements the planet currently meets, then spend the surplus on
+     * depth (shield domes, missile silo, anti-ballistic missiles).
+     * Personalities below `defense_min_bias` never build defense at all
+     * (Generals spend everything on the fleet).
      */
     private function buildDefense(PlanetService $planet, Personality $personality): int
     {
@@ -507,34 +528,162 @@ final class UtilityBrain implements BotBrain
             return 0;
         }
 
-        $target = (int) round(
-            (int) config('bots.military.defense_unit_base', 120) * $personality->defenseBias
-        );
+        if ($planet->getObjectLevel('shipyard') < 1) {
+            return 0;
+        }
+
+        $target = $this->defenseTarget($personality);
+
+        if ($this->combatDefenseAmount($planet) < $target) {
+            $batchSize = (int) config('bots.military.defense_batch_size', 10);
+
+            // Strongest affordable tier wins; unmet research/shipyard gates or an
+            // unaffordable batch fall through to the next, cheaper tier.
+            foreach (self::DEFENSE_TIERS as $machineName) {
+                if (!ObjectService::objectRequirementsMet($machineName, $planet)) {
+                    continue;
+                }
+
+                $queued = $this->queueUnits($planet, $machineName, $batchSize, withReserve: true);
+
+                if ($queued > 0) {
+                    return $queued;
+                }
+            }
+        }
+
+        return $this->buildDefenseDepth($planet);
+    }
+
+    /**
+     * Standing combat defense: the shooting tiers only. Shield domes and
+     * missiles are excluded — they are depth, not the counted body, and
+     * letting them count toward `defense_unit_base` would hollow out the
+     * turret line once they start getting built.
+     */
+    private function combatDefenseAmount(PlanetService $planet): int
+    {
+        $defense = $planet->getDefenseUnits();
+
+        $amount = 0;
+        foreach (self::DEFENSE_TIERS as $machineName) {
+            $amount += $defense->getAmountByMachineName($machineName);
+        }
+
+        return $amount;
+    }
+
+    /**
+     * Defense depth, for worlds whose combat tier target already holds: a
+     * couple of shield domes (in the original game each dome shields the
+     * whole defense stack for one more regenerating round, so a pair of
+     * layers covers the usual opening salvos) and an anti-ballistic missile
+     * stock for missile interception.
+     */
+    private function buildDefenseDepth(PlanetService $planet): int
+    {
+        $domeTarget = (int) config('bots.military.shield_dome_target', 2);
+        $defense = $planet->getDefenseUnits();
+        $domeCount = $defense->getAmountByMachineName('small_shield_dome')
+            + $defense->getAmountByMachineName('large_shield_dome');
 
         if (
-            $planet->getDefenseUnits()->getAmount() >= $target
-            || $planet->getObjectLevel('shipyard') < 1
+            $domeCount
+                + $this->queuedUnitAmount($planet, ['small_shield_dome', 'large_shield_dome'])
+                < $domeTarget
         ) {
+            // Prefer the strongest dome the planet has researched; small
+            // domes are the early layer, large ones the late upgrade.
+            foreach (['large_shield_dome', 'small_shield_dome'] as $machineName) {
+                if (!ObjectService::objectRequirementsMet($machineName, $planet)) {
+                    continue;
+                }
+
+                $queued = $this->queueUnits($planet, $machineName, 1, withReserve: true);
+
+                if ($queued > 0) {
+                    return $queued;
+                }
+            }
+        }
+
+        return $this->buildAbmStock($planet);
+    }
+
+    /**
+     * Anti-ballistic missile stock. The engine keeps ABMs in the missile
+     * silo (10 slots per silo level) and makes silo level 2 the build
+     * prerequisite, so the brain raises the silo toward `abm_silo_level`
+     * before ordering missiles; the stock is capped by whichever of
+     * `abm_target` and the silo capacity comes first.
+     */
+    private function buildAbmStock(PlanetService $planet): int
+    {
+        $abmTarget = (int) config('bots.military.abm_target', 20);
+
+        if ($abmTarget <= 0) {
+            return 0;
+        }
+
+        $siloTarget = (int) config('bots.military.abm_silo_level', 2);
+        $siloLevel = (int) $planet->getObjectLevel('missile_silo');
+
+        // Silo levels are raised by the building pass (structureCandidateOrder
+        // scores the silo while depth is wanted), so the economy queue is
+        // never fought over. Until the silo reaches the missile tier, there
+        // is nothing to order.
+        if ($siloLevel < $siloTarget) {
+            return 0;
+        }
+
+        $siloCapacity = $siloLevel * 10;
+        $held = $planet->getDefenseUnits()->getAmountByMachineName('anti_ballistic_missile');
+        $target = min($abmTarget, $siloCapacity);
+
+        if ($held + $this->queuedUnitAmount($planet, ['anti_ballistic_missile']) >= $target) {
             return 0;
         }
 
         $batchSize = (int) config('bots.military.defense_batch_size', 10);
 
-        // Strongest affordable tier wins; unmet research/shipyard gates or an
-        // unaffordable batch fall through to the next, cheaper tier.
-        foreach (self::DEFENSE_TIERS as $machineName) {
-            if (!ObjectService::objectRequirementsMet($machineName, $planet)) {
-                continue;
-            }
+        return $this->queueUnits(
+            $planet,
+            'anti_ballistic_missile',
+            min($batchSize, $target - $held),
+            withReserve: true,
+        );
+    }
 
-            $queued = $this->queueUnits($planet, $machineName, $batchSize, withReserve: true);
+    /**
+     * Not-yet-finished unit builds of these machine names on one planet, so
+     * single-item depth orders are not stacked while the first is queued.
+     * Completed rows (processed = 1) are excluded and partially built
+     * batches only count their remainder.
+     *
+     * @param array<int, string> $machineNames
+     */
+    private function queuedUnitAmount(PlanetService $planet, array $machineNames): int
+    {
+        $objectIds = array_map(
+            static fn (string $machineName): int => ObjectService::getObjectByMachineName($machineName)->id,
+            $machineNames,
+        );
 
-            if ($queued > 0) {
-                return $queued;
-            }
-        }
+        return (int) UnitQueue::where('planet_id', $planet->getPlanetId())
+            ->where('processed', 0)
+            ->whereIn('object_id', $objectIds)
+            ->sum(DB::raw('object_amount - object_amount_progress'));
+    }
 
-        return 0;
+    /**
+     * Combat defense unit target for one personality: the counted shooting
+     * tiers only, `defense_unit_base` scaled by the personality's bias.
+     */
+    private function defenseTarget(Personality $personality): int
+    {
+        return (int) round(
+            (int) config('bots.military.defense_unit_base', 120) * $personality->defenseBias
+        );
     }
 
     /**

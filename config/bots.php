@@ -322,6 +322,16 @@ return [
 
         // Personalities below this defense bias never build planetary defense.
         'defense_min_bias' => 0.2,
+
+        // Defense depth, once the combat tier target holds: shield domes
+        // (each dome shields the whole defense stack one extra regenerating
+        // round in the original game) and an anti-ballistic missile stock.
+        // The engine stores ABMs in the missile silo (10 slots per level)
+        // and requires silo level 2 to build them, so the brain raises the
+        // silo to abm_silo_level before ordering missiles.
+        'shield_dome_target' => 2,
+        'abm_target' => 20,
+        'abm_silo_level' => 2,
     ],
 
     // Class ships: the engine builds the Reaper only for Generals and the
