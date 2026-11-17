@@ -154,6 +154,35 @@ class BotExpeditionTest extends IsolatedAccountTestCase
             'The expedition must stay out exactly as long as the astrophysics level allows.',
         );
         $this->assertGreaterThan(0, (int) $mission->light_fighter);
+        $this->assertSame(0, (int) $mission->pathfinder, 'No Pathfinder in harbour means none aboard.');
+    }
+
+    public function testExpeditionCarriesPathfinderBeyondReserve(): void
+    {
+        $bot = $this->createBot('discoverer');
+        $player = $this->reloadPlayer($bot);
+        $home = $this->equipForExpedition($player, 4);
+
+        // Three Pathfinders: one stays home as the salvage reserve, one
+        // rides along to double the expedition's Dark Matter finds.
+        $home->addUnit('pathfinder', 3);
+
+        $this->playOnce($bot);
+
+        $coords = $home->getPlanetCoordinates();
+        $mission = FleetMission::where('user_id', $bot->user_id)
+            ->where('mission_type', 15)
+            ->where('galaxy_to', $coords->galaxy)
+            ->where('system_to', $coords->system)
+            ->where('position_to', 16)
+            ->first();
+
+        $this->assertNotNull($mission, 'Expected the Discoverer to send an expedition into deep space.');
+        $this->assertSame(
+            1,
+            (int) $mission->pathfinder,
+            'A Pathfinder must ride along when the harbour exceeds the salvage reserve.',
+        );
     }
 
     public function testSkipsExpeditionWithoutAstrophysics(): void

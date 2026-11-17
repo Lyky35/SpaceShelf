@@ -324,6 +324,16 @@ return [
         'defense_min_bias' => 0.2,
     ],
 
+    // Class ships: the engine builds the Reaper only for Generals and the
+    // Pathfinder only for Discoverers (ObjectService::objectCharacterClassMet).
+    // The brain keeps a small pack of them on the home planet: reapers raise
+    // the war policy's raid ceiling, pathfinders feed the expedition policy's
+    // salvage loop and double its Dark Matter finds.
+    'classships' => [
+        'reaper_stock_target' => 2,
+        'pathfinder_stock_target' => 3,
+    ],
+
     // Behavior classes. See docs/BOT-AI-PLAN.md:
     // - collector: bunker worlds, heavy defense, tiny mostly passive fleet
     // - general:   fleet building over everything, zero planetary defense
@@ -387,6 +397,12 @@ return [
         // The fleet sits in deep space for exactly its astrophysics level
         // in hours, so this only paces the gap between expeditions.
         'redispatch_cooldown_hours' => 4,
+
+        // One Pathfinder rides along when the harbour holds more than
+        // this many — it doubles expedition Dark Matter finds (original
+        // OGame Pathfinder bonus), while the reserve stays home for the
+        // position-16 salvage loop below.
+        'pathfinder_reserve' => 1,
 
         // Debris from expedition battles settles at position 16 and only
         // Pathfinders can harvest it. Bots salvage whatever they happen

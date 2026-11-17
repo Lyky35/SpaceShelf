@@ -411,6 +411,36 @@ final class UtilityBrain implements BotBrain
             $actions += $this->queueUnits($planet, 'espionage_probe', 1, withReserve: true);
         }
 
+        // Class ships: Reapers (Generals) and Pathfinders (Discoverers) are
+        // class-locked hulls in the engine, so only the matching bot can
+        // build them. Keep a small pack at the home planet: the war policy
+        // raids with the strongest hulls the class offers, and the
+        // expedition policy salvages and doubles its Dark Matter income
+        // with Pathfinders.
+        if (
+            (int) $planet->getPlanetId() === $this->homePlanetId($snapshot) &&
+            $planet->getObjectLevel('shipyard') >= 6
+        ) {
+            $characterClassService = app(CharacterClassService::class);
+            $user = $player->getUser();
+
+            if (
+                $characterClassService->isGeneral($user) &&
+                $planet->getShipUnits()->getAmountByMachineName('reaper') <
+                (int) config('bots.classships.reaper_stock_target', 2)
+            ) {
+                $actions += $this->queueUnits($planet, 'reaper', 1, withReserve: true);
+            }
+
+            if (
+                $characterClassService->isDiscoverer($user) &&
+                $planet->getShipUnits()->getAmountByMachineName('pathfinder') <
+                (int) config('bots.classships.pathfinder_stock_target', 3)
+            ) {
+                $actions += $this->queueUnits($planet, 'pathfinder', 1, withReserve: true);
+            }
+        }
+
         return $actions;
     }
 

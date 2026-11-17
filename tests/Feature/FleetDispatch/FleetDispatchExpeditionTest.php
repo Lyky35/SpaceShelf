@@ -1821,6 +1821,49 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
     }
 
     /**
+     * Test that a Pathfinder in the expedition fleet switches the dark
+     * matter find to the Pathfinder reward band (base 300-400 instead of
+     * 150-200). In the original game, a Pathfinder doubles all positive
+     * expedition finds, and the dark matter find is a positive find.
+     */
+    public function testExpeditionGainDarkMatterWithPathfinder(): void
+    {
+        $this->basicSetup();
+        $this->settingsEnableExpeditionOutcomes([ExpeditionOutcomeType::GainDarkMatter]);
+
+        $initialUser = User::find($this->planetPlayer()->getId());
+        if ($initialUser === null) {
+            $this->fail('User not found.');
+        }
+        $initialDarkMatter = $initialUser->dark_matter;
+
+        // Any class may own Pathfinders (expeditions hand them out), so a
+        // plain test player can carry one.
+        $this->planetAddUnit('pathfinder', 1);
+
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('large_cargo'), 1000);
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('pathfinder'), 1);
+        $this->sendMissionToPosition16($unitCollection, new Resources(1, 1, 0, 0), true);
+
+        // Forces an exceptional variant with multiplier=10. Pathfinder-band
+        // base reward without variant multiplier is 300-400.
+        $this->bindForcedExpeditionFindVariant('exceptional', 10);
+
+        $this->travel(10)->hours();
+        $this->get('/overview');
+
+        $user = User::find($this->planetPlayer()->getId());
+        if ($user === null) {
+            $this->fail('User not found.');
+        }
+        $darkMatterGained = $user->dark_matter - $initialDarkMatter;
+
+        $this->assertGreaterThanOrEqual(3000, $darkMatterGained, 'Pathfinder exceptional find (10x) should yield at least 3000 dark matter (pathfinder base 300-400)');
+        $this->assertLessThanOrEqual(4000, $darkMatterGained, 'Pathfinder exceptional find (10x) should yield at most 4000 dark matter (pathfinder base 300-400)');
+    }
+
+    /**
      * Test that selectExpeditionFindVariant() produces the correct tier distribution over many
      * iterations: roughly 89% normal, 10% rare, 1% exceptional.
      *

@@ -18,8 +18,9 @@ use Throwable;
 
 /**
  * Phase 4 expedition policy (docs/BOT-AI-PLAN.md §6): keep expedition slots
- * busy at a personality-scaled rate and salvage the debris of deep space
- * battles at position 16 with Pathfinders when they are in harbour.
+ * busy at a personality-scaled rate — with a Pathfinder riding along when one
+ * is to spare, for the doubled Dark Matter finds — and salvage the debris of
+ * deep space battles at position 16 with Pathfinders when they are in harbour.
  *
  * All expedition "memory" — in-use slots, redispatch cooldowns and salvage
  * deduplication — is derived from the game's own tables (fleet missions and
@@ -261,6 +262,18 @@ final class ExpeditionPolicy
                 ObjectService::getUnitObjectByMachineName($machineName),
                 max(1, (int) floor($amount * $fraction)),
             );
+        }
+
+        // One Pathfinder rides along when the harbour has one to spare:
+        // a Pathfinder in the fleet doubles expedition Dark Matter finds
+        // (the original game's Pathfinder bonus), so the expedition pays
+        // for the ship. Any beyond the reserve would only multiply the
+        // combat loss risk, so exactly one goes.
+        if (
+            $shipUnits->getAmountByMachineName('pathfinder') >
+            (int) config('bots.expedition.pathfinder_reserve', 1)
+        ) {
+            $units->addUnit(ObjectService::getUnitObjectByMachineName('pathfinder'), 1);
         }
 
         return $units;

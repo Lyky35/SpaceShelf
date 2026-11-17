@@ -590,12 +590,11 @@ class ExpeditionMission extends GameMission
         // Load the mission owner user
         $player = $this->playerServiceFactory->make($mission->user_id, true);
 
-        // Check if fleet has Pathfinder ships
-        // TODO: Pathfinder ship not yet implemented, uncomment when available
-        // $fleetUnits = $this->fleetMissionService->getFleetUnits(mission: $mission);
-        // $objectService = app(ObjectService::class);
-        // $hasPathfinder = $fleetUnits->hasUnit($objectService->getShipObjectByMachineName('pathfinder'));
-        $hasPathfinder = false;
+        // In the original game a Pathfinder in the expedition fleet doubles
+        // the positive finds, and the dark matter find is a positive find,
+        // so Pathfinder fleets earn the higher (pathfinder) DM band below.
+        $fleetUnits = $this->fleetMissionService->getFleetUnits(mission: $mission);
+        $hasPathfinder = $fleetUnits->hasUnit(ObjectService::getShipObjectByMachineName('pathfinder'));
 
         // Determine find variant (normal/rare/exceptional) and apply its reward multiplier.
         $variantData = $this->selectExpeditionFindVariant();
