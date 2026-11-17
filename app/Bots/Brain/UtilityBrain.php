@@ -9,6 +9,7 @@ use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\Resources;
 use OGame\Services\BuildingQueueService;
+use OGame\Services\CharacterClassService;
 use OGame\Services\ColonisationTargetFinder;
 use OGame\Services\FleetMissionService;
 use OGame\Services\ObjectService;
@@ -20,14 +21,15 @@ use OGame\Services\UnitQueueService;
 use Throwable;
 
 /**
- * Utility-scored brain, phase 1: economy buildings, research pacing, colony
- * ships + colonisation, solar satellites, a personality-scaled standing fleet
- * and tiered planetary defense for bunker-leaning personalities.
+ * Utility-scored brain, phase 2: economy buildings, research pacing, colony
+ * ships + colonisation, solar satellites, a personality-scaled standing fleet,
+ * tiered planetary defense for bunker-leaning personalities, crawler-based
+ * mine harvesting, inter-planet resource transports and debris recycling.
  *
  * Heuristics encode the classic OGame ratio rules (mine mix, power coverage,
  * 1:10 robot-factory pacing, storage vs. mine trade-off) and are tunable via
  * config/bots.php. Officer upkeep follows the per-profile policy in
- * config/bots.php; war/scouting/expedition policies are later phases; see
+ * config/bots.php; war/scouting policies are a later phase; see
  * docs/BOT-AI-PLAN.md.
  *
  * Every action is attempted through the same services the HTTP controllers
@@ -40,6 +42,23 @@ final class UtilityBrain implements BotBrain
      * Mission type id for colonisation (OGame\GameMissions\ColonisationMission).
      */
     private const MISSION_TYPE_COLONISATION = 7;
+
+    /**
+     * Mission type id for transport (OGame\GameMissions\TransportMission).
+     */
+    private const MISSION_TYPE_TRANSPORT = 3;
+
+    /**
+     * Mission type id for recycling (OGame\GameMissions\RecycleMission).
+     */
+    private const MISSION_TYPE_RECYCLE = 8;
+
+    /**
+     * Tradable resources, in dispatch cargo order.
+     *
+     * @var array<int, string>
+     */
+    private const RESOURCES = ['metal', 'crystal', 'deuterium'];
 
     /**
      * Machine names of the three mines and their produced resource.
@@ -104,6 +123,8 @@ final class UtilityBrain implements BotBrain
         }
 
         $actions += $this->colonise($snapshot, $personality);
+        $actions += $this->transportResources($snapshot);
+        $actions += $this->recycleDebris($snapshot);
         $actions += $this->hireOfficer($player, $personality);
 
         return $actions;
@@ -357,7 +378,44 @@ final class UtilityBrain implements BotBrain
             );
         }
 
+        // Crawlers raise mine output; the engine caps the bonus at 8 crawlers
+        // per total mine level, so grow the stock toward that usable cap.
+        // Only Collector accounts may build them (engine character-class
+        // gate in ObjectService::objectCharacterClassMet).
+        $crawlerCap = $this->crawlerCap($planet);
+
+        if (
+            $crawlerCap > 0 &&
+            $this->isCollectorClass($snapshot) &&
+            $planet->getShipUnits()->getAmountByMachineName('crawler') < $crawlerCap
+        ) {
+            $actions += $this->queueUnits($planet, 'crawler', (int) config('bots.harvest.batch_size', 10), withReserve: true);
+        }
+
         return $actions;
+    }
+
+    /**
+     * Number of crawlers whose production bonus is still effective on this
+     * planet (8 per total mine level, see the production engine). Zero means
+     * the planet's mining is too small to pay off crawlers yet.
+     */
+    private function crawlerCap(PlanetService $planet): int
+    {
+        $mineLevels = array_sum(
+            array_map(fn (string $mine): int => $planet->getObjectLevel($mine), array_keys(self::MINE_MAP))
+        );
+
+        return $mineLevels * (int) config('bots.harvest.crawlers_per_mine_level', 8);
+    }
+
+    /**
+     * Whether the bot plays the Collector character class — the only class
+     * the engine lets build crawlers.
+     */
+    private function isCollectorClass(BrainSnapshot $snapshot): bool
+    {
+        return app(CharacterClassService::class)->isCollector($snapshot->player->getUser());
     }
 
     /**
@@ -469,6 +527,305 @@ final class UtilityBrain implements BotBrain
         }
 
         return 0;
+    }
+
+    /**
+     * Inter-planet logistics (docs/BOT-AI-PLAN.md §5): ship resources from
+     * planets whose storage of a resource is nearly full (and which have no
+     * use for that resource themselves) to planets whose unfinished
+     * construction backlog exceeds what their own stock plus a few hours of
+     * production can cover. A planet with scarce resources never ships them
+     * out, so transports never starve their own economy.
+     */
+    private function transportResources(BrainSnapshot $snapshot): int
+    {
+        $maxMissions = (int) config('bots.transport.actions_per_visit', 1);
+        $coverHours = (float) config('bots.transport.demand_cover_hours', 6);
+        $sourceSaturation = (float) config('bots.transport.source_saturation', 0.8);
+        $keepFraction = (float) config('bots.transport.source_keep_fraction', 0.4);
+        $minAmount = (float) config('bots.transport.min_amount', 5000);
+
+        /** @var array<int, array<string, float>> $demand Per planet id: resource => needed amount. */
+        $demand = [];
+        /** @var array<int, array<string, float>> $supply Per planet id: resource => sendable amount. */
+        $supply = [];
+
+        foreach ($snapshot->planets as $planet) {
+            $planetId = $planet->getPlanetId();
+            $backlog = $snapshot->queuedBacklog[$planetId] ?? new Resources(0, 0, 0, 0);
+
+            foreach (self::RESOURCES as $resource) {
+                $stock = $planet->getResources()->$resource->get();
+                $shortfall = $backlog->$resource->get()
+                    - $stock
+                    - $this->productionPerHour($planet, $resource) * $coverHours;
+
+                if ($shortfall > 0) {
+                    $demand[$planetId][$resource] = $shortfall;
+
+                    continue;
+                }
+
+                if ($this->storageSaturation($planet, $resource) >= $sourceSaturation) {
+                    $sendable = $stock - $this->storageCapacity($planet, $resource) * $keepFraction;
+
+                    if ($sendable > 0) {
+                        $supply[$planetId][$resource] = $sendable;
+                    }
+                }
+            }
+        }
+
+        if ($demand === [] || $supply === []) {
+            return 0;
+        }
+
+        $transporter = ObjectService::getUnitObjectByMachineName('large_cargo');
+        $capacity = $transporter->properties->capacity->calculate($snapshot->player)->totalValue;
+
+        if ($capacity <= 0) {
+            return 0;
+        }
+
+        $missions = 0;
+        $actions = 0;
+
+        /** @var PlanetService $source */
+        foreach ($snapshot->planets as $source) {
+            if ($missions >= $maxMissions) {
+                break;
+            }
+
+            $sourceId = $source->getPlanetId();
+
+            if (!isset($supply[$sourceId])) {
+                continue;
+            }
+
+            /** @var PlanetService $target */
+            foreach ($snapshot->planets as $target) {
+                if ($missions >= $maxMissions) {
+                    break;
+                }
+
+                $targetId = $target->getPlanetId();
+
+                if ($targetId === $sourceId) {
+                    continue;
+                }
+
+                $targetDemand = $demand[$targetId] ?? [];
+
+                if ($targetDemand === []) {
+                    continue;
+                }
+
+                $cargo = [];
+                $total = 0.0;
+
+                foreach ($targetDemand as $resource => $needed) {
+                    // Read the live supply counter: earlier missions on this
+                    // visit already reduced it.
+                    $available = $supply[$sourceId][$resource] ?? 0.0;
+
+                    if ($available <= 0) {
+                        continue;
+                    }
+
+                    $amount = min($needed, $available);
+                    $cargo[$resource] = $amount;
+                    $total += $amount;
+                }
+
+                if ($total < $minAmount) {
+                    continue;
+                }
+
+                $shipsNeeded = (int) ceil($total / $capacity);
+                $shipsAvailable = $source->getShipUnits()->getAmountByMachineName('large_cargo');
+
+                if ($shipsAvailable < 1) {
+                    // No ships to move the cargo: grow the transporter pool
+                    // instead, the mission goes out on a later heartbeat.
+                    $actions += $this->queueUnits(
+                        $source,
+                        'large_cargo',
+                        min($shipsNeeded, (int) config('bots.transport.transporter_batch_size', 20)),
+                        withReserve: true
+                    );
+
+                    continue;
+                }
+
+                $ships = min($shipsAvailable, $shipsNeeded);
+                $shipCapacity = $ships * $capacity;
+
+                // Cap the cargo to what the dispatched ships can carry.
+                if ($total > $shipCapacity) {
+                    $scale = $shipCapacity / $total;
+
+                    foreach ($cargo as $resource => $amount) {
+                        $cargo[$resource] = floor($amount * $scale);
+                    }
+
+                    $total = (float) array_sum($cargo);
+
+                    if ($total < $minAmount) {
+                        continue;
+                    }
+                }
+
+                $units = new UnitCollection();
+                $units->addUnit($transporter, $ships);
+
+                try {
+                    /** @var FleetMissionService $fleetMissionService */
+                    $fleetMissionService = resolve(FleetMissionService::class, ['player' => $snapshot->player]);
+                    $fleetMissionService->createNewFromPlanet(
+                        $source,
+                        $target->getPlanetCoordinates(),
+                        PlanetType::Planet,
+                        self::MISSION_TYPE_TRANSPORT,
+                        $units,
+                        new Resources(
+                            (int) ($cargo['metal'] ?? 0),
+                            (int) ($cargo['crystal'] ?? 0),
+                            (int) ($cargo['deuterium'] ?? 0),
+                            0,
+                        ),
+                        10.0,
+                    );
+
+                    $missions++;
+
+                    // Bookkeeping so a source is not drained twice within one
+                    // visit and a target does not receive duplicate cargo.
+                    foreach ($cargo as $resource => $amount) {
+                        $supply[$sourceId][$resource] -= $amount;
+                        $demand[$targetId][$resource] -= $amount;
+
+                        if ($supply[$sourceId][$resource] <= 0) {
+                            unset($supply[$sourceId][$resource]);
+                        }
+
+                        if (($demand[$targetId][$resource] ?? 0) <= 0) {
+                            unset($demand[$targetId][$resource]);
+                        }
+                    }
+                } catch (Throwable) {
+                    // Not enough fuel or a race on the target planet; retry on
+                    // the next heartbeat.
+                }
+            }
+        }
+
+        return $actions + $missions;
+    }
+
+    /**
+     * Debris harvesting: dispatch the planet's recyclers onto the debris
+     * field sitting at the planet's own coordinates (battle debris is free
+     * money that otherwise decays). When debris exists but the planet has no
+     * recyclers in stock, a small batch is queued instead.
+     */
+    private function recycleDebris(BrainSnapshot $snapshot): int
+    {
+        $maxMissions = (int) config('bots.recycle.actions_per_visit', 1);
+        $minDebrisValue = (float) config('bots.recycle.min_debris_value', 10000);
+
+        $recycler = ObjectService::getUnitObjectByMachineName('recycler');
+        $capacity = $recycler->properties->capacity->calculate($snapshot->player)->totalValue;
+
+        if ($capacity <= 0) {
+            return 0;
+        }
+
+        $missions = 0;
+        $actions = 0;
+
+        /** @var PlanetService $planet */
+        foreach ($snapshot->planets as $planet) {
+            if ($missions >= $maxMissions) {
+                break;
+            }
+
+            $debris = $snapshot->debrisFields[$planet->getPlanetId()] ?? null;
+
+            if ($debris === null) {
+                continue;
+            }
+
+            $value = $debris->sum();
+
+            if ($value < $minDebrisValue) {
+                continue;
+            }
+
+            $available = $planet->getShipUnits()->getAmountByMachineName('recycler');
+
+            if ($available < 1) {
+                $actions += $this->queueUnits(
+                    $planet,
+                    'recycler',
+                    (int) config('bots.recycle.recycler_batch_size', 3),
+                    withReserve: true
+                );
+
+                continue;
+            }
+
+            // One hour of recycler collection covers the whole field.
+            $shipsNeeded = (int) ceil($value / $capacity);
+            $units = new UnitCollection();
+            $units->addUnit($recycler, min($available, $shipsNeeded));
+
+            try {
+                /** @var FleetMissionService $fleetMissionService */
+                $fleetMissionService = resolve(FleetMissionService::class, ['player' => $snapshot->player]);
+                $fleetMissionService->createNewFromPlanet(
+                    $planet,
+                    $planet->getPlanetCoordinates(),
+                    PlanetType::DebrisField,
+                    self::MISSION_TYPE_RECYCLE,
+                    $units,
+                    new Resources(0, 0, 0, 0),
+                    10.0,
+                );
+
+                $missions++;
+            } catch (Throwable) {
+                // Fuel shortage or the debris got harvested by someone else
+                // first; retry on the next heartbeat.
+            }
+        }
+
+        return $actions + $missions;
+    }
+
+    /**
+     * Hourly production of a resource on a planet.
+     */
+    private function productionPerHour(PlanetService $planet, string $resource): float
+    {
+        return match ($resource) {
+            'metal' => $planet->getMetalProductionPerHour(),
+            'crystal' => $planet->getCrystalProductionPerHour(),
+            'deuterium' => $planet->getDeuteriumProductionPerHour(),
+            default => 0.0,
+        };
+    }
+
+    /**
+     * Storage capacity of a resource on a planet.
+     */
+    private function storageCapacity(PlanetService $planet, string $resource): float
+    {
+        return match ($resource) {
+            'metal' => $planet->metalStorage()->get(),
+            'crystal' => $planet->crystalStorage()->get(),
+            'deuterium' => $planet->deuteriumStorage()->get(),
+            default => 0.0,
+        };
     }
 
     /**

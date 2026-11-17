@@ -121,8 +121,16 @@ Phases 0–1 shipped: heartbeat, economy brain, colonisation, random planet
 names, Collector/General/Discoverer behavior classes wired to the in-game
 character class. Still missing:
 
-- [ ] **Phase 2 — Fleet & growth**: inter-planet transport policy (never moves
-      resources between own planets), debris-field recycling/harvesters
+- [x] **Phase 2 — Fleet & growth**: shipped — inter-planet transports move a
+      resource from storage-saturated planets with no own demand to planets
+      whose unfinished queue backlog outruns their stock+production (cargo is
+      capped by harbor `large_cargo`, transporters are built on demand; see
+      `bots.transport` + `UtilityBrain::transportResources()`); recyclers
+      harvest the debris fields at the bot's own planets and are built when
+      debris exists with none in stock (`bots.recycle` +
+      `UtilityBrain::recycleDebris()`); crawlers grow toward the engine's
+      usable bonus cap of 8 per total mine level, gated to the Collector
+      character class (`bots.harvest` + `UtilityBrain::crawlerCap()`).
 - [ ] **Phase 3 — War & spy AI**: espionage scouting loop, probe → mass-attack
       combo with battle-engine pre-simulation, threat assessment / fleet save,
       per-target attack cooldowns + avoid-list. Bots never attack today even
@@ -130,9 +138,9 @@ character class. Still missing:
       players" actually true.
 - [ ] **Phase 4 — Expeditions**: expedition loop (currently unused Discoverer
       class bonus)
-- [ ] **Class ships**: accounts unlock Crawler/Reaper/Pathfinder, brain does
-      not build them yet — crawlers for Collector mine bonuses, reapers for
-      Generals, pathfinders for Discoverer expeditions
+- [ ] **Class ships**: Reaper/Pathfinder still unbuilt by the brain — reapers
+      for Generals, pathfinders for Discoverer expeditions. (Crawlers for the
+      Collector mine bonus shipped with Phase 2.)
 - [x] **Phase 5 — Officer hiring**: shipped — each profile keeps its key
       officer hired (collector→Geologist, general→Admiral,
       discoverer→Technocrat, renew ≤2 days left, DM reserve floor 1000; see

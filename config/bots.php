@@ -38,6 +38,60 @@ return [
         'max_system_distance' => 12,
     ],
 
+    // Inter-planet logistics (docs/BOT-AI-PLAN.md §5): ships resources from
+    // planets whose storage is nearly full to planets whose construction
+    // backlog outgrows their own stock and production.
+    'transport' => [
+        // A planet only ships out resources when storage saturation of that
+        // resource is at or above this fraction.
+        'source_saturation' => 0.8,
+
+        // The source keeps at least this fraction of its storage capacity of
+        // the shipped resource after the mission leaves.
+        'source_keep_fraction' => 0.4,
+
+        // Demand horizon: a planet's stock plus this many hours of production
+        // must cover its unfinished queue costs, otherwise the resource is
+        // considered scarce on that planet.
+        'demand_cover_hours' => 6,
+
+        // Never launch a transport mission carrying less than this total.
+        'min_amount' => 5000,
+
+        // Queue at most this many large transports on a source planet per
+        // visit when demand exists but no transports are in stock.
+        'transporter_batch_size' => 20,
+
+        // Maximum transport missions dispatched per heartbeat.
+        'actions_per_visit' => 1,
+    ],
+
+    // Debris harvesting: recyclers clean the debris fields on the bot's own
+    // planets (battle debris is free money that otherwise decays).
+    'recycle' => [
+        // Total debris (metal + crystal + deuterium) required before a bot
+        // bothers to dispatch recyclers.
+        'min_debris_value' => 10000,
+
+        // When debris exists but no recyclers are in stock, queue up to this
+        // many recyclers for the next visit.
+        'recycler_batch_size' => 3,
+
+        // Maximum recycle missions dispatched per heartbeat.
+        'actions_per_visit' => 1,
+    ],
+
+    // Crawlers boost mine production (each crawler adds 0.02%, effective only
+    // up to the engine's cap of 8 crawlers per total mine level).
+    'harvest' => [
+        // Usable crawlers per total mine level — must match the bonus cap in
+        // the production calculation, do not raise above it.
+        'crawlers_per_mine_level' => 8,
+
+        // Crawler batch size queued per visit.
+        'batch_size' => 10,
+    ],
+
     'economy' => [
         // Target share of total resource production per resource. The brain
         // mines whichever resource lags behind this ratio the most.
