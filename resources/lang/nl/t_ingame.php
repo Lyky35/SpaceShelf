@@ -616,6 +616,7 @@ return [
         'battle_total_loot'      => 'Totale buit',
         'battle_debris'          => 'Puin (nieuw)',
         'battle_recycler'        => 'Recycler',
+        'battle_pathfinder'      => 'Pionier',
         'battle_mined_after'     => 'Gedolven na gevecht',
         'battle_reaper'          => 'Reaper',
         'battle_debris_left'     => 'Puin-velden (resterend)',

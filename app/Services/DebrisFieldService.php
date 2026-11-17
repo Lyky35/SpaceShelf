@@ -188,10 +188,39 @@ class DebrisFieldService
      */
     public function calculateRequiredRecyclers(): int
     {
-        $recycler = ObjectService::getUnitObjectByMachineName('recycler');
-        $recyclerCapacity = $recycler->properties->capacity->calculate($this->playerService)->totalValue;
+        return $this->calculateRequiredCollectors('recycler');
+    }
+
+    /**
+     * Calculate the number of pathfinders needed to harvest the entire debris field.
+     * Expedition battle debris fields (position 16, deep space) can only be harvested
+     * by pathfinders, not by recyclers.
+     *
+     * @return int The number of pathfinders needed.
+     */
+    public function calculateRequiredPathfinders(): int
+    {
+        return $this->calculateRequiredCollectors('pathfinder');
+    }
+
+    /**
+     * Calculate the number of harvesting ships of a given type needed to collect the
+     * entire debris field based on their cargo capacity.
+     *
+     * @param string $machineName Machine name of the harvesting ship.
+     * @return int The number of ships needed.
+     */
+    private function calculateRequiredCollectors(string $machineName): int
+    {
+        $ship = ObjectService::getUnitObjectByMachineName($machineName);
+        $capacity = $ship->properties->capacity->calculate($this->playerService)->totalValue;
 
         $totalDebris = $this->debrisField->metal + $this->debrisField->crystal + $this->debrisField->deuterium;
-        return (int) ceil($totalDebris / $recyclerCapacity);
+
+        if ($capacity <= 0) {
+            return 0;
+        }
+
+        return (int) ceil($totalDebris / $capacity);
     }
 }

@@ -655,6 +655,7 @@ return [
         'battle_total_loot'      => 'Total loot',
         'battle_debris'          => 'Debris (new)',
         'battle_recycler'        => 'Recycler',
+        'battle_pathfinder'      => 'Pathfinder',
         'battle_mined_after'     => 'Mined after combat',
         'battle_reaper'          => 'Reaper',
         'battle_debris_left'     => 'Debris fields (left)',

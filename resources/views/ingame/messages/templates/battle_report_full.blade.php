@@ -142,7 +142,7 @@
                 <div class="c-right"></div>
                 <span class="title_txt">{{ __('t_ingame.messages.battle_debris') }}:</span>
                 <span class="title_txt tooltipCustom" data-tooltip-title="{{ $debris_sum_formatted }}">{{ $debris_sum_formatted }}</span>
-                <span class="title_txt">=&gt; {{ $debris_recyclers_needed }} {{ __('t_ingame.messages.battle_recycler') }}</span>
+                <span class="title_txt">=&gt; {{ $debris_collectors_needed }} {{ $is_expedition_battle ? __('t_ingame.messages.battle_pathfinder') : __('t_ingame.messages.battle_recycler') }}</span>
             </div>
             <ul class="detail_list clearfix">
                 <li class="resource_list_el_small">
@@ -201,7 +201,7 @@
                 <div class="c-right"></div>
                 <span class="title_txt">{{ __('t_ingame.messages.battle_debris_left') }}:</span>
                 <span class="title_txt tooltipCustom" data-tooltip-title="{{ number_format($remaining_debris_resources->sum(), 0, ',', '.') }}">{{ number_format($remaining_debris_resources->sum(), 0, ',', '.') }}</span>
-                <span class="title_txt">=&gt; {{ $remaining_debris_recyclers_needed }} {{ __('t_ingame.messages.battle_recycler') }}</span>
+                <span class="title_txt">=&gt; {{ $remaining_debris_collectors_needed }} {{ $is_expedition_battle ? __('t_ingame.messages.battle_pathfinder') : __('t_ingame.messages.battle_recycler') }}</span>
             </div>
             <ul class="detail_list clearfix">
                 <li class="resource_list_el_small">

@@ -616,6 +616,7 @@ return [
         'battle_total_loot'      => 'Bottino totale',
         'battle_debris'          => 'Detriti (nuovi)',
         'battle_recycler'        => 'Riciclatore',
+        'battle_pathfinder'      => 'Esploratore',
         'battle_mined_after'     => 'Raccolto dopo il combattimento',
         'battle_reaper'          => 'Mietitore',
         'battle_debris_left'     => 'Campi di detriti (rimanenti)',

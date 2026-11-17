@@ -486,6 +486,7 @@ return [
         'battle_total_loot' => 'Butin total',
         'battle_debris' => 'Débris (nouveau)',
         'battle_recycler' => 'Recycleur',
+        'battle_pathfinder' => 'Éclaireur',
         'battle_mined_after' => 'Exploité après le combat',
         'battle_reaper' => 'Moissonneuse',
         'battle_debris_left' => 'Champs de débris (à gauche)',

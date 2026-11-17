@@ -535,6 +535,7 @@ return [
         'battle_total_loot'      => '總戰利品',
         'battle_debris'          => '殘骸（新）',
         'battle_recycler'        => '回收船',
+        'battle_pathfinder'      => '探路者',
         'battle_mined_after'     => '戰鬥後開採',
         'battle_reaper'          => '收割者',
         'battle_debris_left'     => '殘骸場（剩餘）',

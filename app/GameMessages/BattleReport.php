@@ -243,23 +243,24 @@ class BattleReport extends GameMessage
         $remainingDebrisDeuterium = $debrisDeuterium - $collectedDebrisDeuterium;
         $remainingDebrisResources = new Resources($remainingDebrisMetal, $remainingDebrisCrystal, $remainingDebrisDeuterium, 0);
 
-        // TODO: Expedition battle debris field collection
-        // For expedition battles (when player classes are implemented with Discoverer class),
-        // the debris field will be at position 16 and can only be collected by Pathfinders,
-        // not Recyclers. Update this section to:
-        // 1. Check if this is an expedition battle (check $battleReportModel->general['expedition_battle'])
-        // 2. If yes, calculate and display Pathfinders needed instead of Recyclers
-        // 3. If no, continue showing Recyclers as normal
-        //
-        // Calculate the amount of recyclers needed using DebrisFieldService
+        // Expedition battle debris fields sit at position 16 (deep space) and can only be
+        // harvested by Pathfinders; debris fields from normal battles are harvested by
+        // Recyclers.
+        $isExpeditionBattle = (bool)($battleReportModel->general['expedition_battle'] ?? false);
+
+        // Calculate the amount of collecting ships needed using DebrisFieldService
         $debrisFieldService = resolve(DebrisFieldService::class);
         $debrisFieldService->appendResources($debrisResources);
-        $debrisRecyclersNeeded = $debrisFieldService->calculateRequiredRecyclers();
+        $debrisCollectorsNeeded = $isExpeditionBattle
+            ? $debrisFieldService->calculateRequiredPathfinders()
+            : $debrisFieldService->calculateRequiredRecyclers();
 
-        // Calculate recyclers needed for remaining debris
+        // Calculate collecting ships needed for remaining debris
         $remainingDebrisFieldService = resolve(DebrisFieldService::class);
         $remainingDebrisFieldService->appendResources($remainingDebrisResources);
-        $remainingDebrisRecyclersNeeded = $remainingDebrisFieldService->calculateRequiredRecyclers();
+        $remainingDebrisCollectorsNeeded = $isExpeditionBattle
+            ? $remainingDebrisFieldService->calculateRequiredPathfinders()
+            : $remainingDebrisFieldService->calculateRequiredRecyclers();
 
         // Calculate Reapers that collected debris
         $reaperObject = ObjectService::getShipObjectByMachineName('reaper');
@@ -439,12 +440,13 @@ class BattleReport extends GameMessage
             'loot_percentage' => $lootPercentage,
             'debris_sum_formatted' => AppUtil::formatNumberLong($debrisResources->sum()),
             'debris_resources' => $debrisResources,
-            'debris_recyclers_needed' => $debrisRecyclersNeeded,
+            'debris_collectors_needed' => $debrisCollectorsNeeded,
             'collected_debris_resources' => $collectedDebrisResources,
             'attacker_collected_debris_resources' => $attackerCollectedDebrisResources,
             'defender_collected_debris_resources' => $defenderCollectedDebrisResources,
             'remaining_debris_resources' => $remainingDebrisResources,
-            'remaining_debris_recyclers_needed' => $remainingDebrisRecyclersNeeded,
+            'remaining_debris_collectors_needed' => $remainingDebrisCollectorsNeeded,
+            'is_expedition_battle' => $isExpeditionBattle,
             'total_reapers_used' => $totalReapersUsed,
             'wreckage_count' => $wreckageCount,
             'wreckage_units' => $wreckageUnits,

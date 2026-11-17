@@ -63,8 +63,13 @@ are incomplete:
 
 ### 3. Expedition battle debris
 
-- [ ] Collect debris fields from expedition combat battles
-      (`BattleReport.php:246`)
+- [x] Collect debris fields from expedition combat battles
+      (`BattleReport.php:246`) — shipped (2026-11-17; verified against the
+      original game: deep space (position 16) debris fields created by
+      expedition battles can only be harvested by Pathfinders, so battle
+      reports of expedition battles now hint at the required Pathfinder count
+      instead of Recyclers; the pos-16 debris field creation itself already
+      existed)
 
 ### 4. Robustness / correctness debt (~72 TODOs, notable ones)
 

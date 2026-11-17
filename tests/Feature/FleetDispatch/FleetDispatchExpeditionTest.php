@@ -4,6 +4,7 @@ namespace Tests\Feature\FleetDispatch;
 
 use Exception;
 use Illuminate\Support\Facades\Date;
+use OGame\Factories\GameMessageFactory;
 use OGame\Factories\PlanetServiceFactory;
 use OGame\Factories\PlayerServiceFactory;
 use OGame\GameMessages\ExpeditionGainDarkMatter;
@@ -19,6 +20,7 @@ use OGame\Models\Message;
 use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
 use OGame\Models\User;
+use OGame\Services\DebrisFieldService;
 use OGame\Services\FleetMissionService;
 use OGame\Services\MessageService;
 use OGame\Services\ObjectService;
@@ -1206,6 +1208,110 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         $this->assertEquals(7, ($report->attacker['weapon_technology'] ?? null), 'Pirates should have player tech - 3');
         $this->assertEquals(7, ($report->attacker['shielding_technology'] ?? null), 'Pirates should have player tech - 3');
         $this->assertEquals(7, ($report->attacker['armor_technology'] ?? null), 'Pirates should have player tech - 3');
+    }
+
+    /**
+     * Expedition battles create a debris field at the deep space expedition position (16)
+     * holding 10% of the battle losses, and since only Pathfinders can harvest deep space
+     * debris, the battle report must hint at Pathfinders instead of Recyclers.
+     */
+    public function testExpeditionBattleCreatesDeepSpaceDebrisFieldAndReportHintsPathfinders(): void
+    {
+        $this->basicSetup();
+
+        // Dispatch combat cruisers: a transport-only expedition fleet can stalemate
+        // against the scaled NPC fleet with zero losses (both sides fail to penetrate
+        // shields), which leaves no debris to verify.
+        $this->planetAddUnit('cruiser', 100);
+        $this->planetAddResources(new Resources(0, 0, 500000, 0));
+
+        $this->playerSetResearchLevel('weapon_technology', 10);
+        $this->playerSetResearchLevel('shielding_technology', 10);
+        $this->playerSetResearchLevel('armor_technology', 10);
+
+        // Enable only the pirate battle outcome
+        $this->settingsEnableExpeditionOutcomes([ExpeditionOutcomeType::BattlePirates]);
+
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('cruiser'), 100);
+        $this->sendMissionToPosition16($unitCollection, new Resources(1, 1, 0, 0));
+
+        $this->travel(10)->hours();
+
+        $this->get('/overview');
+        $this->planetService->reloadPlanet();
+
+        $battleReport = BattleReport::orderByDesc('id')->first();
+        $this->assertNotNull($battleReport, 'Battle report should be created');
+        $this->assertTrue($battleReport->general['expedition_battle'] ?? false, 'Report should be marked as expedition battle');
+
+        // Invariant: the debris field at deep space position 16 must hold exactly 10% of
+        // the unit prices of all units lost on both sides, floored per unit type (mirrors
+        // ExpeditionMission::processExpeditionBattleOutcome). The cumulative losses in the
+        // final battle round hold all losses of the battle.
+        $rounds = $battleReport->rounds ?? [];
+        $this->assertNotEmpty($rounds, 'Battle report should contain battle rounds');
+        $lastRound = end($rounds);
+
+        $deuteriumOn = (bool) resolve(SettingsService::class)->debrisFieldDeuteriumOn();
+        $expectedDebris = 0;
+        foreach (['attacker_losses', 'defender_losses'] as $lossesKey) {
+            foreach ($lastRound[$lossesKey] ?? [] as $machineName => $amount) {
+                $unitPrice = ObjectService::getUnitObjectByMachineName($machineName)->price->resources;
+                $expectedDebris += (int) floor($unitPrice->metal->get() * $amount * 0.1);
+                $expectedDebris += (int) floor($unitPrice->crystal->get() * $amount * 0.1);
+
+                if ($deuteriumOn) {
+                    $expectedDebris += (int) floor($unitPrice->deuterium->get() * $amount * 0.1);
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $expectedDebris, 'Cruiser battle should produce battle losses so debris can be verified');
+
+        $expeditionCoordinate = new Coordinate(
+            $this->planetService->getPlanetCoordinates()->galaxy,
+            $this->planetService->getPlanetCoordinates()->system,
+            16
+        );
+        $debrisFieldService = resolve(DebrisFieldService::class);
+        $debrisFieldService->loadOrCreateForCoordinates($expeditionCoordinate);
+        $this->assertSame(
+            $expectedDebris,
+            (int) $debrisFieldService->getResources()->sum(),
+            'Position 16 debris field should hold 10% of all battle losses'
+        );
+
+        // The full battle report must hint at Pathfinders (the only ships that can harvest
+        // deep space debris), not Recyclers. Like the message class, the hint count is
+        // derived from the battle report's debris values. The unit table renders every
+        // unit type, so assert on the collector hint's markup, not on bare unit names.
+        $reportMessage = Message::where('battle_report_id', $battleReport->id)
+            ->where('key', 'battle_report')
+            ->first();
+        $this->assertNotNull($reportMessage, 'Battle report message should exist for the player');
+
+        $reportDebrisSum = (int)($battleReport->debris['metal'] ?? 0)
+            + (int)($battleReport->debris['crystal'] ?? 0)
+            + (int)($battleReport->debris['deuterium'] ?? 0);
+        $this->assertGreaterThan(0, $reportDebrisSum, 'Battle with losses should report debris values');
+
+        $playerService = $this->planetService->getPlayer();
+        $this->assertNotNull($playerService);
+
+        $pathfinderCapacity = ObjectService::getUnitObjectByMachineName('pathfinder')->properties->capacity->calculate($playerService)->totalValue;
+        $recyclerCapacity = ObjectService::getUnitObjectByMachineName('recycler')->properties->capacity->calculate($playerService)->totalValue;
+
+        $bodyFull = GameMessageFactory::createGameMessage($reportMessage)->getBodyFull();
+        $this->assertStringContainsString(
+            '=&gt; ' . (int)ceil($reportDebrisSum / $pathfinderCapacity) . ' Pathfinder</span>',
+            $bodyFull,
+            'Expedition battle report must hint at the required Pathfinder count'
+        );
+        $this->assertStringNotContainsString(
+            '=&gt; ' . (int)ceil($reportDebrisSum / $recyclerCapacity) . ' Recycler</span>',
+            $bodyFull,
+            'Expedition battle report must not hint at Recyclers'
+        );
     }
 
     /**
