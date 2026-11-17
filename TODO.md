@@ -86,7 +86,14 @@ are incomplete:
       scheduling commit atomically; the `spaceshelf:test:race-condition-unitqueue`
       command fails identically on unmodified HEAD, so its remaining race is
       unrelated to this change)
-- [ ] Espionage: validate probe slot 16 edge case (`EspionageMission.php:494`)
+- [x] Espionage: validate probe slot 16 edge case (`EspionageMission.php:494`)
+      — shipped (2026-11-17; verified the report builder is unreachable for deep
+      space: `isMissionPossible()` rejects non-planet/moon targets and missing
+      target planets and `processArrival()` requires a target planet ID, so a
+      target player is always present; documented in code and covered by the new
+      `testFleetCheckToPosition16Error` asserting probes to slot 16 are rejected
+      as both planet and debris-field targets, matching vanilla's lack of a spy
+      option on debris fields)
 - [x] Bulk-delete mission rows to avoid per-mission bottleneck
       (`PlayerService.php:914`) — shipped (2026-11-17; `PlayerService::delete()`
       now collects the involved mission IDs once per planet and issues two bulk

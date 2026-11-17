@@ -498,7 +498,11 @@ class EspionageMission extends GameMission
             ];
         }
 
-        // TODO: Validate this does not cause issues when probing slot 16
+        // Position 16 (deep space) can never reach this code: `isMissionPossible()`
+        // rejects targets that are not an existing planet or moon, and
+        // `processArrival()` requires a target planet ID, so a target planet and its
+        // owner are always present when an espionage report is created. Verified by
+        // FleetDispatchEspionageTest::testFleetCheckToPosition16Error().
         $attackerEspionageLevel = $originPlayer->getEffectiveEspionageLevel();
         $defenderEspionageLevel = $targetPlayer->getEffectiveEspionageLevel();
         $techDifference = $defenderEspionageLevel - $attackerEspionageLevel;

@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Date;
 use OGame\Factories\PlayerServiceFactory;
 use OGame\GameMissions\EspionageMission;
 use OGame\GameObjects\Models\Units\UnitCollection;
+use OGame\Models\Enums\PlanetType;
 use OGame\Models\EspionageReport;
+use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
 use OGame\Services\DebrisFieldService;
 use OGame\Services\FleetMissionService;
@@ -93,6 +95,26 @@ class FleetDispatchEspionageTest extends FleetDispatchTestCase
         $unitCollection = new UnitCollection();
         $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('espionage_probe'), 1);
         $this->fleetCheckToEmptyPosition($unitCollection, false);
+    }
+
+    /**
+     * Assert that probes cannot be sent to position 16 (deep space), both when the
+     * target is requested as a planet (as the galaxy view probe link sends it) and
+     * as a debris field. Espionage targets must be an existing planet or moon, which
+     * is what guarantees the target-player dependent code in the espionage report
+     * builder can never run for the empty position 16 slot.
+     */
+    public function testFleetCheckToPosition16Error(): void
+    {
+        $this->basicSetup();
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('espionage_probe'), 1);
+
+        $this->fleetCheckToPosition16($unitCollection, false);
+
+        $currentPlanetCoords = $this->planetService->getPlanetCoordinates();
+        $deepSpaceCoordinates = new Coordinate($currentPlanetCoords->galaxy, $currentPlanetCoords->system, 16);
+        $this->checkTargetFleet($deepSpaceCoordinates, $unitCollection, PlanetType::DebrisField, false);
     }
 
     public function testDispatchFleetEspionageReport(): void
