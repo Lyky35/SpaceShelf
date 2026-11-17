@@ -5,6 +5,11 @@ Status: **Phases 0–1 implemented** (`spaceshelf:bot:create`, `spaceshelf:bot:t
 detection-panel exclusion). Colonisation (colony-ship pacing + target finder) was
 pulled forward from Phase 2 into Phase 1 because it is core economy behavior;
 transports, war/spy AI and expeditions remain in later phases below.
+Each bot plays one of three behavior classes — **Collector** (bunker worlds, defense
+first, tiny passive fleet), **General** (fleet building over everything, zero
+planetary defense) or **Discoverer** (balanced). The class is also the bot's in-game
+character class (`users.character_class`), so bots receive the same class bonuses and
+unlock the same class ships (Crawler/Reaper/Pathfinder) as real players.
 Goal: populate the universe with NPC players ("bots") that log in periodically, play
 the game competently (build, research, fleet, colonize, spy, attack, expedition,
 hire officers), and coexist with real players without degrading the game or tripping
@@ -102,8 +107,9 @@ app/Bots/
       TransportResources / Colonise / Espionage / Attack / Expedition / RepairFleet
       (each implements Action with canApply()+apply())
   Personality/
-    Personality.php               # weights + traits (aggression, eco bias, explorer)
-    PersonalityFactory.php        # profiles: pacifist/economizer/warrior/explorer/dormant
+    Personality.php               # weights + traits (aggression, colonisation bias,
+                                  # military share, defense bias, research drive)
+    PersonalityFactory.php        # behavior classes: collector/general/discoverer
   BotRegistry.php                 # enable/disable/next-tick bookkeeping
 app/Models/
   Bot.php                         # user_id, personality(json), next_action_at,
