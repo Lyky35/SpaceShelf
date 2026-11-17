@@ -2,6 +2,8 @@
 
 namespace OGame\Bots;
 
+use OGame\Enums\CharacterClass;
+
 /**
  * Creates bot personalities from the named profiles in config/bots.php, with
  * a small amount of random jitter per bot so that two bots of the same profile
@@ -13,6 +15,20 @@ final class PersonalityFactory
      * Maximum deviation (as fraction of the trait value) applied as jitter.
      */
     private const JITTER = 0.15;
+
+    /**
+     * Bot behavior profile → in-game character class. The class ships the
+     * matching bonuses and class-ship entitlements, so a bot's brain profile
+     * and its account must always agree. Used both on creation and when an
+     * admin switches a bot's profile.
+     *
+     * @var array<string, CharacterClass>
+     */
+    public const CLASS_MAP = [
+        'collector' => CharacterClass::COLLECTOR,
+        'general' => CharacterClass::GENERAL,
+        'discoverer' => CharacterClass::DISCOVERER,
+    ];
 
     /**
      * Build a personality for the given profile, or a random profile when

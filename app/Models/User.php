@@ -166,6 +166,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the bot metadata record, when this account is an autonomous bot.
+     *
+     * @return HasOne
+     */
+    public function bot(): HasOne
+    {
+        return $this->hasOne(Bot::class, 'user_id');
+    }
+
+    /**
      * Get the alliance that the user belongs to.
      *
      * @return BelongsTo

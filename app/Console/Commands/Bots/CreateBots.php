@@ -10,7 +10,6 @@ use OGame\Actions\Fortify\CreateNewUser;
 use OGame\Bots\BotRegistry;
 use OGame\Bots\PersonalityFactory;
 use OGame\Bots\PlanetNameGenerator;
-use OGame\Enums\CharacterClass;
 use OGame\Factories\PlayerServiceFactory;
 use OGame\Models\Bot;
 use OGame\Models\User;
@@ -31,17 +30,6 @@ use OGame\Services\CharacterClassService;
 #[Signature('spaceshelf:bot:create {--count=1 : Number of bots to create} {--profile=mixed : Behavior class (collector|general|discoverer) or "mixed"}')]
 class CreateBots extends Command
 {
-    /**
-     * Bot behavior profile → in-game character class.
-     *
-     * @var array<string, CharacterClass>
-     */
-    private const CLASS_MAP = [
-        'collector' => CharacterClass::COLLECTOR,
-        'general' => CharacterClass::GENERAL,
-        'discoverer' => CharacterClass::DISCOVERER,
-    ];
-
     /**
      * Execute the console command.
      *
@@ -72,7 +60,7 @@ class CreateBots extends Command
         /** @var string $profile */
         $profile = (string) $this->option('profile');
 
-        if ($profile !== 'mixed' && !array_key_exists($profile, self::CLASS_MAP)) {
+        if ($profile !== 'mixed' && !array_key_exists($profile, PersonalityFactory::CLASS_MAP)) {
             $this->warn(sprintf('Unknown behavior class "%s"; drawing random classes instead.', $profile));
         }
 
@@ -95,7 +83,7 @@ class CreateBots extends Command
             // free first selection grants the bot its class bonuses (and the
             // Crawler/Reaper/Pathfinder hull later on).
             $botProfile = $this->resolveProfile($profile);
-            $characterClass = self::CLASS_MAP[$botProfile];
+            $characterClass = PersonalityFactory::CLASS_MAP[$botProfile];
             $characterClassService->selectClass($user, $characterClass);
 
             $personality = PersonalityFactory::make($botProfile);
@@ -136,11 +124,11 @@ class CreateBots extends Command
      */
     private function resolveProfile(string $requested): string
     {
-        if (array_key_exists($requested, self::CLASS_MAP)) {
+        if (array_key_exists($requested, PersonalityFactory::CLASS_MAP)) {
             return $requested;
         }
 
-        $profiles = array_keys(self::CLASS_MAP);
+        $profiles = array_keys(PersonalityFactory::CLASS_MAP);
 
         return $profiles[array_rand($profiles)];
     }

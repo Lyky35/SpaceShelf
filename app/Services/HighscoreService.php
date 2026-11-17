@@ -11,6 +11,7 @@ use OGame\GameObjects\CivilShipObjects;
 use OGame\GameObjects\MilitaryShipObjects;
 use OGame\Models\Alliance;
 use OGame\Models\AllianceHighscore;
+use OGame\Models\Bot;
 use OGame\Models\FleetMission;
 use OGame\Models\Highscore;
 use OGame\Models\Resources;
@@ -310,75 +311,89 @@ class HighscoreService
     {
         // Get all player highscores
         $adminVisible = $this->isAdminVisibleInHighscore();
-        return Cache::remember(sprintf('highscores-%s-%d-%s', $this->highscoreType->name, $pageOn, $adminVisible ? '1' : '0'), now()->addMinutes(5), function () use ($perPage, $pageOn, $adminVisible) {
-            $parsedHighscores = [];
 
-            $query = Highscore::query()
-                ->whereHas('player.tech')
-                ->with(['player', 'player.alliance', 'player.roles'])
-                ->validRanks()
-                ->orderBy($this->highscoreType->name.'_rank');
+        // Per-bot leaderboard opt-outs (admin Bots page); the count is part
+        // of the cache key so flipping one takes effect immediately.
+        $hiddenBotCount = Bot::where('hide_from_highscore', true)->count();
 
-            // Filter out admin users if setting is disabled
-            if (!$adminVisible) {
-                $query->whereHas('player', function ($q) {
-                    $q->whereDoesntHave('roles', function ($roleQuery) {
-                        $roleQuery->where('name', 'admin');
+        return Cache::remember(
+            sprintf('highscores-%s-%d-%s-%d', $this->highscoreType->name, $pageOn, $adminVisible ? '1' : '0', $hiddenBotCount),
+            now()->addMinutes(5),
+            function () use ($perPage, $pageOn, $adminVisible) {
+                $parsedHighscores = [];
+
+                $query = Highscore::query()
+                    ->whereHas('player.tech')
+                    ->with(['player', 'player.alliance', 'player.roles'])
+                    ->validRanks()
+                    ->orderBy($this->highscoreType->name . '_rank');
+
+                // Filter out admin users if setting is disabled
+                if (!$adminVisible) {
+                    $query->whereHas('player', function ($q) {
+                        $q->whereDoesntHave('roles', function ($roleQuery) {
+                            $roleQuery->where('name', 'admin');
+                        });
                     });
+                }
+
+                // Hide bots whose leaderboard visibility was turned off.
+                $query->whereDoesntHave('player.bot', function ($q) {
+                    $q->where('hide_from_highscore', true);
                 });
-            }
 
-            $highscores = $query->paginate(perPage: $perPage, page: $pageOn);
+                $highscores = $query->paginate(perPage: $perPage, page: $pageOn);
 
-            foreach ($highscores as $playerScore) {
-                // Load player object
-                // TODO we only use this for the planet details now-- could we perhaps store the planet details in the highscore table too?.
-                $playerService = $this->playerServiceFactory->make($playerScore->player_id);
+                foreach ($highscores as $playerScore) {
+                    // Load player object
+                    // TODO we only use this for the planet details now-- could we perhaps store the planet details in the highscore table too?.
+                    $playerService = $this->playerServiceFactory->make($playerScore->player_id);
 
-                // Get player main planet coords
-                $mainPlanet = $playerService->planets->first();
+                    // Get player main planet coords
+                    $mainPlanet = $playerService->planets->first();
 
-                // Skip players without any planets
-                if ($mainPlanet === null) {
-                    continue;
-                }
-
-                $score = $playerScore->{$this->highscoreType->name} ?? 0;
-                $score_formatted = AppUtil::formatNumber($score);
-
-                // Get player's alliance information if they're in one
-                $allianceTag = null;
-                $allianceId = null;
-                if ($playerScore->player->alliance_id) {
-                    /** @var Alliance|null $alliance */
-                    $alliance = $playerScore->player->alliance;
-                    if ($alliance) {
-                        $allianceTag = $alliance->alliance_tag;
-                        $allianceId = $alliance->id;
+                    // Skip players without any planets
+                    if ($mainPlanet === null) {
+                        continue;
                     }
-                }
 
-                // Get total ship count for military highscore
-                $totalShips = null;
-                if ($this->highscoreType === HighscoreTypeEnum::military) {
-                    $totalShips = $this->getPlayerTotalShipCount($playerService);
-                }
+                    $score = $playerScore->{$this->highscoreType->name} ?? 0;
+                    $score_formatted = AppUtil::formatNumber($score);
 
-                $parsedHighscores[] = [
-                    'id' => $playerScore->player_id,
-                    'name' => $playerScore->player->username,
-                    'points' => $score,
-                    'points_formatted' => $score_formatted,
-                    'planet_coords' => $mainPlanet->getPlanetCoordinates(),
-                    'rank' => $playerScore->{$this->highscoreType->name.'_rank'},
-                    'is_admin' => $playerService->isAdmin(),
-                    'alliance_tag' => $allianceTag,
-                    'alliance_id' => $allianceId,
-                    'total_ships' => $totalShips,
-                ];
+                    // Get player's alliance information if they're in one
+                    $allianceTag = null;
+                    $allianceId = null;
+                    if ($playerScore->player->alliance_id) {
+                        /** @var Alliance|null $alliance */
+                        $alliance = $playerScore->player->alliance;
+                        if ($alliance) {
+                            $allianceTag = $alliance->alliance_tag;
+                            $allianceId = $alliance->id;
+                        }
+                    }
+
+                    // Get total ship count for military highscore
+                    $totalShips = null;
+                    if ($this->highscoreType === HighscoreTypeEnum::military) {
+                        $totalShips = $this->getPlayerTotalShipCount($playerService);
+                    }
+
+                    $parsedHighscores[] = [
+                        'id' => $playerScore->player_id,
+                        'name' => $playerScore->player->username,
+                        'points' => $score,
+                        'points_formatted' => $score_formatted,
+                        'planet_coords' => $mainPlanet->getPlanetCoordinates(),
+                        'rank' => $playerScore->{$this->highscoreType->name.'_rank'},
+                        'is_admin' => $playerService->isAdmin(),
+                        'alliance_tag' => $allianceTag,
+                        'alliance_id' => $allianceId,
+                        'total_ships' => $totalShips,
+                    ];
+                }
+                return $parsedHighscores;
             }
-            return $parsedHighscores;
-        });
+        );
     }
 
     /**

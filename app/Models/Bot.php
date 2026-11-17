@@ -20,6 +20,7 @@ use OGame\Bots\Personality;
  * @property string $profile
  * @property array<string, mixed> $personality
  * @property bool $enabled
+ * @property bool $hide_from_highscore
  * @property Carbon|null $next_action_at
  * @property Carbon|null $last_action_at
  * @property int $total_ticks
@@ -33,6 +34,7 @@ use OGame\Bots\Personality;
     'profile',
     'personality',
     'enabled',
+    'hide_from_highscore',
     'next_action_at',
     'last_action_at',
     'total_ticks',
@@ -70,6 +72,7 @@ class Bot extends Model
         return [
             'personality' => 'array',
             'enabled' => 'boolean',
+            'hide_from_highscore' => 'boolean',
             'next_action_at' => 'datetime',
             'last_action_at' => 'datetime',
         ];

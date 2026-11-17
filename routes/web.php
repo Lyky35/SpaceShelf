@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use OGame\Http\Controllers\Admin\BotsController;
 use OGame\Http\Controllers\Admin\DeveloperShortcutsController;
 use OGame\Http\Controllers\Admin\FleetTimingController;
 use OGame\Http\Controllers\Admin\RulesController as AdminRulesController;
@@ -273,6 +274,12 @@ Route::middleware(['auth', 'globalgame', 'locale', 'admin'])->group(function () 
     Route::post('/admin/fleet-timing/fast-forward', [FleetTimingController::class, 'fastForward'])->name('admin.fleettiming.fast-forward');
     Route::post('/admin/fleet-timing/fast-forward-all', [FleetTimingController::class, 'fastForwardAll'])->name('admin.fleettiming.fast-forward-all');
     Route::post('/admin/fleet-timing/reduce', [FleetTimingController::class, 'reduceTime'])->name('admin.fleettiming.reduce');
+
+    // Bots (autonomous players: pause/resume, profile, leaderboard opt-out)
+    Route::get('/admin/bots', [BotsController::class, 'index'])->name('admin.bots.index');
+    Route::post('/admin/bots/{bot}/enabled', [BotsController::class, 'toggleEnabled'])->name('admin.bots.enabled');
+    Route::post('/admin/bots/{bot}/profile', [BotsController::class, 'updateProfile'])->name('admin.bots.profile');
+    Route::post('/admin/bots/{bot}/highscore-visibility', [BotsController::class, 'toggleHighscore'])->name('admin.bots.highscore');
 
     // Server administration (multi-account detection, bans)
     Route::get('/admin/server-administration', [ServerAdministrationController::class, 'index'])->name('admin.server-administration.index');
