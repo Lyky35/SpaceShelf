@@ -92,6 +92,133 @@ return [
         'batch_size' => 10,
     ],
 
+    //
+    // War & espionage AI (phase 3, docs/BOT-AI-PLAN.md §5).
+    //
+    // Fleet saving, an espionage scouting loop and personality-scaled loot
+    // raids. All war "memory" (cooldowns, avoid lists, intel freshness) is
+    // derived from the game's own tables — outgoing fleet missions, battle
+    // reports and espionage reports — so no bot-specific persistence is
+    // needed.
+    //
+    'war' => [
+        // Master switch for the war policy.
+        'enabled' => true,
+
+        // Personality profiles with aggression at or above this value scout;
+        // only profiles at or above `min_aggression_attack` ever raid.
+        'min_aggression_spy' => 0.2,
+        'min_aggression_attack' => 0.4,
+
+        // Chance per heartbeat to attempt a raid: personality aggression
+        // times this scale, as a percentage. With 0.4 the general (0.9)
+        // raids on roughly a third of visits, the discoverer (0.35) rarely
+        // and the collector (0.3) never passes the attack gate above.
+        'raid_probability_scale' => 0.4,
+
+        'spy' => [
+            // Minimum effective espionage level to bother launching probes.
+            'min_espionage_level' => 1,
+
+            // Probes per scouting mission. Two probes reveal the ship list;
+            // counter-espionage risk grows with probe count and level gap.
+            'probes_per_mission' => 2,
+
+            // Keep up to this many probes in stock across all planets; the
+            // brain builds them on the home planet when below target.
+            'probe_stock_target' => 3,
+
+            // Re-scan coordinates whose intel is older than this (hours).
+            'intel_ttl_hours' => 12,
+
+            // Only consider planets within this many systems of any owned
+            // planet.
+            'max_system_distance' => 3,
+
+            // Maximum spy missions dispatched per heartbeat.
+            'actions_per_visit' => 1,
+        ],
+
+        'loot' => [
+            // Minimum resources + debris (from the latest own spy report)
+            // worth launching an attack over.
+            'min_value' => 20000,
+
+            // Only raid players whose general score is within this relative
+            // band of our own score (0.2..2.5 means targets scoring 20%..250%
+            // of ours). Prevents whale-poking and infinite farming of one
+            // helpless account.
+            'score_band' => [0.2, 2.5],
+
+            // Score ceiling for targets while we have no score yet (fresh
+            // bots): only raid accounts that are clearly below mid game.
+            'unranked_max_score' => 50000,
+        ],
+
+        'protect' => [
+            // Humans inside this highscore rank AND at or above
+            // `human_min_score` are never scouted or raided — protects the
+            // leaderboard. Bots are always fair game. The score floor
+            // matters on small worlds where every account technically
+            // ranks top-N.
+            'human_top_rank' => 10,
+            'human_min_score' => 100000,
+        ],
+
+        'attack' => [
+            // Minimum battle-simulation win probability before committing to
+            // an attack (sample-averaged, see sim_samples).
+            'success_chance' => 0.7,
+
+            // PhpBattleEngine samples per sizing attempt; combat is RNG so a
+            // single sim cannot be trusted.
+            'sim_samples' => 3,
+
+            // Fractions of the strike planet's military stock to try, largest
+            // first; the smallest fraction meeting success_chance is sent.
+            'fleet_fractions' => [0.8, 0.4, 0.2],
+
+            // Never raid the same coordinate again within this many hours
+            // (derived from our own outgoing attack missions).
+            'cooldown_hours' => 12,
+
+            // After a raid that returned having lost at least this fraction
+            // of the dispatched fleet, skip the coordinate for this many
+            // hours (derived from our attack missions and their returns).
+            'avoid_loss_ratio' => 0.3,
+            'avoid_hours' => 48,
+
+            // Minimum military unit count worth dispatching as a strike
+            // fleet; planets without one are ignored as strike origins.
+            'min_strike_size' => 10,
+
+            // Battle-sim budget per heartbeat: stop evaluating targets
+            // after this many have been simulated.
+            'max_sim_targets' => 3,
+
+            // Maximum attack missions dispatched per heartbeat.
+            'actions_per_visit' => 1,
+        ],
+
+        'save_fleet' => [
+            // Fly the military fleet away when our own fleet plus defense
+            // sample a win chance below this ratio against the incoming
+            // attack: to another owned planet (transport), or to deep space
+            // as an expedition when we only have one planet and have
+            // researched astrophysics.
+            'min_win_chance' => 0.3,
+
+            // Ignore incoming attack fleets smaller than this many units.
+            'min_threat_size' => 10,
+
+            // Do not bother evacuating fleets smaller than this many units.
+            'min_fleet_size' => 5,
+
+            // Maximum fleet-save missions dispatched per heartbeat.
+            'actions_per_visit' => 1,
+        ],
+    ],
+
     'economy' => [
         // Target share of total resource production per resource. The brain
         // mines whichever resource lags behind this ratio the most.

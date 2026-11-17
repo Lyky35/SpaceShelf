@@ -131,11 +131,25 @@ character class. Still missing:
       `UtilityBrain::recycleDebris()`); crawlers grow toward the engine's
       usable bonus cap of 8 per total mine level, gated to the Collector
       character class (`bots.harvest` + `UtilityBrain::crawlerCap()`).
-- [ ] **Phase 3 — War & spy AI**: espionage scouting loop, probe → mass-attack
-      combo with battle-engine pre-simulation, threat assessment / fleet save,
-      per-target attack cooldowns + avoid-list. Bots never attack today even
-      though they sit on the highscore — this is what makes "bots raid real
-      players" actually true.
+- [x] **Phase 3 — War & spy AI**: shipped — `WarPolicy` runs after the
+      recycle step: fleet saving (incoming attack fleet that outsamples our
+      fleet + defense above the configured win ratio is evacuated to another
+      own, unthreatened planet, or to an astrophysics-gated deep-space
+      expedition fallback), an espionage scouting loop (probe stock of 3
+      kept on the home planet, neighbours re-scanned when intel is older
+      than 12h), and personality-scaled loot raids (aggression gates the
+      raid roll; PhpBattleEngine pre-simulation averaged over 3 samples
+      sizes the smallest fleet fraction that wins with 70% probability;
+      large cargo rides along for the loot; unaffordable fuel skips the
+      raid). All war "memory" derives from our own fleet missions (12h
+      per-coordinate attack cooldown, 30%-loss avoid list reconstructed
+      from return missions via `parent_id`) plus delivered espionage
+      reports. Protected humans (top 10 on highscore with a ≥100k score
+      floor so small worlds stay raidable), vacationers and out-of-score-
+      band players ([0.2, 2.5]× ours; ≤50000 while we are unranked) are
+      never scouted or raided; bots are always fair game. See
+      `config/bots.php` `bots.war` + `app/Bots/Brain/WarPolicy.php`
+      (tests: `tests/Feature/Bots/BotWarAITest.php`).
 - [ ] **Phase 4 — Expeditions**: expedition loop (currently unused Discoverer
       class bonus)
 - [ ] **Class ships**: Reaper/Pathfinder still unbuilt by the brain — reapers
@@ -162,6 +176,7 @@ character class. Still missing:
 ## Open design decisions (plan doc §12, some answered by current setup)
 
 - Bots visible on highscore: **yes** (current behavior)
-- Bots attack real players: pending Phase 3 — cap raid targets, protect top
-  ranked human, no farm-loops
+- Bots attack real players: **yes, since Phase 3** — score-banded targets,
+  top-ranked humans (with score floor) and vacationers protected, no
+  farm-loops via cooldowns + avoid-list
 - Bots vs bots free PvP: recommended yes (self-balances war AI)

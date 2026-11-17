@@ -21,15 +21,16 @@ use OGame\Services\UnitQueueService;
 use Throwable;
 
 /**
- * Utility-scored brain, phase 2: economy buildings, research pacing, colony
+ * Utility-scored brain, phase 3: economy buildings, research pacing, colony
  * ships + colonisation, solar satellites, a personality-scaled standing fleet,
  * tiered planetary defense for bunker-leaning personalities, crawler-based
- * mine harvesting, inter-planet resource transports and debris recycling.
+ * mine harvesting, inter-planet resource transports, debris recycling and —
+ * through WarPolicy — fleet saving, espionage scouting and loot raids.
  *
  * Heuristics encode the classic OGame ratio rules (mine mix, power coverage,
  * 1:10 robot-factory pacing, storage vs. mine trade-off) and are tunable via
  * config/bots.php. Officer upkeep follows the per-profile policy in
- * config/bots.php; war/scouting policies are a later phase; see
+ * config/bots.php; war policy tuning lives under bots.war. See
  * docs/BOT-AI-PLAN.md.
  *
  * Every action is attempted through the same services the HTTP controllers
@@ -104,6 +105,7 @@ final class UtilityBrain implements BotBrain
         private UnitQueueService $unitQueueService,
         private ColonisationTargetFinder $colonisationTargetFinder,
         private OfficerService $officerService,
+        private WarPolicy $warPolicy,
     ) {
     }
 
@@ -125,6 +127,7 @@ final class UtilityBrain implements BotBrain
         $actions += $this->colonise($snapshot, $personality);
         $actions += $this->transportResources($snapshot);
         $actions += $this->recycleDebris($snapshot);
+        $actions += $this->warPolicy->conduct($snapshot, $personality);
         $actions += $this->hireOfficer($player, $personality);
 
         return $actions;
@@ -392,7 +395,46 @@ final class UtilityBrain implements BotBrain
             $actions += $this->queueUnits($planet, 'crawler', (int) config('bots.harvest.batch_size', 10), withReserve: true);
         }
 
+        // Espionage probes keep the war policy's scouting loop fed. Stock
+        // them on the home planet only (smallest planet id) so probe
+        // spending stays in one place.
+        if (
+            (int) $planet->getPlanetId() === $this->homePlanetId($snapshot) &&
+            $personality->aggression >= (float) config('bots.war.min_aggression_spy', 0.2) &&
+            $snapshot->player->getEffectiveEspionageLevel() >= (int) config('bots.war.spy.min_espionage_level', 1) &&
+            $this->probeStock($snapshot) < (int) config('bots.war.spy.probe_stock_target', 3)
+        ) {
+            $actions += $this->queueUnits($planet, 'espionage_probe', 1, withReserve: true);
+        }
+
         return $actions;
+    }
+
+    /**
+     * The bot's home planet id. Registration always places the home colony
+     * first, so the smallest planet id is the home.
+     */
+    private function homePlanetId(BrainSnapshot $snapshot): int
+    {
+        $ids = array_map(
+            static fn (PlanetService $owned): int => $owned->getPlanetId(),
+            $snapshot->planets,
+        );
+
+        return $ids === [] ? 0 : (int) min($ids);
+    }
+
+    /**
+     * Total espionage probes across the bot's planets.
+     */
+    private function probeStock(BrainSnapshot $snapshot): int
+    {
+        $stock = 0;
+        foreach ($snapshot->planets as $planet) {
+            $stock += $planet->getShipUnits()->getAmountByMachineName('espionage_probe');
+        }
+
+        return $stock;
     }
 
     /**
