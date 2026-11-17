@@ -56,11 +56,6 @@
                             <div class="premium">
                                 <div class="officers100  {{ $officerData['officer']->value }}">
                                     <a tabindex="{{ $index + 2 }}" href="javascript:void(0);" title="{{ __('t_ingame.premium.info_' . $officerData['officer']->value) }}" ref="{{ $index + 2 }}" class="detail_button tooltip js_hideTipOnMobile slideIn">
-                            <span class="ecke">
-                                <span class="level">
-                                    {{ number_format($officerData['cost'], 0, ',', '.') }}
-                                </span>
-                            </span>
                                     </a>
                                 </div>
                                 <div class="remaining tooltip" title="{{ __('t_ingame.premium.cost_per_week') }}">
@@ -72,13 +67,18 @@
                                         @endif
                                     </span>
                                 </div>
-                                <form method="POST" action="{{ route('premium.officer.hire') }}" style="clear: both; margin-top: 4px; text-align: center;">
+                                <form method="POST" action="{{ route('premium.officer.hire') }}" style="position: absolute; bottom: 2px; left: 2px; width: 96px;">
                                     @csrf
                                     <input type="hidden" name="officer" value="{{ $officerData['officer']->value }}">
                                     <input type="hidden" name="weeks" value="1">
-                                    <input type="submit" class="btn_blue" style="width: 95%; font-size: 11px;"
-                                        value="{{ __('t_ingame.premium.hire') }}"
-                                        @if($darkMatter < $officerData['cost']) disabled title="{{ __('t_ingame.premium.hire_insufficient_dm') }}" @endif>
+                                    <button type="submit" class="btn_blue" style="width: 100%; font-size: 10px; line-height: 1.1; padding: 2px 0; cursor: pointer;"
+                                        @if($darkMatter < $officerData['cost'])
+                                            disabled title="{{ __('t_ingame.premium.hire_insufficient_dm') }}"
+                                        @else
+                                            title="{{ __('t_ingame.premium.cost_week', ['cost' => number_format($officerData['cost'], 0, ',', '.')]) }}"
+                                        @endif>
+                                        {{ __('t_ingame.premium.hire') }}<br>{{ number_format($officerData['cost'], 0, ',', '.') }} DM
+                                    </button>
                                 </form>
                             </div>
                         </li>

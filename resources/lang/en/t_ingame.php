@@ -1363,6 +1363,7 @@ return [
 
         // Officer recruitment (SpaceShelf addition: hiring with Dark Matter)
         'cost_per_week'              => 'Cost per week',
+        'cost_week'                  => ':cost Dark Matter per week',
         'status_not_hired'           => 'Not hired',
         'status_active'              => 'Active for :days more days',
         'hire'                       => 'Hire for 1 week',
