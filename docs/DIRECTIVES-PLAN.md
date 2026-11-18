@@ -1,11 +1,12 @@
 # SpaceShelf — Directives (quest system) implementation plan
 
-Status: **Spec + vanilla research done** (2026-11-17; research refreshed
-with screenshots from upstream #843, vendored vanilla CSS classes and
-community sources). Nothing implemented. Upstream tracker: OGameX issue
-**#843** (open feature request). Registration-time newbie/veteran
-selection that activates the tutorial highlights is upstream **#978**
-(out of scope here).
+Status: **Spec + vanilla research complete — PARKED for later**
+(2026-11-17). Research refreshed with screenshots from upstream #843,
+vendored vanilla CSS classes and community sources. Nothing implemented,
+implementation deliberately deferred (tracked in TODO.md §5). Upstream
+tracker: OGameX issue **#843** (open feature request). Registration-time
+newbie/veteran selection that activates the tutorial highlights is
+upstream **#978** (out of scope here).
 
 ## 1. How Directives looked/behaved in original OGame
 

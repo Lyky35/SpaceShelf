@@ -123,6 +123,11 @@ are incomplete:
 
 ### 5. Directives (quest system) — unimplemented, UI is a dead stub (upstream #843)
 
+**Status: research + implementation plan complete (docs/DIRECTIVES-PLAN.md);
+parked for later (2026-11-17). Not scheduled, not active work — the dead
+stub button stays as-is until someone picks it up. Re-read plan §1 before
+implementing.**
+
 Vanilla has **7 chapters** ("Directive I – A Sound Economy" … "Directive
 VI – Alien Life"), each with ~10 missions with individual rewards (incl.
 Dark Matter, e.g. 500 DM for "Open the mission overview") plus a chapter
