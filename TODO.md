@@ -364,9 +364,22 @@ account out of every in-game page.
       downgrade whenever any dependent object — including *completed*
       research — meets the requirement level. Vanilla only blocks active
       dependencies.
-- [ ] **#1537 — wreck field loaded by coordinates without owner scope.**
-      `WreckFieldService::loadForCoordinates()` (`:98`) takes whatever
-      field row matches the coordinates; needs owner scoping.
+- [x] **#1537 — wreck field loaded by coordinates without owner scope.**
+      `WreckFieldService::loadForCoordinates()` (`:98`) took whatever
+      field row matched the coordinates; needs owner scoping.
+      **Fixed 2026-11-18:** scoped by the service's player id and ordered
+      like `getAllWreckFieldsForCurrentPlanet` (repairing → active →
+      blocked → completed, oldest first), so the facilities UI's display
+      check and the subsequent `startRepairs`/`burnWreckField` act on the
+      same record; previously two players' wreck fields at one coordinate
+      let one player start repairs on (or burn) another's field. The two
+      unscoped siblings (`loadOrCreateForCoordinates`,
+      `loadActiveOrBlockedForCoordinates`) have zero call sites and are
+      left as-is. `WreckFieldTest`: five fixtures now pin
+      `owner_player_id` to the current user (they previously relied on the
+      factory's random-user owner plus the unscoped load), plus three new
+      regression tests: cross-owner load isolation, foreign-only → false,
+      and primary-status ordering incl. burned-never-loaded.
 - [ ] **#1203 — admin accounts are attackable.** No admin/role check in
       the fleet dispatch validation path.
 - [ ] **#1288 — current planet selection shared across sessions.** It is

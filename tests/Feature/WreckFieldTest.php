@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Exception;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Planet\Coordinate;
+use OGame\Models\User;
 use OGame\Models\WreckField;
 use OGame\Services\ObjectService;
 use OGame\Services\SettingsService;
@@ -100,6 +101,7 @@ class WreckFieldTest extends IsolatedAccountTestCase
             'galaxy' => $coords->galaxy,
             'system' => $coords->system,
             'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
             'status' => 'active',
             'ship_data' => [
                 ['machine_name' => 'light_fighter', 'quantity' => 10, 'repair_progress' => 0]
@@ -131,6 +133,7 @@ class WreckFieldTest extends IsolatedAccountTestCase
             'galaxy' => $coords->galaxy,
             'system' => $coords->system,
             'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
             'status' => 'active',
             'ship_data' => [
                 ['machine_name' => 'light_fighter', 'quantity' => 5000000, 'repair_progress' => 0],
@@ -199,6 +202,7 @@ class WreckFieldTest extends IsolatedAccountTestCase
             'galaxy' => $coords->galaxy,
             'system' => $coords->system,
             'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
             'status' => 'repairing',
             'ship_data' => [
                 ['machine_name' => 'light_fighter', 'quantity' => 10, 'repair_progress' => 0]
@@ -230,6 +234,7 @@ class WreckFieldTest extends IsolatedAccountTestCase
             'galaxy' => $coords->galaxy,
             'system' => $coords->system,
             'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
             'status' => 'active',
             'ship_data' => [
                 ['machine_name' => 'light_fighter', 'quantity' => 10, 'repair_progress' => 0]
@@ -258,6 +263,7 @@ class WreckFieldTest extends IsolatedAccountTestCase
             'galaxy' => $coords->galaxy,
             'system' => $coords->system,
             'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
             'status' => 'repairing',
             'ship_data' => [
                 ['machine_name' => 'light_fighter', 'quantity' => 10, 'repair_progress' => 0]
@@ -271,6 +277,124 @@ class WreckFieldTest extends IsolatedAccountTestCase
         $this->expectExceptionMessage('Wreck field cannot be burned while repairs are in progress');
 
         $wreckFieldService->burnWreckField();
+    }
+
+    public function test_load_for_coordinates_scopes_to_owner_player(): void
+    {
+        $coords = $this->getCurrentCoordinate();
+        $foreignUser = User::factory()->create();
+
+        // Create the foreign wreck field first, so an unscoped "first" lookup
+        // would pick it up over the current player's field (upstream #1537).
+        $foreignWreckField = WreckField::factory()->create([
+            'galaxy' => $coords->galaxy,
+            'system' => $coords->system,
+            'planet' => $coords->position,
+            'owner_player_id' => $foreignUser->id,
+            'status' => 'active',
+            'ship_data' => [
+                ['machine_name' => 'heavy_fighter', 'quantity' => 7, 'repair_progress' => 0]
+            ],
+        ]);
+
+        $ownWreckField = WreckField::factory()->create([
+            'galaxy' => $coords->galaxy,
+            'system' => $coords->system,
+            'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
+            'status' => 'active',
+            'ship_data' => [
+                ['machine_name' => 'light_fighter', 'quantity' => 10, 'repair_progress' => 0]
+            ],
+        ]);
+
+        $wreckFieldService = $this->getWreckFieldService();
+        $this->assertTrue($wreckFieldService->loadForCoordinates($coords));
+
+        $loadedWreckField = $wreckFieldService->getWreckField();
+        if ($loadedWreckField === null) {
+            $this->fail('Wreck field is null.');
+        }
+        $this->assertEquals($ownWreckField->id, $loadedWreckField->id);
+        $this->assertEquals($this->currentUserId, $loadedWreckField->owner_player_id);
+
+        // Acting on the loaded field must not touch the foreign player's field.
+        $this->assertTrue($wreckFieldService->startRepairs(1));
+
+        $foreignWreckField->refresh();
+        $this->assertEquals('active', $foreignWreckField->status);
+        $this->assertNull($foreignWreckField->repair_started_at);
+    }
+
+    public function test_load_for_coordinates_returns_false_for_foreign_wreck_field(): void
+    {
+        $coords = $this->getCurrentCoordinate();
+        $foreignUser = User::factory()->create();
+
+        WreckField::factory()->create([
+            'galaxy' => $coords->galaxy,
+            'system' => $coords->system,
+            'planet' => $coords->position,
+            'owner_player_id' => $foreignUser->id,
+            'status' => 'active',
+        ]);
+
+        $wreckFieldService = $this->getWreckFieldService();
+        $this->assertFalse($wreckFieldService->loadForCoordinates($coords));
+        $this->assertNull($wreckFieldService->getWreckField());
+    }
+
+    public function test_load_for_coordinates_prefers_primary_status_ordering(): void
+    {
+        $coords = $this->getCurrentCoordinate();
+
+        // Three fields of the current player with distinct statuses; the load
+        // must pick the same primary field getAllWreckFieldsForCurrentPlanet
+        // displays first: repairing before active before completed.
+        $completedWreckField = WreckField::factory()->create([
+            'galaxy' => $coords->galaxy,
+            'system' => $coords->system,
+            'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
+            'status' => 'completed',
+            'created_at' => now()->subHours(3),
+        ]);
+
+        $activeWreckField = WreckField::factory()->create([
+            'galaxy' => $coords->galaxy,
+            'system' => $coords->system,
+            'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
+            'status' => 'active',
+            'created_at' => now()->subHours(2),
+        ]);
+
+        $repairingWreckField = WreckField::factory()->create([
+            'galaxy' => $coords->galaxy,
+            'system' => $coords->system,
+            'planet' => $coords->position,
+            'owner_player_id' => $this->currentUserId,
+            'status' => 'repairing',
+            'created_at' => now()->subHour(),
+        ]);
+
+        $wreckFieldService = $this->getWreckFieldService();
+        $this->assertTrue($wreckFieldService->loadForCoordinates($coords));
+
+        $loadedWreckField = $wreckFieldService->getWreckField();
+        if ($loadedWreckField === null) {
+            $this->fail('Wreck field is null.');
+        }
+        $this->assertEquals($repairingWreckField->id, $loadedWreckField->id);
+
+        // Burned wreck fields are never loaded.
+        $completedWreckField->delete();
+        $activeWreckField->delete();
+        $repairingWreckField->status = 'burned';
+        $repairingWreckField->save();
+
+        $burnedService = $this->getWreckFieldService();
+        $this->assertFalse($burnedService->loadForCoordinates($coords));
     }
 
     public function test_wreck_field_time_remaining(): void

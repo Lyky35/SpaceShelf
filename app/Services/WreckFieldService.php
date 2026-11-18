@@ -88,7 +88,12 @@ class WreckFieldService
     }
 
     /**
-     * Load wreck field by coordinate only if it exists.
+     * Load the current player's wreck field by coordinate only if it exists.
+     *
+     * Multiple players can have wreck fields at the same coordinates, so the
+     * lookup is scoped to the current player; status ordering mirrors
+     * getAllWreckFieldsForCurrentPlanet() so this loads the same primary field
+     * the facilities UI displays (upstream #1537).
      *
      * @param Coordinate $coordinate
      * The coordinate of the wreck field.
@@ -97,10 +102,14 @@ class WreckFieldService
      */
     public function loadForCoordinates(Coordinate $coordinate): bool
     {
-        // Fetch wreck field model
+        // Fetch the current player's wreck field model.
         $wreckField = WreckField::where('galaxy', $coordinate->galaxy)
             ->where('system', $coordinate->system)
             ->where('planet', $coordinate->position)
+            ->where('owner_player_id', $this->playerService->getId())
+            ->whereIn('status', ['repairing', 'active', 'blocked', 'completed'])
+            ->orderByRaw("FIELD(status, 'repairing', 'active', 'blocked', 'completed')")
+            ->orderBy('created_at', 'asc')
             ->first();
 
         if ($wreckField !== null) {
