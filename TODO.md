@@ -376,11 +376,23 @@ account out of every in-game page.
 
 ### Mechanics & correctness (verified present)
 
-- [ ] **#1624 / #1625 — teardown blocked by completed research.**
+- [x] **#1624 / #1625 — teardown blocked by completed research.**
       `ObjectService::canDowngradeBuilding()` (`:967–1035`) blocks a
       downgrade whenever any dependent object — including *completed*
       research — meets the requirement level. Vanilla only blocks active
       dependencies.
+      **Fixed 2026-11-18:** ported upstream PR #1625 (still unmerged
+      upstream) semantically — removed the requirement loop from the
+      tear-down gate entirely (vanilla: requirements only gate
+      *starting* a build/research, never tearing one down). Added
+      `GameObject::$canBeTornDown` (Terraformer/Lunar Base/Space Dock
+      permanent → no button at all); Nanite Factory stays blocked while
+      ships/defense are queued; a queued tear-down now counts as a
+      construction (`objectInBuildingQueue` level param nullable,
+      `isBuildingObject` no longer defaults to current+1), so research
+      cannot be started while the lab is being dismantled; the button is
+      disabled with a reason tooltip instead of hidden. Tests: 3
+      `BuildQueueTest` feature tests + 5 `ObjectServiceTest` unit tests.
 - [x] **#1537 — wreck field loaded by coordinates without owner scope.**
       `WreckFieldService::loadForCoordinates()` (`:98`) took whatever
       field row matched the coordinates; needs owner scoping.
@@ -419,19 +431,42 @@ account out of every in-game page.
       attack/espionage, attack/missile/espionage dispatches through
       send-fleet are rejected, galaxy missile overlay POST rejected with
       no mission row created, and non-admin targets stay attackable.
-- [ ] **#1288 — current planet selection shared across sessions.** It is
+- [x] **#1288 — current planet selection shared across sessions.** It is
       user-record state (`PlayerService::setCurrentPlanetId()`), not
       session state, so a new login resumes on the last visited planet
       (hide-activity abuse + cross-device clobbering). Vanilla: per-session,
       home planet on fresh login.
-- [ ] **#1516 — galaxy colonise ignores the colony-slot cap.**
+      **Fixed 2026-11-18:** current-planet selection now lives in the HTTP
+      session (`current_planet_id` key); `PlayerService::get/setCurrentPlanetId()`
+      read/write it (writes guarded on `session()->driver()->isStarted()`,
+      reads null-safe so console/queue contexts get the home-planet default).
+      The `users.planet_current` column was dropped via a new migration
+      (applied on the live DB). `CurrentPlanetSessionTest`: 4 tests pinning
+      fresh-session → home planet, per-session isolation (flush+save
+      simulation), and cross-process behaviour.
+- [x] **#1516 — galaxy colonise ignores the colony-slot cap.**
       `PlayerService::canColonizePosition()` (`:894`) checks astrophysics
       level/position only and never consults `getMaxPlanetAmount()`; the
       mission itself fails, but the galaxy UI offers an impossible action.
-- [ ] **#1188 — spy report never shows the player class.**
+      **Fixed 2026-11-18:** galaxy-UI scope only (per the upstream issue):
+      new `PlayerService::hasFreeColonySlot()`; empty-slot colonise link and
+      its tooltip plus the AJAX `system.canColonize` endpoint now respect
+      `getMaxPlanetAmount()` (new tooltip text reuses vanilla arrival-failure
+      wording, key `t_galaxy.mission.colonize.astro_limit`). The dispatch
+      path stays lenient on purpose — arrival-failure semantics remain pinned
+      by `FleetDispatchColoniseTest`. 2 `GalaxyTest` tests.
+- [x] **#1188 — spy report never shows the player class.**
       `espionage_report.blade.php:13` (`<!-- TODO: implement player
       class -->`) and `espionage_report_full.blade.php:45` hardcode
       "Class: Unknown".
+      **Fixed 2026-11-18:** `EspionageMission` now snapshots the target's
+      `character_class` into the report's `player_info['player_class']` at
+      creation ('0' = no class). Both templates resolve the class label at
+      render time: snapshot → legacy fallback to the current owner's class
+      (for pre-existing reports) → Unknown; a player with no class renders
+      the existing `t_ingame.layout.class_none` string. No new lang strings.
+      3 `MessagesTest` tests (snapshot capture, legacy fallback via the
+      factory-resolved service instance, no-class rendering).
 
 ### Battle engine / reports / UI (verified present)
 
