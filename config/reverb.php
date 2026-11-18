@@ -82,7 +82,14 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                // Restrict WebSocket origins instead of upstream's wildcard default (#1649).
+                // Reverb only compares hostnames, so entries may be given as hosts (with
+                // * wildcards) or full URLs; URL entries are normalized to their host.
+                // Configure via comma-separated REVERB_ALLOWED_ORIGINS, defaults to APP_URL's host.
+                'allowed_origins' => array_map(
+                    static fn (string $origin): string => (string) (parse_url(trim($origin), PHP_URL_HOST) ?: trim($origin)),
+                    explode(',', (string) env('REVERB_ALLOWED_ORIGINS', (string) env('APP_URL', 'http://localhost'))),
+                ),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),

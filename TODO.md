@@ -307,8 +307,15 @@ account out of every in-game page.
       escaped only.
 - [ ] **#1647 — no rate limiting on the chat send endpoint.** No throttle
       on the `chat.send` route nor in `ChatController`.
-- [ ] **#1649 — Reverb accepts WebSocket connections from any origin.**
+- [x] **#1649 — Reverb accepts WebSocket connections from any origin.**
       `config/reverb.php:85` sets `'allowed_origins' => ['*']`.
+      **Fixed 2026-11-17:** `allowed_origins` defaults to the host of
+      `APP_URL`, overridable via comma-separated `REVERB_ALLOWED_ORIGINS`
+      (hosts with `*` wildcards; full URLs are normalized to their host,
+      since Reverb's `verifyOrigin()` compares hostnames only via
+      `Str::is`). Verified against the live server: `APP_URL` host clients
+      establish normally, foreign origins get Pusher error 4009. Guarded
+      by `WebsocketConfigTest`.
 - [ ] **#1645 / #1646 / #1650 / #1651** — realtime silently disabled in
       production, NOT_AUTHORIZED reply re-send loop, missing reply author
       on live messages, no mobile WS reconnect/fallback. Same unmodified
