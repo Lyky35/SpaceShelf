@@ -440,9 +440,17 @@ account out of every in-game page.
       our `lib.rs` is upstream code verbatim (fork diff = comment renames
       only), so the per-call leak is ours too. Upstream's fix is the v2
       engine rewrite (open PR).
-- [ ] **#1561 — battle report templates carry stale hardcoded `data-raw-*`
+- [x] **#1561 — battle report templates carry stale hardcoded `data-raw-*`
       mock metadata** (`battle_report_full.blade.php:74–76`: fixed
       timestamp, fake hashcode).
+      **Fixed 2026-11-18:** audited both templates — the entire
+      `<div class="rawMessageData">` blocks were unused 2024 client-dump
+      mocks (hidden via `.rawMessageData{display:none}`, zero JS
+      consumers). Removed the divs from `battle_report.blade.php` and
+      `battle_report_full.blade.php`, dropped the now-dead CSS rule, and
+      rebuilt assets. Visible report text unchanged; `testBattleReport`
+      now asserts no `data-raw-` metadata in the full report or the
+      message list preview.
 - [x] **#1216 — fleet event tooltip hardcodes "Own fleet"** for every
       row including hostile ones (`eventrow.blade.php`, both row variants).
       **Fixed 2026-11-18:** new `FleetEventRowViewModel::getOwnershipLabel()`

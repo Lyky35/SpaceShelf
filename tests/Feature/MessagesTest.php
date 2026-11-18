@@ -477,6 +477,15 @@ class MessagesTest extends MoonTestCase
         $response->assertStatus(200);
         $response->assertSee('Combat Report');
 
+        // The 2024 mock client-metadata dump (data-raw-* attrs) must not be
+        // rendered into battle reports (upstream #1561).
+        $response->assertDontSee('data-raw-', false);
+
+        // The message list preview must be free of the mock metadata too.
+        $response = $this->get('/messages');
+        $response->assertStatus(200);
+        $response->assertDontSee('data-raw-', false);
+
         // TODO: add more assertions here to check the content of the battle report.
     }
 
