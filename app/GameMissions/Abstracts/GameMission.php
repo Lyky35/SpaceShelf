@@ -535,7 +535,8 @@ abstract class GameMission
      */
     protected function checkAdminProtection(PlanetService|null $targetPlanet, string $errorMessage): MissionPossibleStatus|null
     {
-        if ($targetPlanet !== null && $targetPlanet->getPlayer()?->getUsername(false) === 'Legor') {
+        $targetUser = $targetPlanet?->getPlayer()?->getUser();
+        if ($targetUser !== null && $targetUser->hasRole('admin')) {
             return new MissionPossibleStatus(false, $errorMessage);
         }
         return null;

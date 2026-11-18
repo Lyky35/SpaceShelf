@@ -74,6 +74,11 @@ class MissileMission extends GameMission
             return $ownPlanetCheck;
         }
 
+        // Planets belonging to administrator accounts cannot be attacked by missiles.
+        if ($adminCheck = $this->checkAdminProtection($targetPlanet, __('This planet belongs to an administrator and cannot be attacked.'))) {
+            return $adminCheck;
+        }
+
         // Check if target is within missile range
         $attackerPlayer = $planet->getPlayer();
         if ($attackerPlayer === null) {

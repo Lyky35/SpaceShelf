@@ -921,6 +921,12 @@ class GalaxyController extends OGameController
             return view('ingame.galaxy.missileattack', $data);
         }
 
+        // Check if target belongs to an administrator account.
+        if ($targetPlanet->getPlayer()?->getUser()?->hasRole('admin')) {
+            $data['error'] = __('This planet belongs to an administrator and cannot be attacked.');
+            return view('ingame.galaxy.missileattack', $data);
+        }
+
         // Check if target is within range
         $distance = $this->calculateSystemDistance($currentPlanet->getPlanetCoordinates(), $targetCoordinate);
         if ($distance > $data['missile_range']) {
@@ -1023,6 +1029,14 @@ class GalaxyController extends OGameController
             return response()->json([
                 'success' => false,
                 'error' => __('You cannot attack your own planet'),
+            ], 403);
+        }
+
+        // Check if target belongs to an administrator account.
+        if ($targetPlanet->getPlayer()?->getUser()?->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'error' => __('This planet belongs to an administrator and cannot be attacked.'),
             ], 403);
         }
 

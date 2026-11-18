@@ -78,7 +78,7 @@ class EspionageMission extends GameMission
             return $vacationCheck;
         }
 
-        // Legor's planet (Arakis at 1:1:2) cannot be probed
+        // Planets belonging to administrator accounts cannot be probed.
         if ($adminCheck = $this->checkAdminProtection($targetPlanet, __('This planet belongs to an administrator and cannot be probed.'))) {
             return $adminCheck;
         }

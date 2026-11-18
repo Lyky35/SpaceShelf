@@ -380,8 +380,28 @@ account out of every in-game page.
       factory's random-user owner plus the unscoped load), plus three new
       regression tests: cross-owner load isolation, foreign-only → false,
       and primary-status ordering incl. burned-never-loaded.
-- [ ] **#1203 — admin accounts are attackable.** No admin/role check in
+- [x] **#1203 — admin accounts are attackable.** No admin/role check in
       the fleet dispatch validation path.
+      **Fixed 2026-11-18:** the fork already had `checkAdminProtection()`
+      in AttackMission/EspionageMission, but it keyed on the username
+      `'Legor'` (the lore planet) instead of the spatie `admin` role, so
+      the real admin account was unprotected in any universe without a
+      user literally named Legor; MissileMission had no check at all.
+      The helper now checks `hasRole('admin')` on the target planet's
+      owner (Legor is covered: the InitializeLegorAccount command
+      assigns the admin role). Added the same check to
+      MissileMission::isMissionPossible(), to GalaxyController's
+      missile-attack overlay POST handler and its GET overlay (those
+      create the missile's FleetMission row directly, bypassing
+      GameMission::start() and thus isMissionPossible), and to the bot
+      brain (WarPolicy::scanTargets target filter replaces the
+      username skip with the role check, plus a guard in the bot's
+      manual missile launch). ACS attack inherits the block (mission
+      type 2 is only enabled when attack is possible and resolves to
+      AttackMission). New `AdminProtectionTest`: check-target disables
+      attack/espionage, attack/missile/espionage dispatches through
+      send-fleet are rejected, galaxy missile overlay POST rejected with
+      no mission row created, and non-admin targets stay attackable.
 - [ ] **#1288 — current planet selection shared across sessions.** It is
       user-record state (`PlayerService::setCurrentPlanetId()`), not
       session state, so a new login resumes on the last visited planet

@@ -516,6 +516,11 @@ final class WarPolicy
             return 0;
         }
 
+        // Never launch missiles at administrators; they do not participate in the game.
+        if ($targetPlayer->getUser()->hasRole('admin')) {
+            return 0;
+        }
+
         // Interplanetary missiles do not use the fleet mission service —
         // the game launches them as their own one-way mission row with a
         // dedicated missile count and flight-time formula, and the missile
@@ -703,7 +708,8 @@ final class WarPolicy
                 }
                 $targetUser = $users[$targetUserId];
 
-                if ($targetUser === null || $targetUser->vacation_mode || $targetUser->username === 'Legor') {
+                // Never target administrators; they do not participate in the game.
+                if ($targetUser === null || $targetUser->vacation_mode || $targetUser->hasRole('admin')) {
                     continue;
                 }
 
