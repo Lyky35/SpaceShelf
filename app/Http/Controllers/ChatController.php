@@ -323,6 +323,13 @@ class ChatController extends OGameController
         if ($playerId) {
             $messages = $chatService->getConversation($userId, $playerId, 50, $beforeId);
         } elseif ($allianceId) {
+            // Only alliance members may page through the alliance chat history.
+            $user = User::find($userId);
+
+            if ($user === null || $user->alliance_id !== $allianceId) {
+                return response()->json(['status' => 'NOT_AUTHORIZED']);
+            }
+
             $messages = $chatService->getAllianceMessages($allianceId, 50, $beforeId);
         } else {
             return response()->json(['status' => 'INVALID_PARAMETERS']);

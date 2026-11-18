@@ -279,9 +279,18 @@ account out of every in-game page.
 
 ### Chat cluster (#1644–#1651) — chat ships from upstream unmodified
 
-- [ ] **#1644 — alliance chat history has no membership check.**
+- [x] **#1644 — alliance chat history has no membership check.**
       `ChatService` queries history by the request-supplied alliance id
       (`:88`), so any logged-in user can pull another alliance's history.
+      **Fixed 2026-11-17:** the gap was `ChatController::loadMore()`
+      (`/chat/more`) — the only alliance-chat entry point without a
+      membership check (`index()`, `sendMessage` mode 3 and `getHistory`
+      mode 4 already compared `$user->alliance_id` against the request's
+      `associationId`). `loadMore()` now returns `NOT_AUTHORIZED` for
+      non-members, and the Reverb `chat.alliance.{id}` channel auth
+      (`routes/channels.php`) already required membership. Tests:
+      `ChatTest` verifies non-members are rejected from `/chat/more` and
+      members can still page through their own alliance chat.
 - [x] **#1648 — player names inserted into HTML unescaped.**
       `resources/js/ingame/chat.js:517` string-concatenates names into
       markup (XSS). Same class of issue nearby: `espionage_report.blade.php:7`

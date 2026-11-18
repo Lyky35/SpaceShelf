@@ -580,4 +580,58 @@ class ChatTest extends IsolatedAccountTestCase
         $this->assertArrayHasKey('chatItems', $data);
         $this->assertCount(4, $data['chatItemsByDateAsc']);
     }
+
+    /**
+     * Test that non-alliance members cannot page through another alliance's chat
+     * history via the pagination endpoint (upstream #1644).
+     */
+    public function testNonMemberCannotLoadMoreAllianceMessages(): void
+    {
+        // Create an alliance with chat history via another user, so the current
+        // user is NOT part of it.
+        $otherUser = User::factory()->create();
+        $allianceService = resolve(AllianceService::class);
+        $alliance = $allianceService->createAlliance($otherUser->id, 'OM' . substr(md5(uniqid()), 0, 5), 'OtherMoreAlliance ' . substr(md5(uniqid()), 0, 5));
+
+        $chatService = resolve(ChatService::class);
+        $secret = $chatService->sendAllianceMessage($otherUser->id, $alliance->id, 'Top secret alliance talk');
+
+        $response = $this->post('/chat/more', [
+            'associationId' => $alliance->id,
+            'beforeId' => $secret->id + 1,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'NOT_AUTHORIZED']);
+
+        // The response must not contain any alliance message content.
+        $this->assertArrayNotHasKey('chatItems', $response->json());
+    }
+
+    /**
+     * Test that alliance members can still page through their own alliance chat
+     * history via the pagination endpoint.
+     */
+    public function testMemberCanLoadMoreAllianceMessages(): void
+    {
+        $alliance = $this->createAllianceForCurrentUser();
+
+        $chatService = resolve(ChatService::class);
+        $chatService->sendAllianceMessage($this->currentUserId, $alliance->id, 'First alliance message');
+        $newest = $chatService->sendAllianceMessage($this->currentUserId, $alliance->id, 'Second alliance message');
+
+        // Re-fetch and re-authenticate so the user's alliance_id is reflected in auth.
+        $this->be(User::findOrFail($this->currentUserId));
+
+        $response = $this->post('/chat/more', [
+            'associationId' => $alliance->id,
+            'beforeId' => $newest->id,
+        ]);
+
+        $response->assertStatus(200);
+
+        $data = $response->json();
+        $this->assertArrayHasKey('chatItems', $data);
+        $this->assertCount(1, $data['chatItemsByDateAsc']);
+    }
 }
