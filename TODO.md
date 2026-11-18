@@ -123,12 +123,15 @@ are incomplete:
 
 ### 5. Directives (quest system) — unimplemented, UI is a dead stub (upstream #843)
 
-Vanilla has 70 directives in 7 categories (In-Play Intelligence quests);
-rewards are granted on the planet active at claim time, plus a category
-bonus. Implementation plan: `docs/DIRECTIVES-PLAN.md`. Dependency status:
-Dark Matter (upstream #770) — done here; teardown exists (but has the
-#1624/#1625 bug below); lifeforms (upstream #228) — missing, those
-directives are skipped.
+Vanilla has **7 chapters** ("Directive I – A Sound Economy" … "Directive
+VI – Alien Life"), each with ~10 missions with individual rewards (incl.
+Dark Matter, e.g. 500 DM for "Open the mission overview") plus a chapter
+bonus claimable via "Claim All"; rewards land on the planet active at
+claim time. Vanilla look/behavior fully researched in
+`docs/DIRECTIVES-PLAN.md` §1. Implementation plan: same file. Dependency
+status: Dark Matter (upstream #770) — done here; teardown exists (but has
+the #1624/#1625 bug below); lifeforms (upstream #228) — missing,
+Directive VI is skipped.
 
 Current state — the button is dead leftover HTML from the vanilla client
 dump:
@@ -145,9 +148,10 @@ dump:
 - Related upstream: #978 (registration newbie/veteran choice, gates the
   highlight hints) — open.
 
-- [ ] P0: extract the 70 vanilla directives (conditions/rewards/texts)
-      into `config/directives.php` + `resources/lang/en/t_directives.php`
-      (blocking; skip lifeform-gated ones and record the skips)
+- [ ] P0: extract the 7 vanilla chapters + ~70 missions (conditions/
+      rewards/texts incl. narrator dialogue) into `config/directives.php`
+      + `resources/lang/en/t_directives.php` (blocking; Directive VI
+      lifeform chapter skipped and recorded)
 - [ ] P1: `directive_progress` migration, condition engine, lazy evaluation
       in `GlobalGame` middleware, atomic claim endpoint (rewards to the
       **active** planet via `PlanetService::addResources/addUnits`,
