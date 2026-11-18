@@ -21,13 +21,19 @@ ogame.chat = {
     },
     initConnection: function () {
         var c = ogame.chat;
-        if (c.connecting || c.connected || c.isMobile) {
+        // The isMobile gate that used to live here disabled realtime chat on
+        // mobile, but mobile uses the same layout and bundle, so it only ever
+        // broke the feature (upstream #1651).
+        if (c.connecting || c.connected) {
             return;
         }
         c.connecting = true;
         try {
             if (typeof window.Echo === 'undefined' || typeof window.Echo.private !== 'function') {
                 c.connecting = false;
+                // No Echo (Reverb not configured or bundle missing) — poll the
+                // open chat windows instead so chat keeps working (upstream #1651).
+                c.startFallbackPolling();
                 return;
             }
 
@@ -47,8 +53,10 @@ ogame.chat = {
 
             c.connecting = false;
             c.connected = true;
+            c.watchConnection();
         } catch (d) {
             c.connecting = false;
+            c.startFallbackPolling();
         }
     },
     initialize: function () {
@@ -161,8 +169,107 @@ ogame.chat = {
     retryConnection: function () {
         var b = ogame.chat;
         setTimeout(function () {
-            b.initConnection()
+            if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
+                // Echo exists but its socket failed: ask the client to
+                // reconnect it. Re-running initConnection() would attach a
+                // second set of listeners to the same private channels.
+                window.Echo.connector.pusher.connect();
+            } else {
+                b.initConnection()
+            }
         }, 5000)
+    },
+    watchConnection: function () {
+        var c = ogame.chat;
+        if (c.connectionWatched) {
+            return;
+        }
+        // Reverb speaks the Pusher protocol, so laravel-echo wraps a pusher-js
+        // client whose connection manager reports the socket state.
+        if (!window.EEcho || !window.Echo.connector || !window.Echo.connector.pusher || !window.Echo.connector.pusher.connection) {
+            return;
+        }
+        var conn = window.Echo.connector.pusher.connection;
+        c.connectionWatched = true;
+        conn.on('connected', function () {
+            c.connected = true;
+            c.connecting = false;
+            c.stopFallbackPolling();
+        });
+        conn.on('disconnected', function () {
+            c.connected = false;
+            c.startFallbackPolling();
+        });
+        conn.on('unavailable', function () {
+            c.connected = false;
+            c.startFallbackPolling();
+        });
+        conn.on('failed', function () {
+            c.connected = false;
+            c.startFallbackPolling();
+            c.retryConnection();
+        });
+    },
+    startFallbackPolling: function () {
+        var c = ogame.chat;
+        if (c.fallbackPollingRunning) {
+            return;
+        }
+        c.fallbackPollingRunning = true;
+        var tick = function () {
+            if (!c.fallbackPollingRunning) {
+                return;
+            }
+            if (c.connected) {
+                c.fallbackPollingRunning = false;
+                return;
+            }
+            c.pollOpenChatBoxes();
+            setTimeout(tick, 5000)
+        };
+        setTimeout(tick, 5000)
+    },
+    stopFallbackPolling: function () {
+        ogame.chat.fallbackPollingRunning = false;
+    },
+    pollOpenChatBoxes: function () {
+        var c = ogame.chat;
+        // Reload the log of every chat box the player can see and redraw it —
+        // the realtime path is unavailable while this poller runs.
+        $(".chat_bar_list > .chat_bar_list_item").each(function () {
+            var a = $(this);
+            var box = a.children(".chat_box");
+            if (!a.hasClass("open") || !box.is(":visible")) {
+                return;
+            }
+            var pid = a.data("playerid");
+            var aid = a.data("associationid");
+            if (aid !== undefined) {
+                c.loadChatLogWithAssociation(aid, null, function () {
+                    c.renderChatBox(box, c.data.association[aid]);
+                });
+            } else if (pid !== undefined) {
+                c.loadChatLogWithPlayer(pid, null, function () {
+                    c.renderChatBox(box, c.data[pid]);
+                });
+            }
+        });
+    },
+    renderChatBox: function (box, entry) {
+        if (!entry || !box || !box.length) {
+            return;
+        }
+        var c = ogame.chat;
+        var ctn = box.children(".chat_box_ctn");
+        var ul = ctn.children("ul.chat");
+        if (!ul.length) {
+            return;
+        }
+        ul.empty();
+        for (var i = 0; i < entry.chatItemsByDateAsc.length; i++) {
+            ul.append(c.createChatItem(entry.chatItems[entry.chatItemsByDateAsc[i]]));
+        }
+        c.updateCustomScrollbar(ctn);
     },
     sendMessage: function (u, r, n, m) {
         var o = ogame.chat;
