@@ -234,14 +234,18 @@ account out of every in-game page.
       messages and combat reports for bodies purged mid-flight render
       broken `[planet][/planet]` placeholders.
 
-### Ops — root-owned daily log disables php-fpm error logging
+### Ops — root-owned daily log disables php-fpm error logging — fixed (2026-11-17)
 
-- [ ] **#1642 — daily log rotation writes a root-owned file.** Verified
+- [x] **#1642 — daily log rotation writes a root-owned file.** Verified
       live in our deployment: `storage/logs/laravel-<today>.log` is owned
       by `root:root` (created by the root scheduler/cron process) while the
       php-fpm pool runs as `www-data` and cannot append to it the rest of
       the day. Run scheduled tasks as `www-data` in the container (or make
       the log dir group-writable) so php-fpm errors don't silently vanish.
+      Fixed in `docker/entrypoint.sh`: scheduler, queue-worker and reverb
+      roles now `su` their PHP process to `www-data` and chown
+      `storage/`+`bootstrap/cache` on start, so midnight rotations and
+      every file a background job creates are pool-writable.
 
 ### Production factor math (#1660 / #1661; pairs with #1629 energy display)
 

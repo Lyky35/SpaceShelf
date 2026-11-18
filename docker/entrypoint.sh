@@ -21,15 +21,24 @@ fi
 # Configure Git to trust the working directory
 git config --global --add safe.directory /var/www
 
+# Only the "app" role needs root (chown + php-fpm master). Run every other
+# role's PHP process as www-data so files they create (log rotation at
+# midnight, cache files) stay writable by the php-fpm pool. Previously the
+# root-owned scheduler created the daily log file first and php-fpm then
+# failed to append to it, silently losing all application errors (#1642).
+if [ "$role" != "app" ]; then
+    chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+fi
+
 if [ "$role" = "scheduler" ]; then
     while true; do
-        php /var/www/artisan schedule:run --verbose --no-interaction
+        su -s /bin/sh -c "php /var/www/artisan schedule:run --verbose --no-interaction" www-data
         sleep 60
     done
 elif [ "$role" = "queue" ]; then
-      php /var/www/artisan queue:work --verbose --no-interaction
+      su -s /bin/sh -c "php /var/www/artisan queue:work --verbose --no-interaction" www-data
 elif [ "$role" = "reverb" ]; then
-    php /var/www/artisan reverb:start --host="${REVERB_SERVER_HOST:-0.0.0.0}" --port="${REVERB_SERVER_PORT:-8090}"
+    su -s /bin/sh -c "php /var/www/artisan reverb:start --host=\"${REVERB_SERVER_HOST:-0.0.0.0}\" --port=\"${REVERB_SERVER_PORT:-8090}\"" www-data
 elif [ "$role" = "app" ]; then
     # Check APP_ENV and run appropriate composer install
     if [ "$is_production" = true ]; then
