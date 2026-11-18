@@ -34,7 +34,17 @@ class BotMoonPlayTest extends IsolatedAccountTestCase
     {
         $this->assertSame(0, Artisan::call('spaceshelf:bot:create', ['--count' => 1, '--profile' => $profile]));
 
-        return Bot::orderByDesc('id')->firstOrFail();
+        $bot = Bot::orderByDesc('id')->firstOrFail();
+
+        // Pin the quirks away: habits flip build orders and scale build
+        // targets, and this suite asserts the default profile behavior.
+        // Habit-specific tests live in BotHumanizationTest.
+        $personality = $bot->personality;
+        $personality['habits'] = [];
+        $bot->personality = $personality;
+        $bot->save();
+
+        return $bot;
     }
 
     /**

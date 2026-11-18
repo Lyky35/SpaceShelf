@@ -176,6 +176,14 @@ class BotHumanizationTest extends IsolatedAccountTestCase
     public function testTransportBankIsKeptOnStandby(): void
     {
         $bot = $this->createBot('collector');
+
+        // Pin the quirks away so the expected bank sizes hold: a randomly
+        // drawn transport_hoarder habit would double them.
+        $personality = $bot->personality;
+        $personality['habits'] = [];
+        $bot->personality = $personality;
+        $bot->save();
+
         $player = $this->reloadPlayer($bot);
         $home = $this->homePlanet($player);
 
@@ -247,6 +255,15 @@ class BotHumanizationTest extends IsolatedAccountTestCase
     public function testFusionReactorJoinsTheEnergyCandidatesInPlayersPattern(): void
     {
         $bot = $this->createBot('collector');
+
+        // Pin the quirks away: solar_eager bots deliberately keep fusion in
+        // the candidate list even on young planets, which would make the
+        // "young planet" assertion below a dice roll.
+        $personality = $bot->personality;
+        $personality['habits'] = [];
+        $bot->personality = $personality;
+        $bot->save();
+
         $player = $this->reloadPlayer($bot);
         $home = $this->homePlanet($player);
 
