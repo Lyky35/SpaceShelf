@@ -128,6 +128,7 @@ final class UtilityBrain implements BotBrain
             $actions += $this->buildResearch($player, $planet, $personality);
             $actions += $this->buildUnits($snapshot, $planet, $personality);
             $actions += $this->buildDefense($planet, $personality);
+            $actions += $this->buildIgmStock($planet, $personality);
         }
 
         $actions += $this->developMoons($snapshot, $personality);
@@ -294,6 +295,18 @@ final class UtilityBrain implements BotBrain
             && $this->combatDefenseAmount($planet) >= $this->defenseTarget($personality)
         ) {
             $score['missile_silo'] = 1000.0;
+        }
+
+        // Aggressive players want a silo for their interplanetary missiles
+        // even without any defense agenda — but deliberately low-scored, so
+        // the silo only goes up when the economy line has nothing urgent
+        // queued, exactly like a player building "when there's room".
+        if (
+            $personality->aggression >= $this->missileMinAggression()
+            && (int) config('bots.military.igm_stock_target', 10) > 0
+            && $planet->getObjectLevel('missile_silo') < (int) config('bots.military.igm_silo_level', 4)
+        ) {
+            $score['missile_silo'] = max($score['missile_silo'] ?? 0.0, 55.0);
         }
 
         // Research lab must keep pace with the player's highest research so
@@ -781,6 +794,54 @@ final class UtilityBrain implements BotBrain
     }
 
     /**
+     * Interplanetary missile bank for aggressive personalities: players
+     * keep a few IGMs in the silo for the fight their fleet cannot win —
+     * the war policy spends them on defended loot it cannot raid outright.
+     * IGMs share the silo with ABMs, so the bank fits into the slots left
+     * over after the defense stock. Silo levels come from the building
+     * pass; until the silo exists there is nothing to order.
+     */
+    private function buildIgmStock(PlanetService $planet, Personality $personality): int
+    {
+        if ($personality->aggression < $this->missileMinAggression()) {
+            return 0;
+        }
+
+        $stockTarget = (int) config('bots.military.igm_stock_target', 10);
+
+        if ($stockTarget <= 0) {
+            return 0;
+        }
+
+        $siloLevel = (int) $planet->getObjectLevel('missile_silo');
+
+        if ($siloLevel < (int) config('bots.military.igm_silo_level', 4)) {
+            return 0;
+        }
+
+        // ABMs share the silo, so the IGM bank never squeezes the defense
+        // stock out of its slots.
+        $abmHeld = $planet->getDefenseUnits()->getAmountByMachineName('anti_ballistic_missile');
+        $abmQueued = $this->queuedUnitAmount($planet, ['anti_ballistic_missile']);
+        $target = min($stockTarget, $siloLevel * 10 - $abmHeld - $abmQueued);
+
+        $held = $planet->getDefenseUnits()->getAmountByMachineName('interplanetary_missile');
+
+        if ($target <= 0 || $held + $this->queuedUnitAmount($planet, ['interplanetary_missile']) >= $target) {
+            return 0;
+        }
+
+        $batchSize = (int) config('bots.military.igm_batch_size', 5);
+
+        return $this->queueUnits(
+            $planet,
+            'interplanetary_missile',
+            min($batchSize, $target - $held),
+            withReserve: true,
+        );
+    }
+
+    /**
      * Not-yet-finished unit builds of these machine names on one planet, so
      * single-item depth orders are not stacked while the first is queued.
      * Completed rows (processed = 1) are excluded and partially built
@@ -818,6 +879,16 @@ final class UtilityBrain implements BotBrain
     private function defenseMinBias(): float
     {
         return (float) config('bots.military.defense_min_bias', 0.2);
+    }
+
+    /**
+     * Minimum aggression at which a personality keeps interplanetary
+     * missiles: silo for them, a stock in it, and volleys from the war
+     * policy against targets its fleet cannot crack.
+     */
+    private function missileMinAggression(): float
+    {
+        return (float) config('bots.war.missiles.min_aggression', 0.5);
     }
 
     /**

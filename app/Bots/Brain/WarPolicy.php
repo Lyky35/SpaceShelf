@@ -41,6 +41,7 @@ final class WarPolicy
     private const MISSION_TYPE_ATTACK = 1;
     private const MISSION_TYPE_TRANSPORT = 3;
     private const MISSION_TYPE_ESPIONAGE = 6;
+    private const MISSION_TYPE_MISSILE = 10;
     private const MISSION_TYPE_EXPEDITION = 15;
 
     /**
@@ -331,6 +332,9 @@ final class WarPolicy
         $missions = 0;
         $simulatedTargets = 0;
 
+        /** @var array<int, Coordinate> $softTargets */
+        $softTargets = [];
+
         foreach ($this->scanTargets($snapshot) as $target) {
             if ($missions >= $maxMissions || $simulatedTargets >= $maxSimTargets) {
                 break;
@@ -360,15 +364,29 @@ final class WarPolicy
 
             $simulatedTargets++;
 
+            $launched = false;
+            $firstFraction = true;
+            $undefendable = false;
+
             foreach ($fractions as $fraction) {
                 $units = $this->strikeFleet($from, (float) $fraction);
                 if ($units->getAmount() < $minStrike) {
+                    $firstFraction = false;
+
                     continue;
                 }
 
                 if (
                     $this->battleWinChance($targetPlanet, [$this->attackerFleet($player, $units)], $samples) < $minWin
                 ) {
+                    // Even the biggest fleet fraction we would send loses —
+                    // remember it as a soft target for the missile volley.
+                    if ($firstFraction) {
+                        $undefendable = true;
+                    }
+
+                    $firstFraction = false;
+
                     continue;
                 }
 
@@ -396,13 +414,140 @@ final class WarPolicy
                     $this->dispatchMission($from, self::MISSION_TYPE_ATTACK, $target->coordinate, PlanetType::Planet, $units)
                 ) {
                     $missions++;
+                    $launched = true;
                 }
 
                 break;
             }
+
+            if (
+                !$launched &&
+                $undefendable &&
+                count($softTargets) < (int) config('bots.war.missiles.max_soft_targets', 2)
+            ) {
+                $softTargets[] = $target->coordinate;
+            }
+        }
+
+        // Fleet could not crack anything worth raiding this visit — the
+        // missile bank is what a human reaches for next.
+        if ($missions === 0 && $softTargets !== []) {
+            $missions += $this->missileVolley($snapshot, $personality, $softTargets, $cooldownSeconds);
         }
 
         return $missions;
+    }
+
+    /**
+     * Missile volley: a scouted target was worth raiding but even our
+     * biggest fleet fraction would lose the battle sim — a defended loot
+     * pin. A human does not shrug and log off; they drop an interplanetary
+     * missile salvo on the guns keeping them out and try the raid again
+     * once the craters are in (loot survives an IGM hit). Fires one volley
+     * at the first qualifying soft target, from the planet with the
+     * biggest interplanetary missile bank.
+     */
+    private function missileVolley(
+        BrainSnapshot $snapshot,
+        Personality $personality,
+        array $softTargets,
+        int $cooldownSeconds,
+    ): int {
+        if ($personality->aggression < (float) config('bots.war.missiles.min_aggression', 0.5)) {
+            return 0;
+        }
+
+        $probability = (float) config('bots.war.missiles.probability', 0.35) * 100;
+
+        if (random_int(1, 100) > (int) round($probability)) {
+            return 0;
+        }
+
+        $volleyMin = (int) config('bots.war.missiles.volley_min', 4);
+        $volleySize = (int) config('bots.war.missiles.volley_size', 10);
+        $player = $snapshot->player;
+
+        /** @var array<int, Coordinate> $softTargets */
+        $coordinate = $softTargets[0];
+
+        if ($this->recentlyAttacked($player, $coordinate, $cooldownSeconds, [self::MISSION_TYPE_MISSILE])) {
+            return 0;
+        }
+
+        // Fire from the planet with the biggest IGM bank that meets the
+        // volley minimum; the bank only exists where a silo does.
+        $source = null;
+        $best = 0;
+
+        foreach ($snapshot->planets as $planet) {
+            $stock = (int) $planet->getObjectAmount('interplanetary_missile');
+
+            if ($stock >= $volleyMin && $stock > $best) {
+                $source = $planet;
+                $best = $stock;
+            }
+        }
+
+        if ($source === null) {
+            return 0;
+        }
+
+        $volley = min($volleySize, $best);
+
+        // IGMs do not cross galaxies, and their reach is the impulse
+        // drive's — the same pre-checks the game's launch screen does.
+        $sourceCoords = $source->getPlanetCoordinates();
+
+        if (
+            $sourceCoords->galaxy !== $coordinate->galaxy ||
+            abs($sourceCoords->system - $coordinate->system) > $player->getMissileRange()
+        ) {
+            return 0;
+        }
+
+        $targetPlanet = $this->planetServiceFactory->makeForCoordinate($coordinate, true, PlanetType::Planet);
+
+        if ($targetPlanet === null) {
+            return 0;
+        }
+
+        $targetPlayer = $targetPlanet->getPlayer();
+        if ($targetPlayer === null || $targetPlayer->equals($player)) {
+            return 0;
+        }
+
+        // Interplanetary missiles do not use the fleet mission service —
+        // the game launches them as their own one-way mission row with a
+        // dedicated missile count and flight-time formula, and the missile
+        // processor reads exactly that. This mirrors that launch path.
+        $distance = abs($sourceCoords->system - $coordinate->system);
+        $now = (int) Date::now()->timestamp;
+
+        $mission = new FleetMission();
+        $mission->user_id = $player->getId();
+        $mission->planet_id_from = $source->getPlanetId();
+        $mission->galaxy_from = $sourceCoords->galaxy;
+        $mission->system_from = $sourceCoords->system;
+        $mission->position_from = $sourceCoords->position;
+        $mission->type_from = $source->getPlanetType()->value;
+        $mission->planet_id_to = $targetPlanet->getPlanetId();
+        $mission->galaxy_to = $coordinate->galaxy;
+        $mission->system_to = $coordinate->system;
+        $mission->position_to = $coordinate->position;
+        $mission->type_to = $targetPlanet->getPlanetType()->value;
+        $mission->mission_type = self::MISSION_TYPE_MISSILE;
+        $mission->time_departure = $now;
+        $mission->time_arrival = $now + (int) (30 + 60 * $distance);
+        $mission->canceled = 0;
+        $mission->processed = 0;
+        $mission->interplanetary_missile = $volley;
+        $mission->target_priority = 0;
+        $mission->save();
+
+        $source->removeUnit('interplanetary_missile', $volley);
+        $source->save();
+
+        return 1;
     }
 
     /**
@@ -603,13 +748,20 @@ final class WarPolicy
     }
 
     /**
-     * Whether we already launched an attack at this coordinate within the
-     * cooldown window (our own fleet missions are our attack history).
+     * Whether we already launched a mission of these types at this
+     * coordinate within the cooldown window (our own fleet missions are our
+     * attack history).
+     *
+     * @param array<int, int> $missionTypes
      */
-    private function recentlyAttacked(PlayerService $player, Coordinate $coordinate, int $cooldownSeconds): bool
-    {
+    private function recentlyAttacked(
+        PlayerService $player,
+        Coordinate $coordinate,
+        int $cooldownSeconds,
+        array $missionTypes = [self::MISSION_TYPE_ATTACK],
+    ): bool {
         return FleetMission::where('user_id', $player->getId())
-            ->where('mission_type', self::MISSION_TYPE_ATTACK)
+            ->whereIn('mission_type', $missionTypes)
             ->where('galaxy_to', $coordinate->galaxy)
             ->where('system_to', $coordinate->system)
             ->where('position_to', $coordinate->position)

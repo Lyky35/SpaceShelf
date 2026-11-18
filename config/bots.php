@@ -125,6 +125,29 @@ return [
         // and the collector (0.3) never passes the attack gate above.
         'raid_probability_scale' => 0.4,
 
+        // Interplanetary missile strikes. When a scouted target is worth
+        // raiding but the battle sim says the fleet would lose, aggressive
+        // personalities drop an IGM salvo on its defense and try again
+        // later — loot survives the missiles, the guns that blocked the
+        // raid do not. UtilityBrain banks the missiles (see the military
+        // block); only personalities at or above `min_aggression` fire.
+        'missiles' => [
+            'min_aggression' => 0.5,
+
+            // Chance per raid visit (when the fleet found nothing it could
+            // win) to fire one volley.
+            'probability' => 0.35,
+
+            // Maximum IGMs fired per volley, and the minimum bank worth
+            // spending — a lone missile or two is not worth the launch.
+            'volley_size' => 10,
+            'volley_min' => 4,
+
+            // How many raid-favored but undefendable targets to keep track
+            // of per visit as missile candidates.
+            'max_soft_targets' => 2,
+        ],
+
         'spy' => [
             // Minimum effective espionage level to bother launching probes.
             'min_espionage_level' => 1,
@@ -376,6 +399,16 @@ return [
         'shield_dome_target' => 2,
         'abm_target' => 20,
         'abm_silo_level' => 2,
+
+        // Interplanetary missile bank for aggressive personalities: they
+        // raise a missile silo to igm_silo_level (the engine only lets them
+        // build IGMs from level 4) and keep up to igm_stock_target IGMs in
+        // it, in igm_batch_size doses, after the ABM stock took its slots.
+        // The war policy spends them on raid targets the fleet sim says
+        // would lose — "can't win with the fleet, lob missiles anyway".
+        'igm_stock_target' => 10,
+        'igm_batch_size' => 5,
+        'igm_silo_level' => 4,
     ],
 
     // Moon play: every owned moon gets this facility line built out, and
