@@ -2,6 +2,7 @@
 
 namespace OGame\GameMessages;
 
+use OGame\Enums\CharacterClass;
 use OGame\GameMessages\Abstracts\GameMessage;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\Planet\Coordinate;
@@ -153,6 +154,25 @@ class EspionageReport extends GameMessage
             $playername = $this->playerServiceFactory->make($espionageReportModel->planet_user_id)->getUsername();
         }
 
+        // Resolve the reported player's character class for the report header. New
+        // reports snapshot the class in player_info at creation time; reports that
+        // predate this fall back to the target player's current class.
+        if (array_key_exists('player_class', $espionageReportModel->player_info ?? [])) {
+            $playerClassId = (int)$espionageReportModel->player_info['player_class'];
+        } elseif ($planetPlayer !== null) {
+            $playerClassId = (int)($planetPlayer->getUser()->character_class ?? 0);
+        } else {
+            $playerClassId = null;
+        }
+
+        if ($playerClassId === null) {
+            $playerClass = __('t_ingame.messages.spy_unknown');
+        } elseif ($playerClassId === 0) {
+            $playerClass = __('t_ingame.layout.class_none');
+        } else {
+            $playerClass = CharacterClass::tryFrom($playerClassId)?->getName() ?? __('t_ingame.messages.spy_unknown');
+        }
+
         // Extract resources
         $resources = new Resources($espionageReportModel->resources['metal'] ?? 0, $espionageReportModel->resources['crystal'] ?? 0, $espionageReportModel->resources['deuterium'] ?? 0, $espionageReportModel->resources['energy'] ?? 0);
 
@@ -226,6 +246,7 @@ class EspionageReport extends GameMessage
             'subject' => $this->getSubject(),
             'from' => $this->getFrom(),
             'playername' => $playername,
+            'player_class' => $playerClass,
             'date' => $this->getDateFormatted(),
             'resources' => $resources,
             'debris' => $debris,

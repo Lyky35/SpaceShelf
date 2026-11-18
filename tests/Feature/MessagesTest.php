@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use Lang;
+use OGame\Enums\CharacterClass;
 use OGame\Factories\GameMessageFactory;
 use OGame\Factories\PlanetServiceFactory;
+use OGame\Factories\PlayerServiceFactory;
 use OGame\GameMessages\Abstracts\ExpeditionGameMessage;
 use OGame\Models\BattleReport;
 use OGame\Models\EspionageReport;
@@ -347,6 +349,109 @@ class MessagesTest extends MoonTestCase
         $response->assertStatus(200);
         $response->assertSee('Espionage report');
         $response->assertSee('Unknown');
+    }
+
+    /**
+     * Test that an espionage report shows the character class snapshot stored in the report's
+     * player info, even when the reported player has since switched to a different class.
+     */
+    public function testEspionageReportShowsSnapshottedPlayerClass(): void
+    {
+        $messageService = resolve(MessageService::class);
+
+        $espionageReportId = $this->createEspionageReport();
+
+        $espionageReport = EspionageReport::findOrFail($espionageReportId);
+
+        // Snapshot the reported player as a General at report creation time, while the
+        // player's current class is the Discoverer class.
+        $espionageReport->player_info = ['player_name' => 'Test Player', 'player_class' => (string)CharacterClass::GENERAL->value];
+        $espionageReport->save();
+
+        $reportedUser = User::find($espionageReport->planet_user_id);
+        $this->assertNotNull($reportedUser);
+        $reportedUser->character_class = CharacterClass::DISCOVERER->value;
+        $reportedUser->save();
+
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $messageModel = $messageService->sendEspionageReportMessageToPlayer($player, $espionageReportId);
+        $espionageMessage = GameMessageFactory::createGameMessage($messageModel);
+
+        $response = $this->get('/ajax/messages/' . $espionageMessage->getId());
+
+        $content = $response->getContent();
+
+        $response->assertStatus(200);
+        $response->assertSee('Espionage report');
+        // Assert the value rendered in the report's class line specifically: the page layout
+        // also contains class names in its bonus panel, so a bare assertSee is not meaningful.
+        $this->assertMatchesRegularExpression('/Class:<span class="status_abbr_inactive">&nbsp;General<\/span>/', (string)$content);
+    }
+
+    /**
+     * Test that an espionage report for a player without a selected character class shows
+     * the "no class selected" wording instead of falling back to unknown.
+     */
+    public function testEspionageReportShowsNoClassSelectedForClasslessPlayer(): void
+    {
+        $messageService = resolve(MessageService::class);
+
+        $espionageReportId = $this->createEspionageReport();
+
+        $espionageReport = EspionageReport::findOrFail($espionageReportId);
+        $espionageReport->player_info = ['player_name' => 'Test Player', 'player_class' => '0'];
+        $espionageReport->save();
+
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $messageModel = $messageService->sendEspionageReportMessageToPlayer($player, $espionageReportId);
+        $espionageMessage = GameMessageFactory::createGameMessage($messageModel);
+
+        $response = $this->get('/ajax/messages/' . $espionageMessage->getId());
+
+        $response->assertStatus(200);
+        $response->assertSee('Espionage report');
+        $this->assertMatchesRegularExpression('/Class:<span class="status_abbr_inactive">&nbsp;No class selected<\/span>/', (string)$response->getContent());
+    }
+
+    /**
+     * Test that reports created before the class snapshot existed fall back to the current
+     * class of the reported player.
+     */
+    public function testEspionageReportFallsBackToCurrentClassForLegacyReports(): void
+    {
+        $messageService = resolve(MessageService::class);
+
+        $espionageReportId = $this->createEspionageReport();
+
+        $espionageReport = EspionageReport::findOrFail($espionageReportId);
+
+        // Legacy reports have no player_class key in the player info. Set the class through
+        // the player service factory so the cached service instance used during report
+        // rendering sees the update.
+        $reportedUser = resolve(PlayerServiceFactory::class)
+            ->make((int)$espionageReport->planet_user_id)
+            ->getUser();
+        $reportedUser->character_class = CharacterClass::COLLECTOR->value;
+        $reportedUser->save();
+
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $messageModel = $messageService->sendEspionageReportMessageToPlayer($player, $espionageReportId);
+        $espionageMessage = GameMessageFactory::createGameMessage($messageModel);
+
+        $response = $this->get('/ajax/messages/' . $espionageMessage->getId());
+
+        $response->assertStatus(200);
+        $response->assertSee('Espionage report');
+        $this->assertMatchesRegularExpression('/Class:<span class="status_abbr_inactive">&nbsp;Collector<\/span>/', (string)$response->getContent());
     }
 
     /**

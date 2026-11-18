@@ -476,6 +476,7 @@ class EspionageMission extends GameMission
         $report->player_info = [
             'player_id' => (string)$targetPlayer->getId(),
             'player_name' => $targetPlayer->getUsername(),
+            'player_class' => (string)($targetPlayer->getUser()->character_class ?? 0),
         ];
 
         // Resources
