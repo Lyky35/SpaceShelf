@@ -662,4 +662,29 @@ class ChatTest extends IsolatedAccountTestCase
         $this->assertArrayHasKey('chatItems', $data);
         $this->assertCount(1, $data['chatItemsByDateAsc']);
     }
+
+    /**
+     * Test that the Reverb/Echo configuration for realtime chat is rendered from
+     * cached config rather than env() — env() returns null for every key once
+     * `php artisan config:cache` runs in production (upstream #1645).
+     */
+    public function testReverbChatConfigVarsRenderFromConfig(): void
+    {
+        config([
+            'broadcasting.connections.reverb.key' => 'config-driven-reverb-key',
+            'broadcasting.connections.reverb.options.host' => 'chat.example.com',
+            'broadcasting.connections.reverb.options.port' => 8090,
+            'broadcasting.connections.reverb.options.scheme' => 'http',
+        ]);
+
+        $response = $this->get('/chat');
+        $response->assertStatus(200);
+
+        // If the blade still reads these via env(), the configured values are
+        // replaced by empty defaults and these assertions fail.
+        $response->assertSee('var reverbAppKey = "config-driven-reverb-key"', false);
+        $response->assertSee('var reverbHost = "chat.example.com"', false);
+        $response->assertSee('var reverbPort = "8090"', false);
+        $response->assertSee('var reverbScheme = "http"', false);
+    }
 }

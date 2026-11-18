@@ -863,11 +863,17 @@
                 var miniFleetLink = "{{ route('fleet.dispatch.sendminifleet') }}";
                 var ogameUrl = "{{ str_replace('/', '\/', URL::to('/')) }}";
                 var startpageUrl = "{{ str_replace('/', '\/', URL::to('/')) }}";
-                // Laravel Reverb / Echo configuration for real-time chat
-                var reverbAppKey = "{{ env('REVERB_APP_KEY', '') }}";
-                var reverbHost = "{{ env('REVERB_HOST', 'localhost') }}";
-                var reverbPort = "{{ env('REVERB_PORT', '8080') }}";
-                var reverbScheme = "{{ env('REVERB_SCHEME', 'http') }}";
+                @php
+                    // Laravel Reverb / Echo configuration for real-time chat.
+                    // Values must come from cached config: env() returns null for
+                    // every key once `php artisan config:cache` runs in production (#1645).
+                    $reverb_config = config('broadcasting.connections.reverb', []);
+                    $reverb_options = $reverb_config['options'] ?? [];
+                @endphp
+                var reverbAppKey = "{{ $reverb_config['key'] ?? '' }}";
+                var reverbHost = "{{ $reverb_options['host'] ?? 'localhost' }}";
+                var reverbPort = "{{ $reverb_options['port'] ?? 8080 }}";
+                var reverbScheme = "{{ $reverb_options['scheme'] ?? 'http' }}";
                 var chatUrl = "{{ route('chat.send') }}";
                 var chatHistoryUrl = "{{ route('chat.history') }}";
                 var chatUrlLoadMoreMessages = "{{ route('chat.more') }}";
