@@ -4,7 +4,9 @@ Feature-gap inventory as of 2026-11-17 (after bot phases 0–4, random planet
 names, the Collector/General/Discoverer class rework, the removal of the
 Legor account, shop-tab removal and the full officer system including its
 UI).
-Verified against the codebase; file references included.
+Verified against the codebase; file references included. Also includes an
+audit of the open upstream OGameX issues (2026-11-17) — see *Inherited
+upstream bugs* below.
 
 ## Game engine gaps
 
@@ -118,6 +120,161 @@ are incomplete:
       `testBulkResourceUpdateIsCappedAtStorageLimit` (2 days' production stops
       at the storage cap); the stale TODO comments in
       `BattleReport.php`/`PlanetService.php` are replaced accordingly)
+
+## Inherited upstream bugs — open OGameX issues verified present (2026-11-17)
+
+Audit of all 113 open issues on the upstream repository (`lanedirt/OGameX`).
+The fork has merged upstream up to tip `a3d5822d` (2026-11-16), so an open
+upstream bug lives in this tree unless the fork's own diff already touches
+the affected code. Every entry below was checked against the current tree
+(upstream issue numbers are cited for cross-reference).
+
+### Fleet mission crash chain (#1639 / #1640 / #1641 / #1341)
+
+Most operationally dangerous cluster: one broken fleet mission can lock an
+account out of every in-game page.
+
+- [ ] **#1641 — one failing fleet mission → 500 on every page.**
+      `GlobalGame.php:61` calls `PlayerService::updateFleetMissions()` on
+      every in-game request; `PlayerService.php:729–776` processes all
+      arrived missions in a single `DB::transaction` and rethrows any
+      per-mission exception, so the broken mission replays on every page
+      load (admins impersonating the victim are locked out too). Related:
+      `getArrivedMissionsByPlanetIds()` (`FleetMissionService.php:411`) has
+      no `orderBy`, so arrival order isn't guaranteed even today.
+- [ ] **#1639 — fleet arriving at an abandoned moon fights a battle and
+      crashes the attacker.** `markAsDestroyed()` (`PlanetService.php:233`,
+      fork-modified) blocks abandoning only while the **owner's own** fleets
+      are outbound; incoming foreign fleets are not handled:
+      `checkDestroyedTarget()` (`GameMission.php:487`) runs at dispatch
+      only, `GameMission::process()` has no destroyed-target check, and the
+      battle at the destroyed moon reaches `calculateWreckField()`
+      (`BattleEngine.php:727`) which calls `->planet()` unconditionally →
+      throws → chains into #1641. Upstream's vanilla-accurate proposal:
+      foreign fleets arrive, do nothing and return intact; own, ACS-defend
+      and return fleets reroute to the parent planet.
+- [ ] **#1640 — `planet()`/`hasPlanet()` miss a destroyed parent planet.**
+      Both resolve through the player's planet list
+      (`PlanetService.php:1640–1677`), which filters `destroyed = 0`
+      (`PlanetListService.php:44`), while `moon()`/`getParentPlanet()`
+      resolve via the factory and do find destroyed bodies. This is the
+      crash site for #1639 (`No planet found for this moon.`).
+- [ ] **#1341 — destroyed moons break messages.** Upstream fix PR #1494
+      (`FleetMissionPlanetFormatter` + mission redirection + battle-report
+      origin snapshots) is still unmerged and absent from this tree;
+      messages and combat reports for bodies purged mid-flight render
+      broken `[planet][/planet]` placeholders.
+
+### Ops — root-owned daily log disables php-fpm error logging
+
+- [ ] **#1642 — daily log rotation writes a root-owned file.** Verified
+      live in our deployment: `storage/logs/laravel-<today>.log` is owned
+      by `root:root` (created by the root scheduler/cron process) while the
+      php-fpm pool runs as `www-data` and cannot append to it the rest of
+      the day. Run scheduled tasks as `www-data` in the container (or make
+      the log dir group-writable) so php-fpm errors don't silently vanish.
+
+### Production factor math (#1660 / #1661; pairs with #1629 energy display)
+
+- [ ] **#1660 — production factor floored to a whole percent before use.**
+      `getResourceProductionFactor()` does `floor($production / $consumption
+      * 100)` (`PlanetService.php:2462`), and that floored value feeds both
+      the stored-stats path (`:2327`) and the per-object path (`:2365/2383`),
+      underpaying mines by up to ~1 percentage point on fractional energy
+      deficits. Vanilla applies the exact ratio; only the on-page "X%"
+      label should be floored.
+- [ ] **#1661 — fusion reactor deuterium burn is scaled by the production
+      factor.** `updateResourceProductionStatsInner()` runs
+      `$building_production_total->multiply($production_factor)`
+      (`PlanetService.php:2331`) on a total that already contains the
+      reactor's negative deuterium formula (`BuildingObjects.php:135`), so
+      deficit planets burn less deuterium than they should; same in the
+      per-object display path (`:2383`).
+
+### Chat cluster (#1644–#1651) — chat ships from upstream unmodified
+
+- [ ] **#1644 — alliance chat history has no membership check.**
+      `ChatService` queries history by the request-supplied alliance id
+      (`:88`), so any logged-in user can pull another alliance's history.
+- [ ] **#1648 — player names inserted into HTML unescaped.**
+      `resources/js/ingame/chat.js:517` string-concatenates names into
+      markup (XSS). Same class of issue nearby: `espionage_report.blade.php:7`
+      renders `{!! $playername !!}`.
+- [ ] **#1647 — no rate limiting on the chat send endpoint.** No throttle
+      on the `chat.send` route nor in `ChatController`.
+- [ ] **#1649 — Reverb accepts WebSocket connections from any origin.**
+      `config/reverb.php:85` sets `'allowed_origins' => ['*']`.
+- [ ] **#1645 / #1646 / #1650 / #1651** — realtime silently disabled in
+      production, NOT_AUTHORIZED reply re-send loop, missing reply author
+      on live messages, no mobile WS reconnect/fallback. Same unmodified
+      chat code; present as reported (not individually re-verified).
+
+### Mechanics & correctness (verified present)
+
+- [ ] **#1624 / #1625 — teardown blocked by completed research.**
+      `ObjectService::canDowngradeBuilding()` (`:967–1035`) blocks a
+      downgrade whenever any dependent object — including *completed*
+      research — meets the requirement level. Vanilla only blocks active
+      dependencies.
+- [ ] **#1537 — wreck field loaded by coordinates without owner scope.**
+      `WreckFieldService::loadForCoordinates()` (`:98`) takes whatever
+      field row matches the coordinates; needs owner scoping.
+- [ ] **#1203 — admin accounts are attackable.** No admin/role check in
+      the fleet dispatch validation path.
+- [ ] **#1288 — current planet selection shared across sessions.** It is
+      user-record state (`PlayerService::setCurrentPlanetId()`), not
+      session state, so a new login resumes on the last visited planet
+      (hide-activity abuse + cross-device clobbering). Vanilla: per-session,
+      home planet on fresh login.
+- [ ] **#1516 — galaxy colonise ignores the colony-slot cap.**
+      `PlayerService::canColonizePosition()` (`:894`) checks astrophysics
+      level/position only and never consults `getMaxPlanetAmount()`; the
+      mission itself fails, but the galaxy UI offers an impossible action.
+- [ ] **#1188 — spy report never shows the player class.**
+      `espionage_report.blade.php:13` (`<!-- TODO: implement player
+      class -->`) and `espionage_report_full.blade.php:45` hardcode
+      "Class: Unknown".
+
+### Battle engine / reports / UI (verified present)
+
+- [ ] **#1558 — Rust FFI memory leak.** `RustBattleEngine.php:46` still
+      loads `storage/rust-libs/libbattle_engine_ffi.so` through PHP FFI and
+      our `lib.rs` is upstream code verbatim (fork diff = comment renames
+      only), so the per-call leak is ours too. Upstream's fix is the v2
+      engine rewrite (open PR).
+- [ ] **#1561 — battle report templates carry stale hardcoded `data-raw-*`
+      mock metadata** (`battle_report_full.blade.php:74–76`: fixed
+      timestamp, fake hashcode).
+- [ ] **#1216 — fleet event tooltip hardcodes "Own fleet"** for every
+      row including hostile ones (`eventrow.blade.php`, both row variants).
+
+### Presumed present (identical upstream code; not individually verified)
+
+- [ ] #307 (large shipyard orders build fewer units than requested),
+      #1629/#1630 (resource-page energy values below 100% factor), #1168
+      (dispatch confirmation lists ship names instead of "Fleet dispatch
+      [time] (n) Ok"), #1514/#1541 (recycle mission not auto-selected at
+      position 16), #1513 (dev shortcut creates no expedition debris
+      field), #1542/#1539 (Facilities shortcut doesn't reach Space Dock),
+      #1004 (class selection screen clips into fleet widget), #296 (full
+      report tooltip covers loot amounts), #305 (admin settings form
+      validation), #1510/#668 (incoming fleet details not gated by
+      espionage level), #1538 (flaky `testFleetDispatchValidSpeeds` —
+      random foreign-planet fixture unchanged, in
+      `tests/Traits/CreatesForeignFixtures.php`).
+
+### Audit exclusions (verified NOT present — don't re-investigate)
+
+- **#1350** (quick mining yields half of expedition debris) — quick mining
+  is not implemented in this fork; deep-space pos-16 debris is Pathfinder
+  harvested (fork feature, covered by `PathfinderExpeditionDebrisHarvestTest`).
+- **#1670** (plasma bonus missing from hourly production) — the plasma row
+  is computed in `GameObjectProduction::calculate()` (`:124`), summed into
+  the total (`:558`) and included in the resource page breakdown
+  (`ResourcesController.php:131`); the upstream report is self-uncertain
+  and no code-level gap was found.
+- **#1613** (docker startup errors) — reporter-environment specific; our
+  stack runs.
 
 ## Bot AI roadmap (docs/BOT-AI-PLAN.md phases 2–6)
 
