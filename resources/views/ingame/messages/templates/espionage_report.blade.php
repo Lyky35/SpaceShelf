@@ -4,7 +4,7 @@
     <span class="ctn ctn4">{{ __('t_ingame.messages.spy_player') }}:</span>
     <!-- TODO: implement dynamic status_abbr_active based on active status of player
     (active last 7 days, last 28 days etc, see galaxy legend for more info). -->
-    <span class="status_abbr_active">&nbsp;&nbsp;{!! $playername !!}</span>
+    <span class="status_abbr_active">&nbsp;&nbsp;{{ $playername }}</span>
     <!-- TODO: implement player activity detection -->
     &nbsp;<span class="ctn ctn4 fright">{{ __('t_ingame.messages.spy_activity') }}: &gt;60 {{ __('t_ingame.messages.spy_minutes_ago') }}.</span>
 </div>

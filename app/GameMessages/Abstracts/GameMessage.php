@@ -313,7 +313,9 @@ abstract class GameMessage
                 $playerName = 'Unknown Player';
             }
 
-            return $playerName;
+            // Player names are user-controlled and end up in message HTML that is
+            // rendered with {!! !!} — they must be escaped to prevent stored XSS (#1648).
+            return e($playerName);
         }, $body) ?? '';
 
         $body = preg_replace_callback('/\[planet\](\d+)\[\/planet\]/', function ($matches) {
@@ -347,7 +349,7 @@ abstract class GameMessage
                 }
                 $planetName = '<a href="' . route('galaxy.index', ['galaxy' => $planetService->getPlanetCoordinates()->galaxy, 'system' => $planetService->getPlanetCoordinates()->system, 'position' => $planetService->getPlanetCoordinates()->position]) . '" class="txt_link">'
                                 . $planetIconHtml . ' '
-                                . $planetService->getPlanetName() . ' [' . $planetService->getPlanetCoordinates()->asString() . ']</a>';
+                                . e($planetService->getPlanetName()) . ' [' . $planetService->getPlanetCoordinates()->asString() . ']</a>';
             } else {
                 $planetName = 'Unknown Planet';
             }

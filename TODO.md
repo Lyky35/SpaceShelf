@@ -282,10 +282,20 @@ account out of every in-game page.
 - [ ] **#1644 — alliance chat history has no membership check.**
       `ChatService` queries history by the request-supplied alliance id
       (`:88`), so any logged-in user can pull another alliance's history.
-- [ ] **#1648 — player names inserted into HTML unescaped.**
+- [x] **#1648 — player names inserted into HTML unescaped.**
       `resources/js/ingame/chat.js:517` string-concatenates names into
       markup (XSS). Same class of issue nearby: `espionage_report.blade.php:7`
       renders `{!! $playername !!}`.
+      **Fixed 2026-11-17:** escaped at the server root plus the client
+      render sites. `GameMessage::replacePlaceholders()` now `e()`s the
+      `[player]` and `[planet]` callback results, covering every game
+      message body/subject rendered via `{!! !!}` (chat content was already
+      `e()`'d server-side). Both espionage report templates render
+      `$playername` with `{{ }}`. `chat.js` gained an `ogame.chat.escapeHtml()`
+      helper applied at the four name-injection sites: chat bar tab, message
+      title, reply-reference author, and the online player list. Tests:
+      `MessagesTest` asserts crafted usernames/planet names reach message HTML
+      escaped only.
 - [ ] **#1647 — no rate limiting on the chat send endpoint.** No throttle
       on the `chat.send` route nor in `ChatController`.
 - [ ] **#1649 — Reverb accepts WebSocket connections from any origin.**

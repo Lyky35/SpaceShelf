@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use Lang;
 use OGame\Factories\GameMessageFactory;
+use OGame\Factories\PlanetServiceFactory;
 use OGame\GameMessages\Abstracts\ExpeditionGameMessage;
 use OGame\Models\BattleReport;
 use OGame\Models\EspionageReport;
 use OGame\Models\Message;
 use OGame\Models\Resources;
+use OGame\Models\User;
 use OGame\Services\DebrisFieldService;
+use OGame\Services\InitialUserDataService;
 use OGame\Services\MessageService;
 use Tests\MoonTestCase;
 
@@ -133,6 +136,76 @@ class MessagesTest extends MoonTestCase
         // Assert that the original placeholder tags are not present in the final message
         $this->assertStringNotContainsString('[planet]', $body, 'Planet tag still present in message body');
         $this->assertStringNotContainsString('[/planet]', $body, 'Planet closing tag still present in message body');
+    }
+
+    /**
+     * Test that player names inserted through the [player] placeholder are HTML escaped.
+     * A crafted username must never reach a message viewer as raw markup (upstream #1648).
+     */
+    public function testPlayerNamePlaceholderIsEscaped(): void
+    {
+        $evilName = 'xss"<img src=x onerror=alert(1)>';
+
+        $evilUser = User::withoutEvents(fn (): User => User::factory()->create([
+            'username' => $evilName,
+        ]));
+        resolve(InitialUserDataService::class)->createFor($evilUser);
+
+        $messageModel = new Message();
+        $messageModel->key = 'welcome_message';
+        $messageModel->params = [
+            'player' => '[player]' . $evilUser->id . '[/player]',
+        ];
+
+        $gameMessage = GameMessageFactory::createGameMessage($messageModel);
+        $body = $gameMessage->getBody();
+
+        $this->assertStringNotContainsString(
+            '<img src=x',
+            $body,
+            'Crafted username must not leak raw HTML into the message body'
+        );
+        $this->assertStringContainsString(
+            'xss&quot;&lt;img src=x onerror=alert(1)&gt;',
+            $body,
+            'HTML-escaped username not found in message body'
+        );
+    }
+
+    /**
+     * Test that planet names inserted through the [planet] placeholder are HTML escaped.
+     * Planet names are user-controlled too, same issue class as player names (upstream #1648).
+     */
+    public function testPlanetNamePlaceholderIsEscaped(): void
+    {
+        $evilName = 'Deathstar<img src=x onerror=alert(1)>';
+
+        // Rename through the cached PlanetService instance and drop any stale factory cache
+        // entries (e.g. from the overview request in setUp) so the placeholder replacement
+        // reloads the moon from the database.
+        $this->moonService->setPlanetName($evilName);
+        resolve(PlanetServiceFactory::class)->forgetPlanetCache($this->moonService->getPlanetId());
+
+        $messageModel = new Message();
+        $messageModel->key = 'return_of_fleet';
+        $messageModel->params = [
+            'from' => '[planet]' . $this->planetService->getPlanetId() . '[/planet]',
+            'to' => '[planet]' . $this->moonService->getPlanetId() . '[/planet]',
+        ];
+
+        $gameMessage = GameMessageFactory::createGameMessage($messageModel);
+        $body = $gameMessage->getBody();
+
+        $this->assertStringNotContainsString(
+            '<img src=x',
+            $body,
+            'Renamed moon must not leak raw HTML into the message body'
+        );
+        $this->assertStringContainsString(
+            'Deathstar&lt;img src=x onerror=alert(1)&gt;',
+            $body,
+            'HTML-escaped moon name not found in message body'
+        );
     }
 
     /**

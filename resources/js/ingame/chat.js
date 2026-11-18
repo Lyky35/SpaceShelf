@@ -8,6 +8,17 @@ ogame.chat = {
     playerList: null,
     isLoadingPlayerList: false,
     playerListSelector: new Array,
+    /**
+     * HTML-escape a string before injecting it into markup via string
+     * concatenation. Player names are user-controlled and must never be
+     * treated as HTML (upstream #1648).
+     */
+    escapeHtml: function (text) {
+        if (text === undefined || text === null) {
+            return '';
+        }
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    },
     initConnection: function () {
         var c = ogame.chat;
         if (c.connecting || c.connected || c.isMobile) {
@@ -514,7 +525,7 @@ ogame.chat = {
         g.data.playerId = f;
         var e = $('<li class="chat_bar_list_item open" data-playerid="' + f + '"></li>');
         e.append('<span class="playerstatus ' + h.playerstatus + '"></span>');
-        e.append('<span class="cb_playername">' + h.playerName + "</span>");
+        e.append('<span class="cb_playername">' + g.escapeHtml(h.playerName) + "</span>");
         e.append('<span class="icon icon_close fright"></span>');
         e.prepend(g.createChatBox(f));
         return e
@@ -730,12 +741,12 @@ ogame.chat = {
         }
         var g = $('<div class="msg_head"></div>');
         g.append('<span class="msg_date fright">' + getFormatedDate(m.date, "[d].[m].[Y] <span>[H]:[i]:[s]</span>") + "</span>");
-        g.append('<span class="msg_title blue_txt ' + m.newClass + '">' + m.playerName + "</span>");
+        g.append('<span class="msg_title blue_txt ' + m.newClass + '">' + ogame.chat.escapeHtml(m.playerName) + "</span>");
         var h = $('<li class="chat_msg ' + m.altClass + '" data-chat-id="' + m.chatID + '"></li>');
         h.append(g);
         if (typeof m.refData !== "undefined") {
             var k = $('<div class="referenceMsg"></div>');
-            var n = '<div class="refAuthor">' + m.refData.author + "</div>";
+            var n = '<div class="refAuthor">' + ogame.chat.escapeHtml(m.refData.author) + "</div>";
             var l = '<div class="refText new">' + m.refData.text + "</div>";
             k.append(n);
             k.append(l);
@@ -1083,7 +1094,7 @@ ogame.chat = {
                         var li = '<li class="playerlist_item ' + (index % 2 !== 0 ? 'odd' : '') + '" data-playerid="' + player.id + '" data-filterchatactive="' + filterChatActive + '" data-filteronline="' + filterOnline + '">';
                         li += '<p class="playername">';
                         li += '<span class="playerstatus tooltip ' + statusClass + '" data-tooltip-title="' + statusTitle + '"></span>';
-                        li += player.username + '</p>';
+                        li += c.escapeHtml(player.username) + '</p>';
                         li += '<span class="new_msg_count noMessage" data-playerid="' + player.id + '" data-new-messages="0">0</span>';
                         li += '<span class="chatstatus cs_active fright"></span>';
                         li += '</li>';
