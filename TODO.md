@@ -443,8 +443,16 @@ account out of every in-game page.
 - [ ] **#1561 — battle report templates carry stale hardcoded `data-raw-*`
       mock metadata** (`battle_report_full.blade.php:74–76`: fixed
       timestamp, fake hashcode).
-- [ ] **#1216 — fleet event tooltip hardcodes "Own fleet"** for every
+- [x] **#1216 — fleet event tooltip hardcodes "Own fleet"** for every
       row including hostile ones (`eventrow.blade.php`, both row variants).
+      **Fixed 2026-11-18:** new `FleetEventRowViewModel::getOwnershipLabel()`
+      maps the row's `friendly_status` to the vanilla labels ("Own fleet" /
+      "Enemy fleet" / "Friendly fleet") and both `eventrow.blade.php` tooltips
+      use it; the synthetic return/wait-end rows inherit the parent's status;
+      `determineFriendly()` now classifies incoming Colonisation (type 7) as
+      hostile too (types 1/2/6/9/10 already were). Tests:
+      `FleetDispatchEventLabelsTest` (sender sees "Own fleet", victim sees
+      "Enemy fleet").
 
 ### Presumed present (identical upstream code; not individually verified)
 

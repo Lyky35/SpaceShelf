@@ -324,6 +324,7 @@ class FleetEventsController extends OGameController
             if (($friendlyStatus === FleetMissionStatus::Friendly || $friendlyStatus === FleetMissionStatus::Neutral) && $actualHoldingTime > 0 && !$eventRowViewModel->is_return_trip) {
                 $waitEndRow = new FleetEventRowViewModel();
                 $waitEndRow->is_return_trip = false;
+                $waitEndRow->friendly_status = $eventRowViewModel->friendly_status;
                 // ACS Defend missions (type 5) should be recallable during hold time
                 // Expeditions (type 15) should NOT be recallable during hold time
                 $waitEndRow->is_recallable = ($friendlyStatus === FleetMissionStatus::Friendly && $row->mission_type === 5);
@@ -364,6 +365,7 @@ class FleetEventsController extends OGameController
 
                 $returnTripRow = new FleetEventRowViewModel();
                 $returnTripRow->is_return_trip = true;
+                $returnTripRow->friendly_status = $eventRowViewModel->friendly_status;
                 $returnTripRow->is_recallable = false;
                 $returnTripRow->id = $row->id + 999999; // Add a large number to avoid DOM ID conflicts
                 $returnTripRow->real_mission_id = $row->id;
@@ -591,6 +593,7 @@ class FleetEventsController extends OGameController
                 case 1:
                 case 2:
                 case 6:
+                case 7: // Colonisation
                 case 9:
                 case 10: // Missile attack
                     // Hostile

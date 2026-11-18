@@ -2,6 +2,7 @@
 
 namespace OGame\ViewModels;
 
+use OGame\Enums\FleetMissionStatus;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\Planet\Coordinate;
@@ -128,4 +129,17 @@ class FleetEventRowViewModel
      * @var string The username of the destination planet owner (for chat button).
      */
     public string $destination_player_name = '';
+
+    /**
+     * Get the fleet ownership label shown in the event row tooltip: hostile
+     * incoming fleets must not be labelled as own fleets (upstream #1216).
+     */
+    public function getOwnershipLabel(): string
+    {
+        return match ($this->friendly_status) {
+            FleetMissionStatus::Hostile->value => __('t_ingame.fleet.enemy_fleet'),
+            FleetMissionStatus::Neutral->value => __('t_ingame.fleet.friendly_fleet'),
+            default => __('t_ingame.fleet.own_fleet'),
+        };
+    }
 }
