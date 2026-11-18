@@ -121,6 +121,42 @@ are incomplete:
       at the storage cap); the stale TODO comments in
       `BattleReport.php`/`PlanetService.php` are replaced accordingly)
 
+### 5. Directives (quest system) — unimplemented, UI is a dead stub (upstream #843)
+
+Vanilla has 70 directives in 7 categories (In-Play Intelligence quests);
+rewards are granted on the planet active at claim time, plus a category
+bonus. Implementation plan: `docs/DIRECTIVES-PLAN.md`. Dependency status:
+Dark Matter (upstream #770) — done here; teardown exists (but has the
+#1624/#1625 bug below); lifeforms (upstream #228) — missing, those
+directives are skipped.
+
+Current state — the button is dead leftover HTML from the vanilla client
+dump:
+
+- `main.blade.php:496–511` renders the `#ipimenucomponent` box: "Directives"
+  header (`t_ingame.layout.menu_directives`), empty `hidden`
+  `.ipiMenuBody`/`.ipiMenuFooter`, and an unreplaced placeholder href
+  `#TODO_page=ajax&component=ipioverview&action=overviewLayer&ajax=1` —
+  clicking only appends garbage to the URL hash.
+- The vendored OGame JS has the IPI panel machinery
+  (`ipiMenuConfig.ipiMenuContentUrl`) but it is never configured, so it
+  silently no-ops. No routes, no tables, no quest data exist. 12
+  `data-ipi-hint` highlight markers in the layout are orphaned.
+- Related upstream: #978 (registration newbie/veteran choice, gates the
+  highlight hints) — open.
+
+- [ ] P0: extract the 70 vanilla directives (conditions/rewards/texts)
+      into `config/directives.php` + `resources/lang/en/t_directives.php`
+      (blocking; skip lifeform-gated ones and record the skips)
+- [ ] P1: `directive_progress` migration, condition engine, lazy evaluation
+      in `GlobalGame` middleware, atomic claim endpoint (rewards to the
+      **active** planet via `PlanetService::addResources/addUnits`,
+      `DarkMatterService::credit`), tests
+- [ ] P2: wire the existing `#ipimenucomponent` panel to a content partial;
+      delete the `#TODO_` href
+- [ ] P3 (optional): newbie `data-ipi-hint` highlights — depends on the
+      #978 registration decision
+
 ## Inherited upstream bugs — open OGameX issues verified present (2026-11-17)
 
 Audit of all 113 open issues on the upstream repository (`lanedirt/OGameX`).
