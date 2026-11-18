@@ -454,8 +454,10 @@ final class UtilityBrain implements BotBrain
         }
 
         // Standing fleet: grow the military stock toward the personality's
-        // share. Light fighters are the default filler until the war brain
-        // implements unit-mix planning (phase 3).
+        // share. Players build a mix — light fighters are the bulk, but
+        // whatever stronger hull the research just unlocked gets its little
+        // batch too. (Combat-optimal unit planning remains phase 3; this is
+        // deliberate "a bit of everything" texture.)
         $targetFleet = (int) round(
             (int) config('bots.military.unit_value_base', 200) * $personality->militaryShare * max(1, $player->planets->planetCount())
         );
@@ -464,12 +466,7 @@ final class UtilityBrain implements BotBrain
             $snapshot->militaryUnitCount < $targetFleet &&
             $planet->getObjectLevel('shipyard') >= 2
         ) {
-            $actions += $this->queueUnits(
-                $planet,
-                'light_fighter',
-                (int) config('bots.military.batch_size', 5),
-                withReserve: true
-            );
+            $actions += $this->queueFleetMix($planet);
         }
 
         // Crawlers raise mine output; the engine caps the bonus at 8 crawlers
@@ -579,6 +576,48 @@ final class UtilityBrain implements BotBrain
     private function isCollectorClass(BrainSnapshot $snapshot): bool
     {
         return app(CharacterClassService::class)->isCollector($snapshot->player->getUser());
+    }
+
+    /**
+     * Queue one standing-fleet batch using the configured hull-mix weights.
+     * The candidate order is a weighted draw without replacement over the
+     * whole mix, and the first hull that is affordable and researchable
+     * wins — an unaffordable heavy pick falls through to something
+     * buildable, like a player checking what they can pay for today.
+     */
+    private function queueFleetMix(PlanetService $planet): int
+    {
+        /** @var array<string, int> $mix */
+        $mix = (array) config('bots.military.fleet_mix', ['light_fighter' => 100]);
+        $batchSize = (int) config('bots.military.batch_size', 5);
+
+        $pool = $mix;
+
+        while ($pool !== []) {
+            $roll = mt_rand(1, max(1, array_sum($pool)));
+            $picked = null;
+
+            foreach ($pool as $machineName => $weight) {
+                $roll -= (int) $weight;
+
+                if ($roll <= 0) {
+                    $picked = $machineName;
+                    break;
+                }
+            }
+
+            /** @var string $picked */
+            $picked ??= (string) array_key_last($pool);
+            unset($pool[$picked]);
+
+            $queued = $this->queueUnits($planet, $picked, $batchSize, withReserve: true);
+
+            if ($queued > 0) {
+                return $queued;
+            }
+        }
+
+        return 0;
     }
 
     /**
@@ -1365,12 +1404,28 @@ final class UtilityBrain implements BotBrain
             return 0;
         }
 
+        $objectId = ObjectService::getObjectByMachineName($machineName)->id;
+        $before = (int) UnitQueue::where('planet_id', $planet->getPlanetId())
+            ->where('object_id', $objectId)
+            ->where('processed', 0)
+            ->sum('object_amount');
+
         try {
-            $this->unitQueueService->add($planet, ObjectService::getObjectByMachineName($machineName)->id, $amount);
-            return 1;
+            $this->unitQueueService->add($planet, $objectId, $amount);
         } catch (Throwable) {
             return 0;
         }
+
+        // The queue service swallows unmet requirements and unaffordable
+        // orders silently (it caps the order to what is buildable), so
+        // "no exception" is not proof of a queued order — compare the
+        // pending stock of this object before and after.
+        $after = (int) UnitQueue::where('planet_id', $planet->getPlanetId())
+            ->where('object_id', $objectId)
+            ->where('processed', 0)
+            ->sum('object_amount');
+
+        return $after > $before ? 1 : 0;
     }
 
     /**

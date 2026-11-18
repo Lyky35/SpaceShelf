@@ -343,6 +343,21 @@ return [
         // Number of combat units to queue at once when below target.
         'batch_size' => 5,
 
+        // Relative weights of which hull a standing-fleet batch draws.
+        // Light fighters stay the bulk of a player fleet; the heavier
+        // hulls join in the "a bit of everything" doses real players
+        // build once the shipyard and research unlock them. Unlocked and
+        // affordable status still gates the pick — an unaffordable draw
+        // falls through to the next candidate.
+        'fleet_mix' => [
+            'light_fighter' => 65,
+            'heavy_fighter' => 12,
+            'cruiser' => 10,
+            'battle_ship' => 5,
+            'battlecruiser' => 4,
+            'bomber' => 3,
+        ],
+
         // Per-planet defense target: defense_bias * defense_unit_base units.
         'defense_unit_base' => 120,
 
