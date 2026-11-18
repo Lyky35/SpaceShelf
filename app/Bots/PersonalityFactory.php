@@ -60,13 +60,14 @@ final class PersonalityFactory
     }
 
     /**
-     * Pick this bot's persistent quirks from the configured habit pool:
-     * every bot gets exactly one, and 30% of bots get a second. Habits are
-     * stored with the bot, so the quirk is a lifetime trait, not a mood.
+     * Pick a fresh set of persistent quirks from the configured habit pool:
+     * one habit every bot, and 30% of bots get a second. Also used to
+     * backfill bots that predate the habit system (see
+     * spaceshelf:bot:assign-habits).
      *
      * @return array<int, string>
      */
-    private static function pickHabits(): array
+    public static function pickHabits(): array
     {
         /** @var array<int, string> $pool */
         $pool = config('bots.habits.pool', []);

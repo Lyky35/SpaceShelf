@@ -142,6 +142,34 @@ class BotHumanizationTest extends IsolatedAccountTestCase
     }
 
     /**
+     * The assign-habits command backfills bots that predate the habit
+     * system and is idempotent on bots that already have quirks.
+     */
+    public function testAssignHabitsBackfillsBotsWithoutQuirks(): void
+    {
+        $bot = $this->createBot('collector');
+
+        // Simulate a bot created before habits existed.
+        $personality = $bot->personality;
+        $personality['habits'] = [];
+        $bot->personality = $personality;
+        $bot->save();
+
+        $this->assertSame(0, Artisan::call('spaceshelf:bot:assign-habits'));
+
+        $bot->refresh();
+        $habits = $bot->personalityObject()->habits;
+
+        $this->assertNotEmpty($habits, 'Backfill must give a habitless bot its quirks.');
+        $this->assertEmpty(array_diff($habits, config('bots.habits.pool')));
+
+        // Idempotent: a second run must not reroll existing quirks.
+        $this->assertSame(0, Artisan::call('spaceshelf:bot:assign-habits'));
+        $bot->refresh();
+        $this->assertSame($habits, $bot->personalityObject()->habits);
+    }
+
+    /**
      * A planet with a working shipyard grows a small cargo bank without any
      * transport demand; a big enough shipyard also stocks large cargos.
      */
