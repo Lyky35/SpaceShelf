@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $planet_galaxy
  * @property int $planet_system
  * @property int $planet_position
- * @property int $planet_user_id
+ * @property int|null $planet_user_id
  * @property array<string, int> $resources
  * @property array<string, int> $debris
  * @property array<string, int> $buildings

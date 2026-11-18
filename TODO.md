@@ -246,6 +246,14 @@ account out of every in-game page.
       origin snapshots) is still unmerged and absent from this tree;
       messages and combat reports for bodies purged mid-flight render
       broken `[planet][/planet]` placeholders.
+      **Partial fix 2026-11-17 (crash):** espionage reports whose reported
+      player's account was deleted (`planet_user_id` FK is `ON DELETE
+      SET NULL`) no longer 500 the messages page —
+      `EspionageReport::getEspionageReportParams()` now resolves the
+      display name via the current planet owner, the stored user id, the
+      report's own `player_info` name snapshot, then `__('Unknown')`,
+      mirroring the `BattleReport` convention. Placeholder rendering for
+      purged bodies remains upstream #1494 work.
 
 ### Ops — root-owned daily log disables php-fpm error logging — fixed (2026-11-17)
 

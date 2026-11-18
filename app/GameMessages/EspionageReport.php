@@ -128,22 +128,29 @@ class EspionageReport extends GameMessage
         // Sanity check to make sure the espionage report model is loaded.
         $espionageReportModel = $this->loadEspionageReportModel();
 
-        // TODO: add feature test for code below and check edgecases, such as when the planet has been deleted and
-        // does not exist anymore. What should we show in that case?
+        // Load planet by coordinate. A purged or recolonized target must not break
+        // rendering; see the display-value fallbacks below (covered by
+        // MessagesTest::testEspionageReportFor* tests).
 
         // Load planet by coordinate.
         $coordinate = new Coordinate($espionageReportModel->planet_galaxy, $espionageReportModel->planet_system, $espionageReportModel->planet_position);
         $planet = $this->planetServiceFactory->makeForCoordinate($coordinate, true, PlanetType::from($espionageReportModel->planet_type));
 
-        // If planet owner is the same as the player, we load the player by planet owner which is already loaded.
+        // Resolve the reported player's display name. The planet at these coordinates may
+        // have changed owner since the report was created, and the FK on planet_user_id is
+        // set to NULL when the original owner's account is deleted, so fall back to the
+        // name snapshot stored in the report itself (same approach as BattleReport).
         $planetPlayer = $planet?->getPlayer();
+
         if ($planetPlayer !== null && $espionageReportModel->planet_user_id === $planetPlayer->getId()) {
-            $player = $this->playerServiceFactory->make($planetPlayer->getId());
+            $playername = $planetPlayer->getUsername();
+        } elseif ($espionageReportModel->planet_user_id === null) {
+            $playername = $espionageReportModel->player_info['player_name'] ?? __('Unknown');
         } else {
             // It is theoretically possible that the original player has deleted their planet and another user has
             // colonized the same position of the original planet. In that case, we should load the player by user_id
             // from the espionage report.
-            $player = $this->playerServiceFactory->make($espionageReportModel->planet_user_id);
+            $playername = $this->playerServiceFactory->make($espionageReportModel->planet_user_id)->getUsername();
         }
 
         // Extract resources
@@ -218,7 +225,7 @@ class EspionageReport extends GameMessage
         return [
             'subject' => $this->getSubject(),
             'from' => $this->getFrom(),
-            'playername' => $player->getUsername(),
+            'playername' => $playername,
             'date' => $this->getDateFormatted(),
             'resources' => $resources,
             'debris' => $debris,

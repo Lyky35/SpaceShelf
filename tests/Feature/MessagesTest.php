@@ -288,6 +288,68 @@ class MessagesTest extends MoonTestCase
     }
 
     /**
+     * Test that an espionage report remains readable when the reported player's account has
+     * been deleted. Such accounts null the FK on planet_user_id (ON DELETE SET NULL) and the
+     * report must render the name snapshot stored at report creation time instead of
+     * crashing on PlayerServiceFactory::make(null) (#1341 cluster).
+     */
+    public function testEspionageReportForDeletedPlayer(): void
+    {
+        $messageService = resolve(MessageService::class);
+
+        $espionageReportId = $this->createEspionageReport();
+
+        // Simulate the reported player's account being deleted.
+        $espionageReport = EspionageReport::findOrFail($espionageReportId);
+        $espionageReport->planet_user_id = null;
+        $espionageReport->player_info = ['player_id' => '999', 'player_name' => 'Ghost Raider'];
+        $espionageReport->save();
+
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $messageModel = $messageService->sendEspionageReportMessageToPlayer($player, $espionageReportId);
+        $espionageMessage = GameMessageFactory::createGameMessage($messageModel);
+
+        $response = $this->get('/ajax/messages/' . $espionageMessage->getId());
+
+        // The report must render without an exception and show the snapshotted name.
+        $response->assertStatus(200);
+        $response->assertSee('Espionage report');
+        $response->assertSee('Ghost Raider');
+    }
+
+    /**
+     * Test that an espionage report with neither a planet owner user ID nor a player name
+     * snapshot falls back to "Unknown" instead of crashing.
+     */
+    public function testEspionageReportForUnknownPlayer(): void
+    {
+        $messageService = resolve(MessageService::class);
+
+        $espionageReportId = $this->createEspionageReport();
+
+        $espionageReport = EspionageReport::findOrFail($espionageReportId);
+        $espionageReport->planet_user_id = null;
+        $espionageReport->player_info = ['player_status' => 'active'];
+        $espionageReport->save();
+
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $messageModel = $messageService->sendEspionageReportMessageToPlayer($player, $espionageReportId);
+        $espionageMessage = GameMessageFactory::createGameMessage($messageModel);
+
+        $response = $this->get('/ajax/messages/' . $espionageMessage->getId());
+
+        $response->assertStatus(200);
+        $response->assertSee('Espionage report');
+        $response->assertSee('Unknown');
+    }
+
+    /**
      * Test BattleReport to make sure they can be instantiated and the subject and body return a non-empty string.
      */
     public function testBattleReport(): void
