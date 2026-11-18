@@ -1269,6 +1269,8 @@ return [
         'chat_same_user'            => 'You cannot write to yourself.',
         'chat_ignored_user'         => 'You have ignored this player.',
         'chat_not_activated'        => "This function is only available after your accounts activation.",
+        // NEW-KEY: fork-only chat error (upstream #1646); not original OGame text, verify wording if possible
+        'chat_not_authorized'       => 'You are no longer allowed to write in this chat.',
         'chat_new_chats'            => '#+# unread message(s)',
         'chat_more_users'           => 'show more',
 

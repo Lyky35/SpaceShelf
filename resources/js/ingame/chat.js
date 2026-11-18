@@ -217,7 +217,10 @@ ogame.chat = {
         function p(a) {
             switch (a.status) {
                 case"NOT_AUTHORIZED":
-                    v();
+                    // Re-posting on this status looped forever when the sender
+                    // lost chat access mid-session (upstream #1646).
+                    // Show the error and stop; do not retry.
+                    s("NOT_AUTHORIZED");
                     break;
                 case"OK":
                     q(a);

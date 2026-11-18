@@ -885,6 +885,7 @@
                     'NO_DATABASE_CONNECTION'   => __('t_ingame.layout.js_internal_error'),
                     'INVALID_PARAMETERS'       => __('t_ingame.layout.js_internal_error'),
                     'SEND_FAILED'              => __('t_ingame.layout.js_internal_error'),
+                    'NOT_AUTHORIZED'           => __('t_ingame.layout.chat_not_authorized'),
                     'LOCA_ALL_ERROR_NOTACTIVATED' => __('t_ingame.layout.chat_not_activated'),
                     'X_NEW_CHATS'              => __('t_ingame.layout.chat_new_chats'),
                     'MORE_USERS'               => __('t_ingame.layout.chat_more_users'),
