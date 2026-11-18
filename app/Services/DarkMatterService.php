@@ -228,22 +228,27 @@ class DarkMatterService
      * Calculate expedition reward amount.
      *
      * @param bool $hasPathfinder Whether the expedition fleet has Pathfinder ships
+     * @param int $astroLevel Player's astrophysics research level; each level boosts the find by 25%
      * @return int
      */
-    public function calculateExpeditionReward(bool $hasPathfinder): int
+    public function calculateExpeditionReward(bool $hasPathfinder, int $astroLevel = 0): int
     {
         $multiplier = (float)$this->settingsService->get('expedition_dark_matter_multiplier', '1.0');
 
         if ($hasPathfinder) {
-            $min = (int)$this->settingsService->get('expedition_dark_matter_min_pathfinder', 300);
-            $max = (int)$this->settingsService->get('expedition_dark_matter_max_pathfinder', 400);
+            $min = (int)$this->settingsService->get('expedition_dark_matter_min_pathfinder', 2400);
+            $max = (int)$this->settingsService->get('expedition_dark_matter_max_pathfinder', 6400);
         } else {
-            $min = (int)$this->settingsService->get('expedition_dark_matter_min_no_pathfinder', 150);
-            $max = (int)$this->settingsService->get('expedition_dark_matter_max_no_pathfinder', 200);
+            $min = (int)$this->settingsService->get('expedition_dark_matter_min_no_pathfinder', 1200);
+            $max = (int)$this->settingsService->get('expedition_dark_matter_max_no_pathfinder', 3200);
         }
 
         $baseReward = rand($min, $max);
-        return (int)($baseReward * $multiplier);
+
+        // Astrophysics research boosts dark matter finds by 25% of the base per research level.
+        $astroMultiplier = 1 + (0.25 * max(0, $astroLevel));
+
+        return (int)($baseReward * $multiplier * $astroMultiplier);
     }
 
     /**

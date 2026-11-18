@@ -1611,7 +1611,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         }
 
         // Forces a rare variant with multiplier=3 and a fixed base of 1,000,000.
-        // With multiplier=3: metal find=3M, crystal find=2M, deut find=1M.
+        // Astrophysics level 1 (basicSetup) boosts the base by 10% to 1,100,000.
+        // With multiplier=3: metal find=3.3M, crystal find=2.2M, deut find=1.1M.
         $this->bindForcedExpeditionFindVariant('rare', 3, 1000000);
 
         $this->travel(10)->hours();
@@ -1623,10 +1624,10 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         // Original cargo was 1 metal + 1 crystal. Subtract to isolate found resources.
         $totalFound = $returnTripMission->metal + $returnTripMission->crystal + $returnTripMission->deuterium - 2;
 
-        // With base=1M and rare multiplier=3: metal=3M, crystal=2M, deut=1M.
-        // The minimum possible find (deut) is 1M; the maximum (metal) is 3M.
-        $this->assertGreaterThanOrEqual(1000000, $totalFound, 'Rare find (3x) should yield at least 1M total resources');
-        $this->assertLessThanOrEqual(3000000, $totalFound, 'Rare find (3x) should yield at most 3M total resources');
+        // With astro-boosted base=1.1M and rare multiplier=3: metal=3.3M, crystal=2.2M, deut=1.1M.
+        // The minimum possible find (deut) is 1.1M; the maximum (metal) is 3.3M.
+        $this->assertGreaterThanOrEqual(1100000, $totalFound, 'Rare find (3x) should yield at least 1.1M total resources');
+        $this->assertLessThanOrEqual(3300000, $totalFound, 'Rare find (3x) should yield at most 3.3M total resources');
 
         // The message tier must match the rolled rare variant.
         $this->assertContains(
@@ -1655,7 +1656,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         }
 
         // Forces an exceptional variant with multiplier=10 and a fixed base of 1,000,000.
-        // With multiplier=10: metal find=10M, crystal find≈6.67M, deut find≈3.33M.
+        // Astrophysics level 1 (basicSetup) boosts the base by 10% to 1,100,000.
+        // With multiplier=10: metal find=11M, crystal find≈7.33M, deut find≈3.67M.
         $this->bindForcedExpeditionFindVariant('exceptional', 10, 1000000);
 
         $this->travel(10)->hours();
@@ -1667,10 +1669,10 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         // Original cargo was 1 metal + 1 crystal. Subtract to isolate found resources.
         $totalFound = $returnTripMission->metal + $returnTripMission->crystal + $returnTripMission->deuterium - 2;
 
-        // With base=1M and exceptional multiplier=10: metal=10M, crystal≈6.67M, deut≈3.33M.
-        // The minimum possible find (deut) is 3,333,333; the maximum (metal) is 10,000,000.
-        $this->assertGreaterThanOrEqual(3333333, $totalFound, 'Exceptional find (10x) should yield at least ~3.33M total resources');
-        $this->assertLessThanOrEqual(10000000, $totalFound, 'Exceptional find (10x) should yield at most 10M total resources');
+        // With astro-boosted base=1.1M and exceptional multiplier=10: metal=11M, crystal≈7.33M, deut≈3.67M.
+        // The minimum possible find (deut) is ~3,666,666; the maximum (metal) is 11,000,000.
+        $this->assertGreaterThanOrEqual(3660000, $totalFound, 'Exceptional find (10x) should yield at least ~3.67M total resources');
+        $this->assertLessThanOrEqual(11000000, $totalFound, 'Exceptional find (10x) should yield at most 11M total resources');
 
         // The message tier must match the rolled exceptional variant.
         $this->assertEquals(
@@ -1745,6 +1747,7 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
 
         // Forces an exceptional variant with multiplier=10 and a fixed base of 100,000,
         // giving a ship find budget of 1,000,000 (far below the 25M cargo capacity).
+        // Astrophysics level 1 (basicSetup) boosts that by 10% to 1,100,000.
         $this->bindForcedExpeditionFindVariant('exceptional', 10, 100000);
 
         $this->travel(10)->hours();
@@ -1766,9 +1769,9 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
 
         // The budget is fully distributed except for per-ship-type rounding losses (each less
         // than one ship's price), so the found value must be well above the unmultiplied base
-        // of 100k and at most the full 1M budget.
+        // of 100k and at most the full astro-boosted 1.1M budget.
         $this->assertGreaterThanOrEqual(500000, $foundShipsValue, 'Exceptional find (10x) should yield ships worth far more than the 100k base');
-        $this->assertLessThanOrEqual(1000000, $foundShipsValue, 'Found ships value should not exceed the 1M budget');
+        $this->assertLessThanOrEqual(1100000, $foundShipsValue, 'Found ships value should not exceed the 1.1M budget');
 
         // The message tier must match the rolled exceptional variant.
         $this->assertEquals(
@@ -1780,7 +1783,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
 
     /**
      * Test that a forced exceptional variant (10x multiplier) actually multiplies the dark
-     * matter reward: the base reward is 150-200, so the credited amount must be 1500-2000.
+     * matter reward: the base reward is 1200-3200 and astrophysics level 1 boosts it by 25%,
+     * so the credited amount must be 15000-40000.
      */
     public function testExpeditionGainDarkMatterWithExceptionalVariant(): void
     {
@@ -1797,7 +1801,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         $this->sendTestExpedition(true);
 
         // Forces an exceptional variant with multiplier=10. Dark matter is not cargo-constrained,
-        // so the rolled variant applies directly. Base reward without pathfinder is 150-200.
+        // so the rolled variant applies directly. Base reward without pathfinder is 1200-3200,
+        // boosted by 25% at astrophysics level 1 to 1500-4000.
         $this->bindForcedExpeditionFindVariant('exceptional', 10);
 
         $this->travel(10)->hours();
@@ -1809,8 +1814,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         }
         $darkMatterGained = $user->dark_matter - $initialDarkMatter;
 
-        $this->assertGreaterThanOrEqual(1500, $darkMatterGained, 'Exceptional find (10x) should yield at least 1500 dark matter (base 150-200)');
-        $this->assertLessThanOrEqual(2000, $darkMatterGained, 'Exceptional find (10x) should yield at most 2000 dark matter (base 150-200)');
+        $this->assertGreaterThanOrEqual(15000, $darkMatterGained, 'Exceptional find (10x) should yield at least 15000 dark matter (base 1200-3200, astro 1 +25%)');
+        $this->assertLessThanOrEqual(40000, $darkMatterGained, 'Exceptional find (10x) should yield at most 40000 dark matter (base 1200-3200, astro 1 +25%)');
 
         // The message tier must match the rolled exceptional variant.
         $this->assertEquals(
@@ -1822,8 +1827,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
 
     /**
      * Test that a Pathfinder in the expedition fleet switches the dark
-     * matter find to the Pathfinder reward band (base 300-400 instead of
-     * 150-200). In the original game, a Pathfinder doubles all positive
+     * matter find to the Pathfinder reward band (base 2400-6400 instead of
+     * 1200-3200). In the original game, a Pathfinder doubles all positive
      * expedition finds, and the dark matter find is a positive find.
      */
     public function testExpeditionGainDarkMatterWithPathfinder(): void
@@ -1847,7 +1852,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         $this->sendMissionToPosition16($unitCollection, new Resources(1, 1, 0, 0), true);
 
         // Forces an exceptional variant with multiplier=10. Pathfinder-band
-        // base reward without variant multiplier is 300-400.
+        // base reward without variant multiplier is 2400-6400, boosted by 25%
+        // at astrophysics level 1 to 3000-8000.
         $this->bindForcedExpeditionFindVariant('exceptional', 10);
 
         $this->travel(10)->hours();
@@ -1859,8 +1865,8 @@ class FleetDispatchExpeditionTest extends FleetDispatchTestCase
         }
         $darkMatterGained = $user->dark_matter - $initialDarkMatter;
 
-        $this->assertGreaterThanOrEqual(3000, $darkMatterGained, 'Pathfinder exceptional find (10x) should yield at least 3000 dark matter (pathfinder base 300-400)');
-        $this->assertLessThanOrEqual(4000, $darkMatterGained, 'Pathfinder exceptional find (10x) should yield at most 4000 dark matter (pathfinder base 300-400)');
+        $this->assertGreaterThanOrEqual(30000, $darkMatterGained, 'Pathfinder exceptional find (10x) should yield at least 30000 dark matter (pathfinder base 2400-6400, astro 1 +25%)');
+        $this->assertLessThanOrEqual(80000, $darkMatterGained, 'Pathfinder exceptional find (10x) should yield at most 80000 dark matter (pathfinder base 2400-6400, astro 1 +25%)');
     }
 
     /**

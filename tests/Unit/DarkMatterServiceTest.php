@@ -124,13 +124,38 @@ class DarkMatterServiceTest extends UnitTestCase
     {
         // Test with Pathfinder
         $rewardWithPathfinder = $this->darkMatterService->calculateExpeditionReward(true);
-        $this->assertGreaterThanOrEqual(300, $rewardWithPathfinder);
-        $this->assertLessThanOrEqual(400, $rewardWithPathfinder);
+        $this->assertGreaterThanOrEqual(2400, $rewardWithPathfinder);
+        $this->assertLessThanOrEqual(6400, $rewardWithPathfinder);
 
         // Test without Pathfinder
         $rewardWithoutPathfinder = $this->darkMatterService->calculateExpeditionReward(false);
-        $this->assertGreaterThanOrEqual(150, $rewardWithoutPathfinder);
-        $this->assertLessThanOrEqual(200, $rewardWithoutPathfinder);
+        $this->assertGreaterThanOrEqual(1200, $rewardWithoutPathfinder);
+        $this->assertLessThanOrEqual(3200, $rewardWithoutPathfinder);
+    }
+
+    /**
+     * Test that calculateExpeditionReward() scales the find by 25% of the base per
+     * astrophysics research level. Deterministic by pinning min == max on the band.
+     */
+    public function testCalculateExpeditionRewardScalesWithAstrophysicsLevel(): void
+    {
+        $originalMin = $this->settingsService->get('expedition_dark_matter_min_no_pathfinder');
+        $originalMax = $this->settingsService->get('expedition_dark_matter_max_no_pathfinder');
+
+        try {
+            $this->settingsService->set('expedition_dark_matter_min_no_pathfinder', 1000);
+            $this->settingsService->set('expedition_dark_matter_max_no_pathfinder', 1000);
+
+            $this->assertEquals(1000, $this->darkMatterService->calculateExpeditionReward(false, 0));
+            $this->assertEquals(1250, $this->darkMatterService->calculateExpeditionReward(false, 1));
+            $this->assertEquals(1500, $this->darkMatterService->calculateExpeditionReward(false, 2));
+            $this->assertEquals(3500, $this->darkMatterService->calculateExpeditionReward(false, 10));
+        } finally {
+            // Settings persist across the whole test suite (not transactional) — restore them
+            // so the pinned band does not leak into other tests.
+            $this->settingsService->set('expedition_dark_matter_min_no_pathfinder', $originalMin);
+            $this->settingsService->set('expedition_dark_matter_max_no_pathfinder', $originalMax);
+        }
     }
 
     /**

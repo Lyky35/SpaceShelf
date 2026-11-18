@@ -600,9 +600,12 @@ class ExpeditionMission extends GameMission
         $variantData = $this->selectExpeditionFindVariant();
         $variant = $variantData['variant'];
 
+        // Astrophysics research boosts dark matter finds by 25% per research level.
+        $astroLevel = $player->getResearchLevel('astrophysics');
+
         // Calculate Dark Matter reward and scale by the variant multiplier.
         $darkMatterService = app(DarkMatterService::class);
-        $darkMatterAmount = (int)($darkMatterService->calculateExpeditionReward($hasPathfinder) * $variantData['multiplier']);
+        $darkMatterAmount = (int)($darkMatterService->calculateExpeditionReward($hasPathfinder, $astroLevel) * $variantData['multiplier']);
 
         // Apply dark matter rewards multiplier from settings.
         $settingsService = app(SettingsService::class);
@@ -1095,6 +1098,11 @@ class ExpeditionMission extends GameMission
         $resourceMultiplier = $settingsService->expeditionRewardMultiplierResources();
         $resourceAmount = $resourceAmount * $resourceMultiplier;
 
+        // SpaceShelf balance tweak: astrophysics research boosts resource finds
+        // by 10% of the base amount per research level.
+        $astroMultiplier = 1 + (0.1 * $player->getResearchLevel('astrophysics'));
+        $resourceAmount = $resourceAmount * $astroMultiplier;
+
         return (int)$resourceAmount;
     }
 
@@ -1131,6 +1139,11 @@ class ExpeditionMission extends GameMission
         $settingsService = app(SettingsService::class);
         $shipMultiplier = $settingsService->expeditionRewardMultiplierShips();
         $resourceAmount = $resourceAmount * $shipMultiplier;
+
+        // SpaceShelf balance tweak: astrophysics research boosts ship finds
+        // by 10% of the base amount per research level.
+        $astroMultiplier = 1 + (0.1 * $player->getResearchLevel('astrophysics'));
+        $resourceAmount = $resourceAmount * $astroMultiplier;
 
         return (int)$resourceAmount;
     }
