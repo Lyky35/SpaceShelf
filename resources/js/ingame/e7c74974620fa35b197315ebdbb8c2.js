@@ -25687,6 +25687,18 @@ function reloadEventbox(data) {
     $("#eventboxLoading").hide();
 
     if (actionSum > 0) {
+      // SpaceShelf default: expand the mission event list ("more details")
+      // on the first page load that has fleet activity, instead of keeping
+      // it collapsed behind the nav icon click. The eventToggle icon still
+      // collapses and reopens the list.
+      if (typeof reloadEventbox.detailOpenApplied === 'undefined') {
+        reloadEventbox.detailOpenApplied = true;
+
+        if ($("#eventboxContent").is(":hidden")) {
+          toggleEvents(true);
+        }
+      }
+
       $("#eventboxBlank").hide();
       $("#eventboxFilled").show(); // Dieser Countdown sorgt dafuer, dass nach dem Ablauf des aktuell angezeigten Events jeweils das naechste
       // geladen wird. Das 3 Sek. Delay sorgt dafuer, dass es nicht beliebig haeufig deswegen neu laedt...
