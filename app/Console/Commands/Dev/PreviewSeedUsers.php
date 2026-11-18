@@ -359,12 +359,6 @@ class PreviewSeedUsers extends Command
         }
         $planet->save();
 
-        // Update user's current planet to first planet only
-        if ($isFirstPlanet) {
-            $user->planet_current = $planet->id;
-            $user->save();
-        }
-
         return $planetService;
     }
 

@@ -502,39 +502,49 @@ class PlayerService
     /**
      * Get planet ID that player has currently selected / is looking at.
      *
+     * The selection is stored per session (not on the user record), so that a fresh
+     * login or a second browser/device always starts on the home planet.
+     *
      * @return int
      */
     public function getCurrentPlanetId(): int
     {
-        if (!$this->user->planet_current) {
-            // If no current planet is set, return the first planet of the player.
-            $firstPlanet = $this->planets->first();
-            if ($firstPlanet === null) {
-                throw new RuntimeException('Player has no planets.');
-            }
-
-            return $firstPlanet->getPlanetId();
+        // Reading is safe in any context: without a session (console, queue) this
+        // simply resolves to null and falls back to the first planet below.
+        $sessionPlanetId = session('current_planet_id');
+        if (is_int($sessionPlanetId) && $this->planets->planetExistsAndOwnedByPlayer($sessionPlanetId)) {
+            return $sessionPlanetId;
         }
 
-        return $this->user->planet_current;
+        // If no (or an invalid, e.g. destroyed) current planet is set for this
+        // session, return the first planet of the player.
+        $firstPlanet = $this->planets->first();
+        if ($firstPlanet === null) {
+            throw new RuntimeException('Player has no planets.');
+        }
+
+        return $firstPlanet->getPlanetId();
     }
 
     /**
-     * Set current planet ID (update).
+     * Set current planet ID for the current HTTP session.
      *
      * @param int $planet_id
      */
     public function setCurrentPlanetId(int $planet_id): void
     {
-        // Check if user owns this planet ID.
-        // Planet ID 0 is always valid as that will be updated to the first planet of the player.
-        if ($planet_id == 0) {
-            $this->user->planet_current = null;
-            $this->user->save();
+        if (!app('session')->driver()->isStarted()) {
+            // Console and queue jobs run without a started session; the current planet
+            // there always resolves to the first planet of the player.
             return;
+        }
+
+        // Check if user owns this planet ID.
+        // Planet ID 0 is always valid as that will reset the selection back to the first planet of the player.
+        if ($planet_id == 0) {
+            session()->forget('current_planet_id');
         } elseif ($this->planets->planetExistsAndOwnedByPlayer($planet_id)) {
-            $this->user->planet_current = $planet_id;
-            $this->user->save();
+            session(['current_planet_id' => $planet_id]);
         }
     }
 
@@ -1007,10 +1017,6 @@ class PlayerService
 
         // Delete tech record.
         UserTech::where('user_id', $this->getId())->delete();
-
-        // Clear planet_current reference before deleting planets (FK constraint).
-        $this->user->planet_current = null;
-        $this->user->save();
 
         // Delete all planets.
         Planet::where('user_id', $this->getId())->delete();

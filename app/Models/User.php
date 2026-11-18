@@ -39,7 +39,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $register_time
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property int|null $planet_current
  * @property int|null $alliance_id
  * @property Carbon|null $alliance_left_at
  * @property int $dark_matter
