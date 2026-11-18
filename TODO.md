@@ -217,23 +217,30 @@ account out of every in-game page.
       is quarantined (`update_failures` column, logged, marked processed) so
       it stops being retried forever; arrivals are now ordered by
       `time_arrival, id`. Root causes (#1639/#1640) remain below.
-- [ ] **#1639 — fleet arriving at an abandoned moon fights a battle and
+- [x] **#1639 — fleet arriving at an abandoned moon fights a battle and
       crashes the attacker.** `markAsDestroyed()` (`PlanetService.php:233`,
       fork-modified) blocks abandoning only while the **owner's own** fleets
-      are outbound; incoming foreign fleets are not handled:
+      are outbound; incoming foreign fleets were not handled:
       `checkDestroyedTarget()` (`GameMission.php:487`) runs at dispatch
-      only, `GameMission::process()` has no destroyed-target check, and the
-      battle at the destroyed moon reaches `calculateWreckField()`
+      only, `GameMission::process()` had no destroyed-target check, and the
+      battle at the destroyed moon reached `calculateWreckField()`
       (`BattleEngine.php:727`) which calls `->planet()` unconditionally →
-      throws → chains into #1641. Upstream's vanilla-accurate proposal:
-      foreign fleets arrive, do nothing and return intact; own, ACS-defend
-      and return fleets reroute to the parent planet.
-- [ ] **#1640 — `planet()`/`hasPlanet()` miss a destroyed parent planet.**
-      Both resolve through the player's planet list
+      throws → chains into #1641.
+      **Fixed 2026-11-17:** `GameMission::process()` now validates the
+      destination at arrival (`handleDestroyedTargetArrival`): return
+      fleets are rerouted to the parent planet (same rebind the daily
+      purge already does), every other fleet does nothing at the dead
+      moon and returns home intact, and no battle is ever fought there.
+      Destroyed planets stay attackable by design.
+- [x] **#1640 — `planet()`/`hasPlanet()` miss a destroyed parent planet.**
+      Both resolved through the player's planet list
       (`PlanetService.php:1640–1677`), which filters `destroyed = 0`
       (`PlanetListService.php:44`), while `moon()`/`getParentPlanet()`
-      resolve via the factory and do find destroyed bodies. This is the
+      resolve via the factory and do find destroyed bodies. This was the
       crash site for #1639 (`No planet found for this moon.`).
+      **Fixed 2026-11-17:** `planet()`/`hasPlanet()` now resolve through
+      `getParentPlanet()` (coordinate factory, destroyed bodies included),
+      consistent with `moon()`.
 - [ ] **#1341 — destroyed moons break messages.** Upstream fix PR #1494
       (`FleetMissionPlanetFormatter` + mission redirection + battle-report
       origin snapshots) is still unmerged and absent from this tree;

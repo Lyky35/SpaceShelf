@@ -1644,18 +1644,11 @@ class PlanetService
             return false;
         }
 
-        $player = $this->getPlayer();
-        if ($player === null) {
-            throw new RuntimeException('Planet has no owner.');
-        }
-
-        // Access all players planets and see if there is a moon with the same coordinates
-        // as this planet.
-        if ($player->planets->getPlanetByCoordinates($this->getPlanetCoordinates()) !== null) {
-            return true;
-        }
-
-        return false;
+        // Resolve through the coordinate factory (as moon()/getParentPlanet() do) so a
+        // destroyed-but-not-yet-purged parent planet still resolves; the player's planet
+        // list filters destroyed = 0, which made fleet processing crash with
+        // "No planet found for this moon." (upstream #1640).
+        return $this->getParentPlanet() !== null;
     }
 
     /**
@@ -1665,18 +1658,13 @@ class PlanetService
      */
     public function planet(): PlanetService
     {
-        $player = $this->getPlayer();
-        if ($player === null) {
-            throw new RuntimeException('Planet has no owner.');
-        }
+        $parentPlanet = $this->getParentPlanet();
 
-        $moon = $player->planets->getPlanetByCoordinates($this->getPlanetCoordinates());
-
-        if ($moon === null) {
+        if ($parentPlanet === null) {
             throw new RuntimeException('No planet found for this moon.');
         }
 
-        return $moon;
+        return $parentPlanet;
     }
 
     /**

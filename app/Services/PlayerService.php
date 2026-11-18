@@ -813,8 +813,8 @@ class PlayerService
 
         Log::error(
             'Could not update fleet mission with ID ' . $mission->id .
-            ' (attempt ' . $mission->update_failures . '/' . self::MAX_FLEET_MISSION_UPDATE_FAILURES .
-            ($quarantined ? '), mission quarantined.' : '.'),
+            ' (attempt ' . $mission->update_failures . '/' . self::MAX_FLEET_MISSION_UPDATE_FAILURES . ').' .
+            ($quarantined ? ' Mission quarantined after exhausting retries.' : ''),
             ['exception' => $e]
         );
     }

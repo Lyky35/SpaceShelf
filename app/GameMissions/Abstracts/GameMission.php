@@ -19,6 +19,7 @@ use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\FleetMission;
 use OGame\Models\FleetUnion;
+use OGame\Models\Planet;
 use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
 use OGame\Services\FleetMissionService;
@@ -413,13 +414,95 @@ abstract class GameMission
                 return;
             }
 
+            // The destination may have been destroyed (abandoned moon) while the
+            // fleet was in flight; validate the target at arrival, not only at dispatch.
+            if ($this->handleDestroyedTargetArrival($mission)) {
+                return;
+            }
+
             // This is an arrival mission as it has no parent mission.
             // Process arrival.
             $this->processArrival($mission);
         } else {
+            // Same validation for return missions: a fleet returning to a moon that
+            // was destroyed mid-trip is rerouted to its parent planet.
+            if ($this->handleDestroyedTargetArrival($mission)) {
+                return;
+            }
+
             // This is a return mission as it has a parent mission.
             $this->processReturn($mission);
         }
+    }
+
+    /**
+     * Handle fleets whose destination was destroyed (abandoned moon or moon wiped
+     * by combat) while the fleet was still in flight.
+     *
+     * Dispatch-time validation (checkDestroyedTarget) already forbids targeting a
+     * destroyed moon, so letting an arrival fight a battle there is inconsistent
+     * with the game rules — and crashed the whole fleet update chain once the
+     * wreck-field calculation tried to resolve the dead moon's parent planet
+     * (upstream #1639/#1640). Behavior follows the vanilla-accurate rule:
+     * return fleets are rerouted to the parent planet, while every other fleet
+     * does nothing at the dead moon and returns home intact — just like arriving
+     * at an empty coordinate. Destroyed planets are not touched here: attacking
+     * them remains allowed by design so debris can be looted until the purge.
+     *
+     * @return bool True when the mission has been handled here and processing must stop.
+     */
+    private function handleDestroyedTargetArrival(FleetMission $mission): bool
+    {
+        if ($mission->planet_id_to === null) {
+            return false;
+        }
+
+        // Plain model lookup: destroyed bodies must resolve (the players'
+        // PlanetListService filters them out) and we only need the destroyed
+        // flag, the planet type and the coordinates.
+        $target = Planet::where('id', $mission->planet_id_to)->first();
+        if ($target === null || (int) $target->destroyed === 0) {
+            return false;
+        }
+
+        if ((int) $target->planet_type !== PlanetType::Moon->value) {
+            return false;
+        }
+
+        // Return fleets: reroute to the parent planet when it survived, so the
+        // fleet lands there instead of vanishing at a ghost coordinate.
+        if (!empty($mission->parent_id)) {
+            $parent = Planet::where('galaxy', $target->galaxy)
+                ->where('system', $target->system)
+                ->where('planet', $target->planet)
+                ->where('planet_type', PlanetType::Planet->value)
+                ->first();
+
+            if ($parent !== null && (int) $parent->destroyed === 0) {
+                // The parent planet shares the moon's coordinates, so the already
+                // calculated return ETA stays valid; normal return processing continues.
+                $mission->planet_id_to = $parent->id;
+                $mission->type_to = PlanetType::Planet->value;
+                $mission->save();
+
+                return false;
+            }
+        }
+
+        $mission->processed = 1;
+        $mission->save();
+
+        // Only send the fleet home when it has a living origin to land at; without
+        // that guard the return mission would bounce between two dead bodies forever.
+        $origin = $mission->planet_id_from !== null
+            ? Planet::where('id', $mission->planet_id_from)->first()
+            : null;
+
+        if (static::$hasReturnMission && $origin !== null && (int) $origin->destroyed === 0) {
+            $this->startReturn($mission, $this->fleetMissionService->getResources($mission), $this->fleetMissionService->getFleetUnits($mission));
+        }
+
+        return true;
     }
 
     /**
