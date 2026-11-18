@@ -499,8 +499,7 @@ account out of every in-game page.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #307 (large shipyard orders build fewer units than requested),
-      #1629/#1630 (resource-page energy values below 100% factor), #1168
+- [ ] #1629/#1630 (resource-page energy values below 100% factor), #1168
       (dispatch confirmation lists ship names instead of "Fleet dispatch
       [time] (n) Ok"), #1514/#1541 (recycle mission not auto-selected at
       position 16), #1513 (dev shortcut creates no expedition debris
@@ -514,6 +513,19 @@ account out of every in-game page.
 
 ### Audit exclusions (verified NOT present — don't re-investigate)
 
+- **#307** (large shipyard orders build fewer units than requested) —
+  upstream still open, but root cause (planet row saved with data read
+  before the update lock was acquired; lost-update race wiped granted
+  units) was fixed upstream by PR #321, which this fork carries:
+  `PlanetService::update()` takes `lockForUpdate()` on the planet row and
+  `reloadPlanet()`s before processing, all inside one transaction. The
+  award math itself cannot lose units (full remainder is granted once
+  `now >= time_end`, and float→int truncation of `time_progress` only
+  ever awards early). Upstream's #321 regression tests are present and
+  green on HEAD: `UnitQueueTest::testUnitQueueLargeAmountLowShipyardLevel`
+  (1000 units) and `testUnitQueueLargeAmountHighShipyardLevel` (10000
+  units). Upstream keeps #307 open only for the full architectural race
+  rewrite (#322); out of scope.
 - **#1350** (quick mining yields half of expedition debris) — quick mining
   is not implemented in this fork; deep-space pos-16 debris is Pathfinder
   harvested (fork feature, covered by `PathfinderExpeditionDebrisHarvestTest`).
