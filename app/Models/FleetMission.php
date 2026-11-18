@@ -42,6 +42,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $target_priority
  * @property int $processed
  * @property int $processed_hold
+ * @property int $update_failures
  * @property int $canceled
  * @property bool $retreat_after_defender_retreat
  * @property array|null $wreck_field_data

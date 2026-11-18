@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OGame\GameObjects\Models\Calculations\CalculationType;
 use OGame\Models\BuildingQueue;
 use OGame\Models\FleetMission;
@@ -30,6 +31,13 @@ use Throwable;
  */
 class PlayerService
 {
+    /**
+     * Number of consecutive processing failures after which a fleet mission is
+     * quarantined (marked processed) so a permanently broken mission can no longer
+     * block the player's account on every page load (upstream #1641).
+     */
+    private const MAX_FLEET_MISSION_UPDATE_FAILURES = 3;
+
     /**
      * The planet list object for this player.
      *
@@ -724,6 +732,14 @@ class PlayerService
     }
 
     /**
+     * Process all fleet missions of this player that have reached their arrival time.
+     *
+     * Every mission is processed inside its own savepoint, so a mission that throws
+     * half-way through only rolls back its own changes while the remaining arrived
+     * missions still process and the request still completes. A mission that keeps
+     * failing is quarantined after MAX_FLEET_MISSION_UPDATE_FAILURES attempts so it
+     * can no longer lock the player's account (upstream #1641).
+     *
      * @throws Throwable
      */
     public function updateFleetMissions(): void
@@ -737,42 +753,70 @@ class PlayerService
                 ->lockForUpdate()
                 ->get();
 
-            if ($planetMissionUpdateLock->count() === count($planetIds)) {
-                try {
-                    $fleetMissionService = resolve(FleetMissionService::class, ['player' => $this]);
-                    $missions = $fleetMissionService->getArrivedMissionsByPlanetIds($planetIds);
+            if ($planetMissionUpdateLock->count() !== count($planetIds)) {
+                throw new RuntimeException('Could not acquire update fleet mission planet lock.');
+            }
 
-                    foreach ($missions as $mission) {
-                        // Attempt to acquire a lock on the row for this fleet mission. This is to prevent
-                        // race conditions when multiple requests are updating the same fleet mission and
-                        // potentially doing double insertions or overwriting each other's changes.
-                        $fleetMissionLock = FleetMission::where('id', $mission->id)
-                            ->lockForUpdate()
-                            ->first();
+            $fleetMissionService = resolve(FleetMissionService::class, ['player' => $this]);
+            $missions = $fleetMissionService->getArrivedMissionsByPlanetIds($planetIds);
 
-                        if ($fleetMissionLock) {
-                            try {
-                                $fleetMissionService->updateMission($mission);
-                            } catch (Exception $e) {
-                                throw new Exception('Could not update fleet mission with ID ' . $mission->id . ': ' . $e->getMessage());
-                            }
-                        } else {
-                            throw new Exception('Could not acquire update fleet mission update lock.');
-                        }
-                    }
+            foreach ($missions as $mission) {
+                // Attempt to acquire a lock on the row for this fleet mission. This is to prevent
+                // race conditions when multiple requests are updating the same fleet mission and
+                // potentially doing double insertions or overwriting each other's changes.
+                $fleetMissionLock = FleetMission::where('id', $mission->id)
+                    ->lockForUpdate()
+                    ->first();
 
-                    if ($missions->count() > 0) {
-                        // Update the current player object and all child planets to make sure any changes
-                        // to the fleet missions are reflected in the player/planet objects.
-                        $this->load($this->getId());
-                    }
-                } catch (Exception $e) {
-                    throw new RuntimeException('Fleet mission service process error: ' . $e->getMessage());
+                if ($fleetMissionLock === null) {
+                    continue;
                 }
-            } else {
-                throw new Exception('Could not acquire update fleet mission planet lock.');
+
+                try {
+                    // The nested transaction is a SAVEPOINT on MariaDB: a failure half-way
+                    // through this mission discards only this mission's writes, while the
+                    // outer transaction (and its planet locks) stays intact for the rest
+                    // of the batch. Without this isolation a single broken mission made
+                    // every subsequent request fail with a 500 until it was fixed (#1641).
+                    DB::transaction(fn () => $fleetMissionService->updateMission($mission));
+                } catch (Throwable $e) {
+                    $this->handleFleetMissionUpdateFailure($fleetMissionLock, $e);
+                }
+            }
+
+            if ($missions->count() > 0) {
+                // Update the current player object and all child planets to make sure any changes
+                // to the fleet missions are reflected in the player/planet objects.
+                $this->load($this->getId());
             }
         });
+    }
+
+    /**
+     * Record a fleet mission processing failure and quarantine it once it is clearly
+     * poisonous. A mission whose processing deterministically throws would otherwise be
+     * retried on every request forever, spamming the error log and — before the savepoint
+     * isolation — rolling back the whole batch (upstream #1641). After the threshold the
+     * mission is marked processed and removed from the arrival queue; the full error and
+     * mission state are logged so admins can repair the fleet manually.
+     */
+    private function handleFleetMissionUpdateFailure(FleetMission $mission, Throwable $e): void
+    {
+        $mission->update_failures = (int) $mission->update_failures + 1;
+        $quarantined = $mission->update_failures >= self::MAX_FLEET_MISSION_UPDATE_FAILURES;
+
+        if ($quarantined) {
+            $mission->processed = 1;
+        }
+
+        $mission->save();
+
+        Log::error(
+            'Could not update fleet mission with ID ' . $mission->id .
+            ' (attempt ' . $mission->update_failures . '/' . self::MAX_FLEET_MISSION_UPDATE_FAILURES .
+            ($quarantined ? '), mission quarantined.' : '.'),
+            ['exception' => $e]
+        );
     }
 
     /**

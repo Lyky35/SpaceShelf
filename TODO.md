@@ -203,14 +203,20 @@ the affected code. Every entry below was checked against the current tree
 Most operationally dangerous cluster: one broken fleet mission can lock an
 account out of every in-game page.
 
-- [ ] **#1641 — one failing fleet mission → 500 on every page.**
+- [x] **#1641 — one failing fleet mission → 500 on every page.**
       `GlobalGame.php:61` calls `PlayerService::updateFleetMissions()` on
-      every in-game request; `PlayerService.php:729–776` processes all
-      arrived missions in a single `DB::transaction` and rethrows any
-      per-mission exception, so the broken mission replays on every page
-      load (admins impersonating the victim are locked out too). Related:
-      `getArrivedMissionsByPlanetIds()` (`FleetMissionService.php:411`) has
-      no `orderBy`, so arrival order isn't guaranteed even today.
+      every in-game request; `PlayerService.php:729–776` processed all
+      arrived missions in a single `DB::transaction` and rethrew any
+      per-mission exception, so the broken mission replayed on every page
+      load (admins impersonating the victim were locked out too). Related:
+      `getArrivedMissionsByPlanetIds()` (`FleetMissionService.php:411`) had
+      no `orderBy`, so arrival order wasn't guaranteed even today.
+      **Fixed 2026-11-17 (containment):** each mission now processes inside
+      a savepoint (nested transaction), so one failure rolls back only that
+      mission and never reaches the request; a mission that fails 3 times
+      is quarantined (`update_failures` column, logged, marked processed) so
+      it stops being retried forever; arrivals are now ordered by
+      `time_arrival, id`. Root causes (#1639/#1640) remain below.
 - [ ] **#1639 — fleet arriving at an abandoned moon fights a battle and
       crashes the attacker.** `markAsDestroyed()` (`PlanetService.php:233`,
       fork-modified) blocks abandoning only while the **owner's own** fleets

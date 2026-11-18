@@ -431,6 +431,9 @@ class FleetMissionService
                             ->whereRaw('(time_arrival - time_holding) <= ?', [$currentTime]);
                     });
             })
+            // Process in arrival order so batches are deterministic; id breaks ties.
+            ->orderBy('time_arrival')
+            ->orderBy('id')
             ->get();
 
         // Filter based on mission type and hold time

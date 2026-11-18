@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Date;
 use OGame\Bots\Brain\BotBrain;
 use OGame\Bots\Brain\SnapshotBuilder;
-use OGame\Factories\PlanetServiceFactory;
 use OGame\Factories\PlayerServiceFactory;
 use OGame\Models\Bot;
 use OGame\Models\FleetMission;
