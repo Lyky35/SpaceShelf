@@ -270,20 +270,36 @@ account out of every in-game page.
 
 ### Production factor math (#1660 / #1661; pairs with #1629 energy display)
 
-- [ ] **#1660 — production factor floored to a whole percent before use.**
-      `getResourceProductionFactor()` does `floor($production / $consumption
-      * 100)` (`PlanetService.php:2462`), and that floored value feeds both
-      the stored-stats path (`:2327`) and the per-object path (`:2365/2383`),
-      underpaying mines by up to ~1 percentage point on fractional energy
-      deficits. Vanilla applies the exact ratio; only the on-page "X%"
-      label should be floored.
-- [ ] **#1661 — fusion reactor deuterium burn is scaled by the production
-      factor.** `updateResourceProductionStatsInner()` runs
-      `$building_production_total->multiply($production_factor)`
-      (`PlanetService.php:2331`) on a total that already contains the
-      reactor's negative deuterium formula (`BuildingObjects.php:135`), so
-      deficit planets burn less deuterium than they should; same in the
-      per-object display path (`:2383`).
+- [x] **#1660 — production factor floored to a whole percent before use.**
+      `getResourceProductionFactor()` did `floor($production / $consumption
+      * 100)` and fed that floored value to the stored-stats path and the
+      per-object path, underpaying mines by up to ~1 percentage point on
+      fractional energy deficits.
+      **Fixed 2026-11-17:** the method now returns the exact ratio as a float
+      (clamped 0–100, docblock updated); `updateResourceProductionStatsInner`,
+      `getObjectProductionIndex` and the bot/utility comparisons consume it
+      unscaled. Only the `ResourcesController::settings()` label floors
+      (`(int) floor(...)`) to keep the vanilla "Production factor: X%" display.
+      `ResourceProductionTest::testProductionFactorAppliedAsExactRatio` covers
+      a 98.75% deficit (exact ratio vs floored 98% diverges on both the mine
+      row and stored per-hour metal).
+- [x] **#1661 — fusion reactor deuterium burn scaled by the production
+      factor.** `updateResourceProductionStatsInner()` ran
+      `$building_production_total->multiply($production_factor)` on a total
+      that already contained the reactor's negative deuterium formula, so
+      deficit planets burned less deuterium than they should; the per-object
+      path (`calculateMine`) scaled it the same way.
+      **Fixed 2026-11-17:** the production factor is now a separate argument
+      to `GameObjectProduction::calculate()`/`calculateMine()` (previously
+      merged into `$building_percentage`) and is applied only to mine output —
+      metal, crystal and positive deuterium (synthesizer) — never to a
+      negative deuterium formula (the reactor's burn). In the stored-stats
+      path the reactor's deuterium is stripped before `multiply()` and added
+      back unscaled, mirroring the existing energy restore.
+      `testFusionReactorDeuteriumBurnNotReducedByProductionFactor` asserts
+      identical per-object and stored −11/h burn at 98.75% and 100% factors.
+      Energy display weirdness below 100% factor remains with #1629.
+
 
 ### Chat cluster (#1644–#1651) — chat ships from upstream unmodified
 

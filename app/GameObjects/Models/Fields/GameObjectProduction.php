@@ -106,9 +106,13 @@ class GameObjectProduction
      * @param float $building_percentage
      *  The production percentage of the building set by the player
      *
+     * @param float $production_factor
+     *  The planet's production factor (0-1) applied to mine output only; the
+     *  fusion reactor's deuterium consumption is not affected by it.
+     *
      * @return ProductionIndex
      */
-    public function calculate(int $level, float $building_percentage = 1): ProductionIndex
+    public function calculate(int $level, float $building_percentage = 1, float $production_factor = 1): ProductionIndex
     {
         $productionIndex = new ProductionIndex();
 
@@ -116,7 +120,7 @@ class GameObjectProduction
             return $productionIndex;
         }
 
-        $this->calculateMine($productionIndex, $level, $building_percentage);
+        $this->calculateMine($productionIndex, $level, $building_percentage, $production_factor);
         // planet slot bonus is counted toward the mine's income
         //    all other multiplier (plasma, officers) applies on top of planet slot bonus
         //    therefore, this value needs to be calculated right before other bonuses
@@ -139,14 +143,16 @@ class GameObjectProduction
      * @param ProductionIndex $productionIndex
      * @param int $level
      * @param float $building_percentage
+     * @param float $production_factor
      * @return void
      */
-    private function calculateMine(ProductionIndex $productionIndex, int $level, float $building_percentage = 1): void
+    private function calculateMine(ProductionIndex $productionIndex, int $level, float $building_percentage = 1, float $production_factor = 1): void
     {
         if ($this->metal_formula) {
             $productionIndex->mine->metal->set(
                 $this->metal_formula->__invoke($this, $level)
                 * $building_percentage
+                * $production_factor
                 * $this->universe_speed
             );
         }
@@ -155,15 +161,24 @@ class GameObjectProduction
             $productionIndex->mine->crystal->set(
                 $this->crystal_formula->__invoke($this, $level)
                 * $building_percentage
+                * $production_factor
                 * $this->universe_speed
             );
         }
 
         if ($this->deuterium_formula) {
+            $deuterium = $this->deuterium_formula->__invoke($this, $level)
+                * $this->universe_speed;
+
+            // The production factor only reduces mine output. A negative
+            // deuterium formula is consumption (the fusion reactor's burn),
+            // not output, so it is not reduced (upstream #1661).
+            if ($deuterium > 0) {
+                $deuterium *= $production_factor;
+            }
+
             $productionIndex->mine->deuterium->set(
-                $this->deuterium_formula->__invoke($this, $level)
-                * $building_percentage
-                * $this->universe_speed
+                $deuterium * $building_percentage
             );
         }
 
@@ -171,6 +186,7 @@ class GameObjectProduction
             $productionIndex->mine->energy->set(
                 $this->energy_formula->__invoke($this, $level)
                 * $building_percentage
+                * $production_factor
             );
         }
     }

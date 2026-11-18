@@ -2262,6 +2262,7 @@ class PlanetService
         // to multiply building production by a production factor later
         // and basic income is unaffected by production factor
         $building_production_total = new Resources();
+        $fusion_deuterium = 0.0;
 
         foreach (ObjectService::getGameObjectsWithProduction() as $object) {
             // Retrieve all game objects that have production values.
@@ -2279,6 +2280,13 @@ class PlanetService
 
             // Combine values to one array, so we have the total production.
             $building_production_total->add($production);
+
+            if ($object->machine_name === 'fusion_plant') {
+                // Remember the fusion reactor's deuterium burn: unlike mine
+                // output, it must not be reduced by the production factor
+                // (upstream #1661).
+                $fusion_deuterium = $production->deuterium->get();
+            }
         }
 
         // Add crawler energy consumption (only once, not per mine)
@@ -2314,10 +2322,17 @@ class PlanetService
 
         $production_factor = $this->getResourceProductionFactor() / 100;
 
-        // multiply() applies the multiplier to energy, which should not be altered
+        // multiply() applies the multiplier to energy, which should not be
+        // altered, nor should the fusion reactor's deuterium burn: only mine
+        // output is reduced by the production factor (upstream #1661). Detach
+        // both before scaling, then restore their unscaled values.
         $total_energy = $building_production_total->energy->get();
+        $building_production_total->deuterium->add(new Resource(-$fusion_deuterium));
+
         $building_production_total->multiply($production_factor);
+
         $building_production_total->energy->set($total_energy);
+        $building_production_total->deuterium->add(new Resource($fusion_deuterium));
 
         // add to $total_production, which contains the basic income
         $production_total->add($building_production_total);
@@ -2368,7 +2383,7 @@ class PlanetService
         $object->production->characterClassService = app(CharacterClassService::class);
         $object->production->universe_speed = $this->settingsService->economySpeed();
 
-        return $object->production->calculate($object_level, $resource_production_factor * $building_percentage);
+        return $object->production->calculate($object_level, $building_percentage, $resource_production_factor);
     }
 
     /**
@@ -2430,33 +2445,37 @@ class PlanetService
      * Returns the resource production factor percentage.
      *
      * This percentage indicates how efficient the resource buildings (mines)
-     * are functioning.
+     * are functioning. The value is the exact ratio of energy production to
+     * energy consumption; display labels should floor it to a whole percent.
      *
-     * @return int
+     * @return float
      *  The production factor expressed as a percentage (min 0, max 100).
      */
-    public function getResourceProductionFactor(): int
+    public function getResourceProductionFactor(): float
     {
         // if no consumption, then there should be no impact to production factor
         if (empty($this->energyConsumption()->get())) {
-            return 100;
+            return 100.0;
         }
 
         // if there is consumption, but energy production is 0, then production factor = 0
         if (empty($this->energyProduction()->get())) {
-            return 0;
+            return 0.0;
         }
 
-        $production_factor = floor($this->energyProduction()->get() / $this->energyConsumption()->get() * 100);
+        $production_factor = $this->energyProduction()->get() / $this->energyConsumption()->get() * 100;
 
         // Force min 0, max 100.
         if ($production_factor > 100) {
-            $production_factor = 100;
+            $production_factor = 100.0;
         } elseif ($production_factor < 0) {
-            $production_factor = 0;
+            $production_factor = 0.0;
         }
 
-        return (int)$production_factor;
+        // Exact ratio: vanilla applies the precise production to consumption
+        // ratio to mine output; only the "Production factor: X%" display is
+        // floored to a whole percent (upstream #1660).
+        return (float) $production_factor;
     }
 
     /**

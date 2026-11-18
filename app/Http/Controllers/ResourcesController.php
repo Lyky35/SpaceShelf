@@ -177,7 +177,9 @@ class ResourcesController extends AbstractBuildingsController
         $crawlerEnergy = $metalMine->production->getCrawlerEnergyConsumption();
         $productionindex_total->crawler->energy->set($crawlerEnergy);
 
-        $production_factor = $this->planet->getResourceProductionFactor();
+        // The production factor label shows a whole percent; the underlying
+        // calculations use the exact ratio (upstream #1660).
+        $production_factor = (int) floor($this->planet->getResourceProductionFactor());
 
         $productionindex_total->total->metal->set($this->planet->getMetalProductionPerHour());
         $productionindex_total->total->crystal->set($this->planet->getCrystalProductionPerHour());

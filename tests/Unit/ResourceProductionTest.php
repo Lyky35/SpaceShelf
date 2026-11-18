@@ -485,6 +485,144 @@ class ResourceProductionTest extends UnitTestCase
     }
 
     /**
+     * Test that the production factor applied to mine output is the exact
+     * energy production / consumption ratio, not floored to a whole percent
+     * (upstream #1660). Only the "Production factor: X%" label is floored.
+     */
+    public function testProductionFactorAppliedAsExactRatio(): void
+    {
+        $settingsService = resolve(SettingsService::class);
+        $settingsService->set('economy_speed', 1);
+
+        // Reset plasma and energy technology to 0 to ensure clean state
+        // (energy technology influences the fusion reactor's energy output,
+        // which is part of the production factor calibration below).
+        $this->createAndSetUserTechModel([
+            'plasma_technology' => 0,
+            'energy_technology' => 0,
+        ]);
+
+        // Fractional energy deficit: metal mine + crystal mine level 3 draw
+        //   2 × floor(10 * 3 * 1.1^3) = 80 energy.
+        // Solar plant level 2 produces floor(20 * 2 * 1.1^2) = 48 energy,
+        // fusion reactor level 1 produces floor(30 * 1 * 1.05^1) = 31 energy,
+        // giving 79 energy: factor = 79 / 80 = 98.75% — not a whole percent.
+        $this->createAndSetPlanetModel([
+            'planet' => 5, // Position 5 has no position bonuses
+            'metal_mine' => 3,
+            'metal_mine_percent' => 10,
+            'crystal_mine' => 3,
+            'crystal_mine_percent' => 10,
+            'solar_plant' => 2,
+            'solar_plant_percent' => 10,
+            'fusion_plant' => 1,
+            'fusion_plant_percent' => 10,
+            'deuterium' => 500, // keep the fusion reactor running
+            'temp_min' => 27,
+            'temp_max' => 67,
+        ]);
+
+        $production_factor = $this->planetService->getResourceProductionFactor();
+
+        $this->assertLessThan(100, $production_factor);
+        $this->assertGreaterThan(
+            floor($production_factor),
+            $production_factor,
+            'Test precondition: the energy ratio must not be a whole percent'
+        );
+        $this->assertEquals(
+            $this->planetService->energyProduction()->get() / $this->planetService->energyConsumption()->get() * 100,
+            $production_factor,
+            'Production factor must be the exact ratio of energy production to consumption'
+        );
+
+        // Metal mine level 3: 30 * 3 * 1.1^3 = 120.03; at the exact 98.75%
+        // factor: 120.03 * 0.9875 = 118.53 -> ceil = 119.
+        // (The old floored factor of 98% would have produced ceil(117.63) = 118.)
+        $this->assertEquals(
+            119,
+            $this->planetService->getObjectProduction('metal_mine', 3)->metal->get(),
+            'Mine output must be scaled by the exact production factor'
+        );
+
+        // Stored per hour production must match: base income 30 + ceil(120 * 0.9875) = 149.
+        $this->assertEquals(
+            149,
+            $this->planetService->getMetalProductionPerHour(),
+            'Stored per hour metal production must be scaled by the exact production factor'
+        );
+    }
+
+    /**
+     * Test that the production factor does not reduce the fusion reactor's
+     * deuterium consumption; it only reduces mine output (upstream #1661).
+     */
+    public function testFusionReactorDeuteriumBurnNotReducedByProductionFactor(): void
+    {
+        $settingsService = resolve(SettingsService::class);
+        $settingsService->set('economy_speed', 1);
+
+        // Reset plasma and energy technology to 0 to ensure clean state.
+        $this->createAndSetUserTechModel([
+            'plasma_technology' => 0,
+            'energy_technology' => 0,
+        ]);
+
+        // Fusion reactor level 1 burns -10 * 1 * 1.1^1 = -11 deuterium per hour.
+        $fusion_level = 1;
+        $expected_burn = -11;
+
+        // Energy deficit scenario (factor 98.75%, see
+        // testProductionFactorAppliedAsExactRatio for the energy breakdown).
+        $deficit_attributes = [
+            'planet' => 5, // Position 5 has no position bonuses
+            'metal_mine' => 3,
+            'metal_mine_percent' => 10,
+            'crystal_mine' => 3,
+            'crystal_mine_percent' => 10,
+            'solar_plant' => 2,
+            'solar_plant_percent' => 10,
+            'fusion_plant' => $fusion_level,
+            'fusion_plant_percent' => 10,
+            'deuterium' => 500, // keep the fusion reactor running
+            'temp_min' => 27,
+            'temp_max' => 67,
+        ];
+
+        $this->createAndSetPlanetModel($deficit_attributes);
+        $this->assertLessThan(100, $this->planetService->getResourceProductionFactor());
+
+        // The reactor's own deuterium value must show the full burn even in a deficit.
+        $this->assertEquals(
+            $expected_burn,
+            $this->planetService->getObjectProduction('fusion_plant', $fusion_level)->deuterium->get(),
+            'Fusion reactor deuterium consumption must not be reduced by the production factor'
+        );
+        $this->assertEquals(
+            $expected_burn,
+            $this->planetService->getDeuteriumProductionPerHour(),
+            'Stored per hour deuterium production must not be reduced by the production factor'
+        );
+
+        // Full energy coverage scenario: add solar plants so the factor hits 100%.
+        $full_attributes = $deficit_attributes;
+        $full_attributes['solar_plant'] = 8;
+        $this->createAndSetPlanetModel($full_attributes);
+        $this->assertEquals(100, $this->planetService->getResourceProductionFactor());
+
+        $this->assertEquals(
+            $expected_burn,
+            $this->planetService->getObjectProduction('fusion_plant', $fusion_level)->deuterium->get(),
+            'Fusion reactor deuterium consumption at 100% factor must equal the consumption at a deficit'
+        );
+        $this->assertEquals(
+            $expected_burn,
+            $this->planetService->getDeuteriumProductionPerHour(),
+            'Stored per hour deuterium production must be identical at 100% and deficit production factors'
+        );
+    }
+
+    /**
      * Test deuterium production at different temperatures.
      */
     public function testDeuteriumProductionTemperatureDependency(): void
