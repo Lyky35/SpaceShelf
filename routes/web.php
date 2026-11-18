@@ -219,7 +219,7 @@ Route::middleware(['auth', 'banned', 'globalgame', 'locale', 'firstlogin'])->gro
 
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
-    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->middleware('throttle:chatsend')->name('chat.send');
     Route::post('/chat/history', [ChatController::class, 'getHistory'])->name('chat.history');
     Route::post('/chat/more', [ChatController::class, 'loadMore'])->name('chat.more');
     Route::post('/chat/read', [ChatController::class, 'markRead'])->name('chat.read');

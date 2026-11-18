@@ -585,6 +585,34 @@ class ChatTest extends IsolatedAccountTestCase
      * Test that non-alliance members cannot page through another alliance's chat
      * history via the pagination endpoint (upstream #1644).
      */
+    public function testChatSendRateLimited(): void
+    {
+        $otherUser = User::factory()->create();
+
+        // The 'chatsend' limiter allows 30 message sends per minute per user.
+        for ($i = 1; $i <= 30; $i++) {
+            $response = $this->post('/chat/send', [
+                'mode' => 1,
+                'playerId' => $otherUser->id,
+                'text' => 'Rate limit message ' . $i,
+            ]);
+            $response->assertJson(['status' => 'OK']);
+        }
+
+        // The 31st send in the same window must be rejected.
+        $response = $this->post('/chat/send', [
+            'mode' => 1,
+            'playerId' => $otherUser->id,
+            'text' => 'Too fast',
+        ]);
+
+        $response->assertStatus(429);
+    }
+
+    /**
+     * Test that non-alliance members cannot page through another alliance's chat
+     * history via the pagination endpoint (upstream #1644).
+     */
     public function testNonMemberCannotLoadMoreAllianceMessages(): void
     {
         // Create an alliance with chat history via another user, so the current

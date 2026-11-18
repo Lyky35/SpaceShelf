@@ -313,8 +313,14 @@ account out of every in-game page.
       title, reply-reference author, and the online player list. Tests:
       `MessagesTest` asserts crafted usernames/planet names reach message HTML
       escaped only.
-- [ ] **#1647 — no rate limiting on the chat send endpoint.** No throttle
+- [x] **#1647 — no rate limiting on the chat send endpoint.** No throttle
       on the `chat.send` route nor in `ChatController`.
+      **Fixed 2026-11-17:** named `chatsend` limiter (30 sends/minute per
+      authenticated user, keying by user id) defined in
+      `AppServiceProvider` following the `FortifyServiceProvider` login
+      limiter convention, applied via `->middleware('throttle:chatsend')`
+      on the `chat.send` route. Overshoots now return 429;
+      `ChatTest::testChatSendRateLimited` covers it.
 - [x] **#1649 — Reverb accepts WebSocket connections from any origin.**
       `config/reverb.php:85` sets `'allowed_origins' => ['*']`.
       **Fixed 2026-11-17:** `allowed_origins` defaults to the host of

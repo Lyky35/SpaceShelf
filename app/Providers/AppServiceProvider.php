@@ -2,7 +2,10 @@
 
 namespace OGame\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -31,6 +34,12 @@ class AppServiceProvider extends ServiceProvider
         // Legacy JS bundles are plain concatenated scripts that rely on jQuery globals
         // and must not be treated as ES modules.
         Vite::useScriptTagAttributes(['type' => false]);
+
+        // Guard against in-game chat spam (upstream #1647): a sane number of
+        // message sends per minute per authenticated user.
+        RateLimiter::for('chatsend', function (Request $request) {
+            return Limit::perMinute(30)->by((int) $request->user()?->id);
+        });
 
         // Register composer file for the main ingame layout.
         view()->composer('ingame.layouts.main', 'OGame\Http\ViewComposers\IngameMainComposer');
