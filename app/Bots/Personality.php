@@ -17,6 +17,8 @@ final readonly class Personality
         public float $militaryShare,
         public float $defenseBias,
         public float $researchDrive,
+        /** Persistent per-bot quirks (see "habits" in config/bots.php). */
+        public array $habits = [],
     ) {
     }
 
@@ -34,6 +36,7 @@ final readonly class Personality
             militaryShare: (float) ($data['military_share'] ?? 0.1),
             defenseBias: (float) ($data['defense_bias'] ?? 0.0),
             researchDrive: (float) ($data['research_drive'] ?? 1.0),
+            habits: (array) ($data['habits'] ?? []),
         );
     }
 
@@ -49,7 +52,18 @@ final readonly class Personality
             'military_share' => $this->militaryShare,
             'defense_bias' => $this->defenseBias,
             'research_drive' => $this->researchDrive,
+            'habits' => $this->habits,
         ];
+    }
+
+    /**
+     * Whether this bot was created with the given quirk (see config/bots.php
+     * "habits.pool"). Quirks give same-profile bots a persistent, human-ish
+     * difference in build texture instead of pure number jitter.
+     */
+    public function hasHabit(string $habit): bool
+    {
+        return in_array($habit, $this->habits, true);
     }
 
     /**

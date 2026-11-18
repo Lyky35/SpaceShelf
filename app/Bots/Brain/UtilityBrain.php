@@ -214,10 +214,30 @@ final class UtilityBrain implements BotBrain
 
         if ($energyFactor < $energyFloor) {
             $score['solar_plant'] = ($score['solar_plant'] ?? 0.0) + 100;
+
+            // Players stop doubling up on solar plants once they get pricey
+            // and start building fusion reactors — the one-off-cost power
+            // source — as the alternative energy candidate in parallel.
+            if ($planet->getObjectLevel('solar_plant') >= (int) config('bots.economy.fusion_min_solar_level', 8)) {
+                $score['fusion_plant'] = ($score['fusion_plant'] ?? 0.0) + 75;
+            }
+        }
+
+        // Energy-hoarding bots also build power when the lights are already
+        // on: "better safe than sorry" solar and fusion capacity.
+        if ($personality->hasHabit('solar_eager')) {
+            $score['solar_plant'] = ($score['solar_plant'] ?? 0.0) + 25;
+            $score['fusion_plant'] = ($score['fusion_plant'] ?? 0.0) + 20;
         }
 
         // Storage: overflow risk is worth a storage upgrade.
         $saturationThreshold = (float) config('bots.economy.storage_build_saturation', 0.85);
+
+        // Hoarder personalities start clearing storage earlier than the
+        // profile default.
+        if ($personality->hasHabit('hoarder')) {
+            $saturationThreshold = max(0.5, $saturationThreshold - 0.15);
+        }
 
         foreach (self::STORAGE_MAP as $resource => $machine) {
             $saturation = $this->storageSaturation($planet, $resource);
@@ -284,6 +304,14 @@ final class UtilityBrain implements BotBrain
             if ($planet->getObjectLevel('research_lab') < $neededLabLevel) {
                 $score['research_lab'] = 60.0;
             }
+        }
+
+        // Human wobble: multiply all scores by a small random factor so that
+        // near-tied candidates swap places between visits. Without this, two
+        // bots of the same profile (and the same bot on consecutive visits)
+        // build in a perfectly identical order, which reads as machine-made.
+        foreach ($score as $machineName => $value) {
+            $score[$machineName] = $value * (1.0 + mt_rand(-90, 90) / 1000);
         }
 
         arsort($score);
@@ -385,6 +413,44 @@ final class UtilityBrain implements BotBrain
             $planet->getObjectLevel('robot_factory') >= 4
         ) {
             $actions += $this->queueUnits($planet, 'solar_satellite', 1, withReserve: false);
+        }
+
+        // Standing transport bank: players keep a small cargo fleet on
+        // standby whether or not a transport is due right now — small cargos
+        // as the everyday workhorse, large cargos where logistics and raid
+        // loot actually spend them. The reactive batch in
+        // transportResources() stays as the fallback spike.
+        $isHome = (int) $planet->getPlanetId() === $this->homePlanetId($snapshot);
+        $bankMultiplier = $personality->hasHabit('transport_hoarder') ? 2 : 1;
+
+        $smallCargoTarget = (int) config('bots.transport.small_cargo_target_per_planet', 2) * $bankMultiplier;
+        $largeCargoTarget = (int) ($isHome
+            ? config('bots.transport.large_cargo_target_home', 5)
+            : config('bots.transport.large_cargo_target_colony', 2)) * $bankMultiplier;
+        $bankBatch = (int) config('bots.transport.bank_batch_size', 4);
+
+        if (
+            $planet->getObjectLevel('shipyard') >= 2 &&
+            $planet->getShipUnits()->getAmountByMachineName('small_cargo') < $smallCargoTarget
+        ) {
+            $actions += $this->queueUnits(
+                $planet,
+                'small_cargo',
+                min($bankBatch, $smallCargoTarget - $planet->getShipUnits()->getAmountByMachineName('small_cargo')),
+                withReserve: true
+            );
+        }
+
+        if (
+            $planet->getObjectLevel('shipyard') >= 4 &&
+            $planet->getShipUnits()->getAmountByMachineName('large_cargo') < $largeCargoTarget
+        ) {
+            $actions += $this->queueUnits(
+                $planet,
+                'large_cargo',
+                min($bankBatch, $largeCargoTarget - $planet->getShipUnits()->getAmountByMachineName('large_cargo')),
+                withReserve: true
+            );
         }
 
         // Standing fleet: grow the military stock toward the personality's
@@ -516,6 +582,25 @@ final class UtilityBrain implements BotBrain
     }
 
     /**
+     * Defense tier build order for one personality. Default is strongest
+     * affordable first; "fodder_first" bots work the other way round like
+     * players who start with a mountain of rocket launchers and light lasers
+     * and only add big guns as the cheap lines disappoint.
+     *
+     * @return array<int, string>
+     */
+    private function defenseTierOrder(Personality $personality): array
+    {
+        $tiers = self::DEFENSE_TIERS;
+
+        if ($personality->hasHabit('fodder_first')) {
+            return array_reverse($tiers);
+        }
+
+        return $tiers;
+    }
+
+    /**
      * Planetary defense for bunker-leaning personalities: grow each planet's
      * combat defense stock toward `defense_unit_base * defense_bias` units
      * using the strongest defense tier whose shipyard and research
@@ -541,7 +626,7 @@ final class UtilityBrain implements BotBrain
 
             // Strongest affordable tier wins; unmet research/shipyard gates or an
             // unaffordable batch fall through to the next, cheaper tier.
-            foreach (self::DEFENSE_TIERS as $machineName) {
+            foreach ($this->defenseTierOrder($personality) as $machineName) {
                 if (!ObjectService::objectRequirementsMet($machineName, $planet)) {
                     continue;
                 }
@@ -1019,7 +1104,7 @@ final class UtilityBrain implements BotBrain
 
         $batchSize = (int) config('bots.military.defense_batch_size', 10);
 
-        foreach (self::DEFENSE_TIERS as $machineName) {
+        foreach ($this->defenseTierOrder($personality) as $machineName) {
             if (!ObjectService::objectRequirementsMet($machineName, $moon)) {
                 continue;
             }

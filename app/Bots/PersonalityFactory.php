@@ -55,7 +55,32 @@ final class PersonalityFactory
             militaryShare: self::jitter((float) $base['military_share']),
             defenseBias: self::jitter((float) $base['defense_bias']),
             researchDrive: self::jitter((float) $base['research_drive']),
+            habits: self::pickHabits(),
         );
+    }
+
+    /**
+     * Pick this bot's persistent quirks from the configured habit pool:
+     * every bot gets exactly one, and 30% of bots get a second. Habits are
+     * stored with the bot, so the quirk is a lifetime trait, not a mood.
+     *
+     * @return array<int, string>
+     */
+    private static function pickHabits(): array
+    {
+        /** @var array<int, string> $pool */
+        $pool = config('bots.habits.pool', []);
+
+        if ($pool === []) {
+            return [];
+        }
+
+        shuffle($pool);
+
+        $count = random_int(1, 100) <= (int) config('bots.habits.double_chance_percent', 30) ? 2 : 1;
+        $count = min($count, count($pool));
+
+        return array_slice($pool, 0, $count);
     }
 
     /**

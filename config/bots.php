@@ -62,6 +62,15 @@ return [
         // visit when demand exists but no transports are in stock.
         'transporter_batch_size' => 20,
 
+        // Standing transport bank: real players keep a small cargo fleet
+        // idle on every planet, so growth and raid loot never wait on a
+        // reactive batch. Targets are harbor-stock based; the "transport_hoarder"
+        // habit doubles them.
+        'small_cargo_target_per_planet' => 2,
+        'large_cargo_target_home' => 5,
+        'large_cargo_target_colony' => 2,
+        'bank_batch_size' => 4,
+
         // Maximum transport missions dispatched per heartbeat.
         'actions_per_visit' => 1,
     ],
@@ -235,6 +244,10 @@ return [
         // Below this energy-satisfaction factor (0-100) power plants are built.
         'energy_floor_factor' => 100,
 
+        // From this solar plant level on, energy-starved planets also
+        // consider the fusion reactor as the parallel power candidate.
+        'fusion_min_solar_level' => 8,
+
         // Maximum number of buildings/research/units a bot queues per visit.
         'build_actions_per_visit' => 3,
 
@@ -244,6 +257,17 @@ return [
 
         // Rough OGame pacing rule: one robot factory per N mine levels.
         'robot_factory_ratio' => 10,
+    ],
+
+    // Persistent per-bot quirks, picked at creation and stored with the bot
+    // (see PersonalityFactory). They give same-profile bots human-ish build
+    // texture instead of pure number jitter. The brain applies them as small,
+    // bounded modifiers — see UtilityBrain for what each one does.
+    'habits' => [
+        'pool' => ['solar_eager', 'hoarder', 'transport_hoarder', 'fodder_first'],
+
+        // Chance a freshly created bot gets a second habit on top of its first.
+        'double_chance_percent' => 30,
     ],
 
     'research' => [
@@ -262,6 +286,7 @@ return [
             'armor_technology',
             'ion_technology',
             'plasma_technology',
+            'intergalactic_research_network',
         ],
 
         // Hard caps per research, scaled by personality (see below).
@@ -279,6 +304,7 @@ return [
             'laser_technology' => 12,
             'ion_technology' => 8,
             'plasma_technology' => 6,
+            'intergalactic_research_network' => 6,
         ],
 
         // Which personality trait scales which research group's cap. Defense
@@ -287,7 +313,10 @@ return [
         // follow aggression.
         'cap_scaling' => [
             'economy' => [
-                'group' => ['energy_technology', 'computer_technology', 'astrophysics'],
+                'group' => [
+                    'energy_technology', 'computer_technology', 'astrophysics',
+                    'intergalactic_research_network',
+                ],
                 'trait' => 'researchDrive',
             ],
             'defense' => [
