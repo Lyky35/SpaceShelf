@@ -346,15 +346,32 @@ account out of every in-game page.
       `Str::is`). Verified against the live server: `APP_URL` host clients
       establish normally, foreign origins get Pusher error 4009. Guarded
       by `WebsocketConfigTest`.
-- [ ] **#1645 / #1646 / #1650 / #1651** — realtime silently disabled in
+- [x] **#1645 / #1646 / #1650 / #1651** — realtime silently disabled in
       production, NOT_AUTHORIZED reply re-send loop, missing reply author
       on live messages, no mobile WS reconnect/fallback. Same unmodified
       chat code; present as reported (not individually re-verified).
-      **Partial fix 2026-11-17 (#1650):** the live-message reply reference
-      showed no author because `chat.js` read `h.refAuhtor` (typo) — now
-      `h.refAuthor`, matching the `ChatMessageSent` broadcast payload.
-      (The same typo lingers in `e7c7…js`, but only inside the dead
-      `_ogame_chat_removed` block.)
+      **Fixed 2026-11-18:**
+      **#1645:** the Reverb/Echo vars in `main.blade.php` now read
+      `config('broadcasting.connections.reverb.*')` instead of `env()`, so they
+      survive `config:cache` in the production entrypoint; stale
+      `.env.example-prod` refreshed (`BROADCAST_CONNECTION`/`QUEUE_CONNECTION`
+      renamed, `REVERB_*` block added). Regression test:
+      `ChatTest::testReverbChatConfigVarsRenderFromConfig`.
+      **#1646:** `chat.js` `sendMessage` no longer re-posts on
+      `NOT_AUTHORIZED` (endless loop); it now shows
+      `t_ingame.layout.chat_not_authorized` and stops.
+      **#1650:** live-message reply reference showed no author because
+      `chat.js` read `h.refAuhtor` (typo) — now `h.refAuthor`, matching the
+      `ChatMessageSent` broadcast payload. (The same typo lingers in
+      `e7c7…js`, but only inside the dead `_ogame_chat_removed` block.)
+      **#1651:** new `watchConnection()` hooks Echo's pusher-js connection
+      state — on `disconnected`/`unavailable` it starts polling the open chat
+      boxes every 5s (also used when Reverb isn't configured at all), and on
+      `failed` it nudges the client to reconnect via `retryConnection()`
+      (which previously was dead code re-running `initConnection()`, risking
+      duplicate listeners). The `isMobile` gate that skipped Echo on mobile
+      was removed — mobile uses the same layout and bundle, so it only broke
+      realtime.
 
 
 ### Mechanics & correctness (verified present)
