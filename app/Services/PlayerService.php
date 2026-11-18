@@ -930,6 +930,17 @@ class PlayerService
     }
 
     /**
+     * Check if the player still has a free colony slot to colonize a new planet with.
+     * The maximum amount of planets is determined by the Astrophysics research level.
+     *
+     * @return bool
+     */
+    public function hasFreeColonySlot(): bool
+    {
+        return $this->planets->planetCount() < $this->getMaxPlanetAmount();
+    }
+
+    /**
      * Check if the player can colonize a specific planet position based on Astrophysics research level.
      *
      * @param int $position The planet position (1-15)

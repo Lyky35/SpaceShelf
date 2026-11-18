@@ -13,7 +13,8 @@ return [
     'mission' => [
         'colonize' => [
             'name' => 'Colonize',
-            'no_ship' => 'It is not possible to colonize a planet without a colony ship.'
+            'no_ship' => 'It is not possible to colonize a planet without a colony ship.',
+            'astro_limit' => 'Your knowledge of astrophysics is not sufficient to complete the colonisation of a new planet.'
         ]
     ],
 

@@ -611,6 +611,7 @@ class GalaxyController extends OGameController
 
         $astrophysicsLevel = $this->playerService->getResearchLevel('astrophysics');
         $canColonizePosition = $this->playerService->canColonizePosition($position);
+        $hasFreeColonySlot = $this->playerService->hasFreeColonySlot();
         $usedFleetSlots = $this->playerService->getFleetSlotsInUse();
         $maximumFleetSlots = $this->playerService->getFleetSlotsMax();
         $canFly = $usedFleetSlots < $maximumFleetSlots;
@@ -622,6 +623,8 @@ class GalaxyController extends OGameController
         }
         if ($astrophysicsLevel === 0 || !$canColonizePosition) {
             $description .= '<br>' . __('t_ingame.galaxy.astro_required');
+        } elseif (!$hasFreeColonySlot) {
+            $description .= '<br>' . __('t_galaxy.mission.colonize.astro_limit');
         }
         if (!$canFly) {
             $description .= '<br>' . __('t_ingame.fleet.no_free_slots');
@@ -633,6 +636,7 @@ class GalaxyController extends OGameController
         $canColonize = $has_colonize_ship
             && $astrophysicsLevel > 0
             && $canColonizePosition
+            && $hasFreeColonySlot
             && $canFly;
 
         // Check if the current planet already has a pending move.
@@ -761,7 +765,7 @@ class GalaxyController extends OGameController
                 'availablePathfinders' => $planet->getObjectAmount('pathfinder'),
                 'availableProbes' => $planet->getObjectAmount('espionage_probe'),
                 'availableRecyclers' => $planet->getObjectAmount('recycler'),
-                'canColonize' => $player->getResearchLevel('astrophysics') > 0,
+                'canColonize' => $player->getResearchLevel('astrophysics') > 0 && $player->hasFreeColonySlot(),
                 'canExpedition' => true,
                 'canFly' => $usedFleetSlots < $maximumFleetSlots,
                 'canSendSystemDiscovery' => true,

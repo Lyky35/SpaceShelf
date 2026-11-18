@@ -176,4 +176,106 @@ class GalaxyTest extends IsolatedAccountTestCase
         $this->assertSame('#', $coloniseMission['link']);
         $this->assertStringContainsString(__('t_ingame.galaxy.astro_required'), $coloniseMission['description']);
     }
+
+    /**
+     * Verify that with astrophysics researched but the colony-slot (max planet) cap reached,
+     * the galaxy system report reports colonise as unavailable and the empty-slot colonise
+     * link is disabled with a warning about the astrophysics planet limit.
+     */
+    public function testGalaxyColoniseUnavailableAtColonySlotCap(): void
+    {
+        // The test account owns two planets (home planet + one colony). Astrophysics level 2
+        // allows exactly two planets total, so the player is at the colony-slot cap while the
+        // astrophysics research itself is present.
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $this->assertSame(2, $player->planets->planetCount());
+        $this->playerSetResearchLevel('astrophysics', 2);
+        $this->planetAddUnit('colony_ship', 1);
+
+        $coordinates = $this->planetService->getPlanetCoordinates();
+
+        $this->get('/');
+
+        $response = $this->post('ajax/galaxy', [
+            '_token' => csrf_token(),
+            'galaxy' => $coordinates->galaxy,
+            'system' => $coordinates->system,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('system.canColonize', false);
+
+        $coloniseMission = $this->findColoniseMissionAtUnrestrictedPosition($response->json('system.galaxyContent'));
+        $this->assertSame('#', $coloniseMission['link']);
+        $this->assertStringContainsString(__('t_galaxy.mission.colonize.astro_limit'), $coloniseMission['description']);
+    }
+
+    /**
+     * Verify that with astrophysics researched and a free colony slot, the galaxy system
+     * report reports colonise as available and the empty-slot colonise link is enabled.
+     */
+    public function testGalaxyColoniseAvailableWithFreeColonySlot(): void
+    {
+        // Astrophysics level 3 allows three planets total, so with the test account's two
+        // planets there is one free colony slot left.
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $this->assertSame(2, $player->planets->planetCount());
+        $this->playerSetResearchLevel('astrophysics', 3);
+        $this->planetAddUnit('colony_ship', 1);
+
+        $coordinates = $this->planetService->getPlanetCoordinates();
+
+        $this->get('/');
+
+        $response = $this->post('ajax/galaxy', [
+            '_token' => csrf_token(),
+            'galaxy' => $coordinates->galaxy,
+            'system' => $coordinates->system,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('system.canColonize', true);
+
+        $coloniseMission = $this->findColoniseMissionAtUnrestrictedPosition($response->json('system.galaxyContent'));
+        $this->assertStringNotContainsString('#', $coloniseMission['link']);
+        $this->assertStringContainsString('mission=7', $coloniseMission['link']);
+        $this->assertStringNotContainsString(__('t_galaxy.mission.colonize.astro_limit'), $coloniseMission['description']);
+    }
+
+    /**
+     * Find the colonisation mission (type 7) of the first empty galaxy slot that is in the
+     * unrestricted positions 4-12, so the test only exercises the colony-slot cap and not
+     * the astrophysics level requirements of the outer positions.
+     *
+     * @param array|null $galaxyContent
+     * @return array
+     */
+    private function findColoniseMissionAtUnrestrictedPosition(array|null $galaxyContent): array
+    {
+        $this->assertIsArray($galaxyContent);
+
+        foreach ($galaxyContent as $row) {
+            $position = $row['position'] ?? null;
+            if (($row['positionFilters'] ?? null) !== 'empty_filter') {
+                continue;
+            }
+            if ($position === null || $position < 4 || $position > 12) {
+                continue;
+            }
+
+            foreach ($row['availableMissions'] ?? [] as $mission) {
+                if (($mission['missionType'] ?? null) === 7) {
+                    return $mission;
+                }
+            }
+        }
+
+        $this->fail('Expected an empty galaxy slot in positions 4-12 with a colonisation mission.');
+    }
 }
