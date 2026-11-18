@@ -166,6 +166,30 @@ dump:
 - [ ] P3 (optional): newbie `data-ipi-hint` highlights — depends on the
       #978 registration decision
 
+### 6. Bot diplomacy / alliances — researched, PARKED (2026-11-17)
+
+Feasibility survey for letting bots ally with players and each other, done
+in conversation; parked on the user's request, no code or spec written.
+Key finding: **the fork already ships a full alliance system**, so the
+human-accurate approach is simply "use it" (bots are normal player
+accounts) rather than scripting pseudo-diplomacy.
+
+- `app/Services/AllianceService.php`: complete programmatic API —
+  `createAlliance`, `applyToAlliance`, `getPendingApplications`,
+  `acceptApplication`/`rejectApplication`, `kickMember`, `leaveAlliance`,
+  ranks/permissions/texts; plus alliance depot + chat services.
+- Tier plan agreed in outline (each tier shippable as its own PR):
+  1. emergent diplomacy, no alliances: grudge/revenge loop and gift-giver
+     protection derived from `FleetMission` history; garrison support.
+  2. `AlliancePolicy` in the brain: personality-driven apply/create/accept
+     (collectors stay lone wolves), own-alliance raid ban, ride along on
+     ally attack history, betrayal-driven departures.
+  3. coordination: synced-ETA attacks with ally fleets, tribute, rare
+     canned alliance-chat lines.
+- Gap to note for any future PR: `AttackMission` does **not** block attacks
+  on own-alliance members — humans can currently raid allies; bots would
+  have to self-enforce until the engine enforces it.
+
 ## Inherited upstream bugs — open OGameX issues verified present (2026-11-17)
 
 Audit of all 113 open issues on the upstream repository (`lanedirt/OGameX`).
