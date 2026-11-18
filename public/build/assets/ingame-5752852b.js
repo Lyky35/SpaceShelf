@@ -74172,7 +74172,7 @@ ogame.chat = {
     messageReceived: function (h) {
         var g = ogame.chat;
         if (typeof h.refAuthor !== "undefined" && typeof h.refText !== "undefined") {
-            $refData = {author: h.refAuhtor, text: h.refText}
+            $refData = {author: h.refAuthor, text: h.refText}
         } else {
             $refData = 0
         }

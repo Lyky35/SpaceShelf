@@ -328,6 +328,12 @@ account out of every in-game page.
       production, NOT_AUTHORIZED reply re-send loop, missing reply author
       on live messages, no mobile WS reconnect/fallback. Same unmodified
       chat code; present as reported (not individually re-verified).
+      **Partial fix 2026-11-17 (#1650):** the live-message reply reference
+      showed no author because `chat.js` read `h.refAuhtor` (typo) — now
+      `h.refAuthor`, matching the `ChatMessageSent` broadcast payload.
+      (The same typo lingers in `e7c7…js`, but only inside the dead
+      `_ogame_chat_removed` block.)
+
 
 ### Mechanics & correctness (verified present)
 
