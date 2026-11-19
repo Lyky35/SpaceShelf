@@ -520,9 +520,8 @@ account out of every in-game page.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1168 (dispatch confirmation lists ship names instead of "Fleet dispatch
-      [time] (n) Ok"), #1514/#1541 (recycle mission not auto-selected at
-      position 16), #1513 (dev shortcut creates no expedition debris
+- [ ] #1514/#1541 (recycle mission not auto-selected at position 16), #1513
+      (dev shortcut creates no expedition debris
       field), #1542/#1539 (Facilities shortcut doesn't reach Space Dock),
       #1004 (class selection screen clips into fleet widget), #296 (full
       report tooltip covers loot amounts), #305 (admin settings form
@@ -556,6 +555,21 @@ account out of every in-game page.
   and no code-level gap was found.
 - **#1613** (docker startup errors) — reporter-environment specific; our
   stack runs.
+- **#1168** (galaxy mini-fleet dispatch green text lists ship names instead
+  of the vanilla `Fleet dispatch [g:s:p] (n) Ok`) — the upstream issue is
+  still open but was already fixed upstream, and the fork carries the fix:
+  upstream commits `00c9fa24` (2026-03-08) and `39e15a4c` (2026-03-18)
+  replaced the old ship-name messages ("Send recycler to:", "Send pathfinder
+  to:", "Send espionage probe to:") with
+  `__('t_ingame.fleet.fleet_dispatch')` = "Fleet dispatch" in all three
+  mini-dispatch cases. The JS bundle is byte-identical to upstream HEAD: the
+  only live call sites are `sendShips` (debris recycler icons, expedition
+  pos-16 debris Pathfinder send, spy-probe icons; `sendShipsWithPopup` is
+  dead code with zero callers) → `displayMiniFleetMessage` appends
+  `' [g:s:p]'`, and `addToTable` appends `' (shipsSent) Ok'`
+  (`LocalizationStrings.ok` = "Ok") to the green `#fleetstatusrow` at the
+  bottom of the galaxy — rendering exactly the vanilla string. No fork
+  change needed.
 
 ## Bot AI roadmap (docs/BOT-AI-PLAN.md phases 2–6)
 
