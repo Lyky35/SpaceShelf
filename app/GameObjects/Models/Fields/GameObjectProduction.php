@@ -107,8 +107,10 @@ class GameObjectProduction
      *  The production percentage of the building set by the player
      *
      * @param float $production_factor
-     *  The planet's production factor (0-1) applied to mine output only; the
-     *  fusion reactor's deuterium consumption is not affected by it.
+     *  The planet's production factor (0-1) caused by an energy shortage. It
+     *  reduces resource output only — metal, crystal and positive deuterium
+     *  (upstream #1661) — never a negative deuterium formula (the reactor's
+     *  burn) or the energy formula (upstream #1629/#1630).
      *
      * @return ProductionIndex
      */
@@ -182,11 +184,13 @@ class GameObjectProduction
             );
         }
 
+        // The production factor is intentionally not applied to energy: energy
+        // production and consumption are always nominal, matching the header's
+        // stored energy_max/energy_used values (upstream #1629/#1630).
         if ($this->energy_formula) {
             $productionIndex->mine->energy->set(
                 $this->energy_formula->__invoke($this, $level)
                 * $building_percentage
-                * $production_factor
             );
         }
     }

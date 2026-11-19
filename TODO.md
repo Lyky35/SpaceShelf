@@ -298,7 +298,28 @@ account out of every in-game page.
       back unscaled, mirroring the existing energy restore.
       `testFusionReactorDeuteriumBurnNotReducedByProductionFactor` asserts
       identical per-object and stored −11/h burn at 98.75% and 100% factors.
-      Energy display weirdness below 100% factor remains with #1629.
+- [x] **#1629/#1630 — energy values on the resource settings page do not
+      match the header when the production factor is below 100%.** With an
+      energy deficit, the per-building energy rows, the building-overlay
+      energy values and the "Total per hour" energy cell were all reduced
+      by the production factor while the header used unscaled stored
+      values. **Fixed 2026-11-18** (audit of the "presumed present"
+      cluster confirmed the bug: upstream #1629 is open and PR #1630
+      unmerged). Because #1661 above already split `$production_factor`
+      from `$building_percentage`, the fork only needed two changes rather
+      than the full upstream PR port: `calculateMine()` no longer
+      multiplies the energy formula by `$production_factor` (the player's
+      building percentage still applies to energy, as in vanilla), and
+      `ResourcesController::settings()` now overrides the energy cell of
+      the totals row with the same stored `PlanetService::energy()` value
+      the header uses. The single-factor `actual_energy_use` column and
+      the building-overlay callers (`ObjectAjaxTrait`) were already
+      arithmetic-correct and become nominal for free. Tests:
+      `ResourceProductionTest::testProductionFactorDoesNotAffectEnergy`
+      (per-object energy identical with and without the factor) and
+      `ResourceSettingsEnergyTest` (totals match the header, solar plant
+      row shows nominal production, mine rows show nominal consumption
+      with actual floored by the factor once).
 
 
 ### Chat cluster (#1644–#1651) — chat ships from upstream unmodified
@@ -499,8 +520,7 @@ account out of every in-game page.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1629/#1630 (resource-page energy values below 100% factor), #1168
-      (dispatch confirmation lists ship names instead of "Fleet dispatch
+- [ ] #1168 (dispatch confirmation lists ship names instead of "Fleet dispatch
       [time] (n) Ok"), #1514/#1541 (recycle mission not auto-selected at
       position 16), #1513 (dev shortcut creates no expedition debris
       field), #1542/#1539 (Facilities shortcut doesn't reach Space Dock),
