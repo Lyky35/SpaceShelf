@@ -121,50 +121,51 @@ are incomplete:
       at the storage cap); the stale TODO comments in
       `BattleReport.php`/`PlanetService.php` are replaced accordingly)
 
-### 5. Directives (quest system) — unimplemented, UI is a dead stub (upstream #843)
+### 5. Directives (quest system) — engine + Directives I & II live (upstream #843)
 
-**Status: research + implementation plan complete (docs/DIRECTIVES-PLAN.md);
-parked for later (2026-11-17). Not scheduled, not active work — the dead
-stub button stays as-is until someone picks it up. Re-read plan §1 before
-implementing.**
+**Status: P1 + P2 implemented (2026-11-19). The quest engine and the full
+overlay UI are live; P0 content is partial — Directives I + II shipped with
+screenshot-verified text, chapters III/V/VII pending a vanilla dump. Full
+spec and phase table in `docs/DIRECTIVES-PLAN.md`.**
 
-Vanilla has **7 chapters** ("Directive I – A Sound Economy" … "Directive
-VI – Alien Life"), each with ~10 missions with individual rewards (incl.
-Dark Matter, e.g. 500 DM for "Open the mission overview") plus a chapter
-bonus claimable via "Claim All"; rewards land on the planet active at
-claim time. Vanilla look/behavior fully researched in
-`docs/DIRECTIVES-PLAN.md` §1. Implementation plan: same file. Dependency
-status: Dark Matter (upstream #770) — done here; teardown exists (but has
-the #1624/#1625 bug below); lifeforms (upstream #228) — missing,
-Directive VI is skipped.
+Implemented:
 
-Current state — the button is dead leftover HTML from the vanilla client
-dump:
+- `config/directives.php` catalog: **Directive I – A Sound Economy**
+  ("Welcome Cadet!" → "Open the mission overview" → 500 DM, Nova dialogue
+  verbatim) and **Directive II – The First Ship** (10 mission titles +
+  chapter bonus 1,500/750/250 + 2,000 DM verified). Directive II per-mission
+  rewards are best-effort, marked `// best-effort, not documented upstream`
+  in the config. Directive VI – Alien Life stays skipped (lifeforms
+  unimplemented, #228). New chapters drop into the config as tabs.
+- `directive_progress` + `directive_activity_markers` migrations,
+  `DirectiveProgressStatus` enum, `DirectiveService` condition engine
+  (`activity` / `alliance` / `building_level` / `research_level` /
+  `unit_count`), lazy evaluation throttled to 60 s/player in the
+  `GlobalGame` middleware, atomic claims (conditional update inside a
+  transaction; resources/units to the **active** planet at claim time, Dark
+  Matter credited to the account via a `DIRECTIVES` transaction type), and
+  "Claim All" chapter bonus rows (`mission_id=''`) that unlock once every
+  mission of a chapter is claimed.
+- UI: `#ipioverviewlayer` overlay (chapter tabs, accordion mission rows,
+  reward sprites, Claim All strip) built on the vendored vanilla CSS,
+  opened through the vanilla `a.overlay` framework — the dead `#TODO_`
+  href is gone; `resources/js/ingame/directives.js` drives tabs/accordions/
+  claims via event delegation. Left panel now shows the claimable-count
+  badge (`.ipiHintCollect`) and the current mission.
+- Activity hooks: overlay open (`directives_opened`), planet rename
+  (`PlanetAbandonController::rename`), buddy request
+  (`BuddyService::sendRequest`).
+- Tests: `tests/Feature/DirectivesTest.php` (9 tests).
 
-- `main.blade.php:496–511` renders the `#ipimenucomponent` box: "Directives"
-  header (`t_ingame.layout.menu_directives`), empty `hidden`
-  `.ipiMenuBody`/`.ipiMenuFooter`, and an unreplaced placeholder href
-  `#TODO_page=ajax&component=ipioverview&action=overviewLayer&ajax=1` —
-  clicking only appends garbage to the URL hash.
-- The vendored OGame JS has the IPI panel machinery
-  (`ipiMenuConfig.ipiMenuContentUrl`) but it is never configured, so it
-  silently no-ops. No routes, no tables, no quest data exist. 12
-  `data-ipi-hint` highlight markers in the layout are orphaned.
-- Related upstream: #978 (registration newbie/veteran choice, gates the
-  highlight hints) — open.
+Remaining:
 
-- [ ] P0: extract the 7 vanilla chapters + ~70 missions (conditions/
-      rewards/texts incl. narrator dialogue) into `config/directives.php`
-      + `resources/lang/en/t_directives.php` (blocking; Directive VI
-      lifeform chapter skipped and recorded)
-- [ ] P1: `directive_progress` migration, condition engine, lazy evaluation
-      in `GlobalGame` middleware, atomic claim endpoint (rewards to the
-      **active** planet via `PlanetService::addResources/addUnits`,
-      `DarkMatterService::credit`), tests
-- [ ] P2: wire the existing `#ipimenucomponent` panel to a content partial;
-      delete the `#TODO_` href
+- [ ] P0 follow-up: chapters III, IV, V, VII (plus Directive I chapter
+      bonus, Directive II per-mission sub-steps/rewards, and the
+      un-verified "Collect"/claim-feedback strings) — needs a live vanilla
+      `ipioverview` dump; the engine is content-agnostic, so it is config
+      + translation work only.
 - [ ] P3 (optional): newbie `data-ipi-hint` highlights — depends on the
-      #978 registration decision
+      #978 registration decision.
 
 ### 6. Bot diplomacy / alliances — researched, PARKED (2026-11-17)
 

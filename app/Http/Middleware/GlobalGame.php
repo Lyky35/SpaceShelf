@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use OGame\Factories\PlanetServiceFactory;
 use OGame\Services\BuildingQueueService;
 use OGame\Services\DarkMatterService;
+use OGame\Services\DirectiveService;
 use OGame\Services\FleetMissionService;
 use OGame\Services\PlanetMoveService;
 use OGame\Services\PlayerService;
@@ -75,6 +76,22 @@ class GlobalGame
             // Share planet_move_in_progress for all views.
             $activeMove = $planetMoveService->getActiveMoveForPlanet($player->planets->current());
             view()->share('planet_move_in_progress', $activeMove !== null);
+
+            // Lazily update the Directives (quest system) progress for this player
+            // (throttled to once per minute) and share the panel state for all views.
+            $directivesClaimable = 0;
+            $directivesCurrentMission = null;
+            try {
+                $directiveService = resolve(DirectiveService::class);
+                $directiveService->ensureEvaluated($player);
+                $directivesClaimable = $directiveService->claimableCount($player);
+                $directivesCurrentMission = $directiveService->currentMission($player);
+            } catch (Throwable $e) {
+                // A broken quest system must never break the game itself.
+                logger()->error('Directive evaluation failed: ' . $e->getMessage());
+            }
+            view()->share('directives_claimable', $directivesClaimable);
+            view()->share('directives_current_mission', $directivesCurrentMission);
         }
 
         return $next($request);

@@ -497,14 +497,24 @@
         <div id="ipimenucomponent" class="">
             <div id="ipiMenuWrapper" class="ipiMenuTrackedAction ipiHintable " title="" data-ipi-hint="ipiMenu">
                 <div id="ipimenucontent"><a
-                            href="#TODO_page=ajax&amp;component=ipioverview&amp;action=overviewLayer&amp;ajax=1"
-                            class="overlay textBeefy" data-overlay-title="" id="ipiInnerMenuContentHolder">
+                            href="{{ route('directives.overlay') }}"
+                            class="overlay textBeefy"
+                            data-overlay-title="{{ __('t_ingame.layout.menu_directives') }}"
+                            data-overlay-popup-width="910" id="ipiInnerMenuContentHolder">
                         <div class="ipiMenuHead">
                             {{ __('t_ingame.layout.menu_directives') }}
+                            @if (($directives_claimable ?? 0) > 0)
+                                <span class="ipiHintCollect">{{ $directives_claimable }}</span>
+                            @endif
                         </div>
 
-                        <div class="ipiMenuBody hidden"></div>
-                        <div class="ipiMenuFooter hidden"></div>
+                        @if (($directives_current_mission ?? null) !== null)
+                            <div class="ipiMenuBody">{{ $directives_current_mission }}</div>
+                            <div class="ipiMenuFooter"></div>
+                        @else
+                            <div class="ipiMenuBody hidden"></div>
+                            <div class="ipiMenuFooter hidden"></div>
+                        @endif
                     </a>
                 </div>
             </div>

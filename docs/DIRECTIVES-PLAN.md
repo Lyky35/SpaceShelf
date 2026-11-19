@@ -1,12 +1,15 @@
 # SpaceShelf — Directives (quest system) implementation plan
 
-Status: **Spec + vanilla research complete — PARKED for later**
-(2026-11-17). Research refreshed with screenshots from upstream #843,
-vendored vanilla CSS classes and community sources. Nothing implemented,
-implementation deliberately deferred (tracked in TODO.md §5). Upstream
-tracker: OGameX issue **#843** (open feature request). Registration-time
-newbie/veteran selection that activates the tutorial highlights is
-upstream **#978** (out of scope here).
+Status: **P1 + P2 implemented (2026-11-19). P0 partially done:
+Directive I + II shipped with screenshot-verified content, other chapters
+deferred until their text can be sourced.** The quest engine
+(`DirectiveService`), overlay UI, claim endpoints and the rewired
+`#ipimenucomponent` panel are live; `config/directives.php` is the catalog
+where future chapters simply drop in. Directive VI (Alien Life) stays
+skipped (lifeforms unimplemented, upstream #228). Upstream tracker: OGameX
+issue **#843** (open feature request). Registration-time newbie/veteran
+selection that activates the tutorial highlights is upstream **#978** (P3,
+out of scope).
 
 ## 1. How Directives looked/behaved in original OGame
 
@@ -109,9 +112,21 @@ extraction task.
 - No backend at all: no `ipioverview` route/controller, no quest tables, no
   directive definitions. 12 orphaned `data-ipi-hint` markers in the layout.
 
-## 3. P0 — content extraction (blocking, no code)
+## 3. P0 — content extraction (partial, 2026-11-19)
 
-Needed before anything else can be written: all 7 chapters (subtitle,
+**Shipped:** Directive I – A Sound Economy (mission "Welcome Cadet!" →
+sub-step "Open the mission overview" → 500 DM, Nova dialogue verbatim) and
+Directive II – The First Ship (all ten mission titles, chapter bonus
+1,500/750/250 + 2,000 DM — verified). The per-mission Directive II rewards
+are best-effort values marked `// best-effort, not documented upstream`
+in `config/directives.php`; replace them from a vanilla dump when
+possible. Chapters III/V/VII (and the Directive I chapter bonus and
+Directive II sub-step texts) are not extractable from the public web —
+fan wikis predate the feature, quest data ships server-side in vanilla.
+Ground truth requires a live-universe `ipioverview` dump; the engine is
+content-agnostic so new chapters are config + lang only.
+
+The remaining catalog would need: all seven chapters (subtitle,
 narrator, missions) and all ~70 missions — id, title, OGame-accurate
 English description, condition, per-mission reward; plus chapter bonuses.
 
@@ -243,12 +258,12 @@ until that decision is made.
 
 ## 8. Phases
 
-| Phase | Scope | Estimate |
-|---|---|---|
-| P0 | Extract 7 chapters / ~70 missions (conditions, rewards, texts) into `config/directives.php` + `t_directives.php` (en) | content-heavy, blocking |
-| P1 | Migration, condition engine, `GlobalGame` lazy evaluation + events, claim endpoints, tests | 1 feature branch |
-| P2 | `#ipimenucomponent` + overlay markup/JS on the vendored CSS | medium |
-| P3 | Guided-flow highlights (needs #978 decision) | open |
+| Phase | Scope | Estimate | Status (2026-11-19) |
+|---|---|---|---|
+| P0 | Extract 7 chapters / ~70 missions (conditions, rewards, texts) into `config/directives.php` + `t_directives.php` (en) | content-heavy, blocking | **partial** — Directives I + II shipped (II per-mission rewards best-effort); III/V/VII pending a live vanilla dump |
+| P1 | Migration, condition engine, `GlobalGame` lazy evaluation + events, claim endpoints, tests | 1 feature branch | **done** (lazy state checks instead of event counters; activity markers for non-derivable actions) |
+| P2 | `#ipimenucomponent` + overlay markup/JS on the vendored CSS | medium | **done** (`directives.js` event delegation; vanilla `a.overlay` framework opens the layer) |
+| P3 | Guided-flow highlights (needs #978 decision) | open | not started |
 
 Explicitly out: Directive VI (lifeforms), registration flow (#978),
 alliance classes tie-ins (upstream #842).

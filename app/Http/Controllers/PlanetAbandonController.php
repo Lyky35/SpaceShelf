@@ -5,6 +5,7 @@ namespace OGame\Http\Controllers;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
+use OGame\Services\DirectiveService;
 use OGame\Services\PlayerService;
 
 class PlanetAbandonController extends OGameController
@@ -51,6 +52,9 @@ class PlanetAbandonController extends OGameController
 
         // Update planet name
         $player->planets->current()->setPlanetName($planetName);
+
+        // Directives: record the one-off "Rename a planet" activity marker.
+        resolve(DirectiveService::class)->recordActivity($player->getId(), DirectiveService::ACTIVITY_PLANET_RENAMED);
 
         $successText = $player->planets->current()->isMoon() ? __('t_ingame.planet_abandon.msg_moon_renamed') : __('t_ingame.planet_abandon.msg_planet_renamed');
 

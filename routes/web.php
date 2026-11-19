@@ -14,6 +14,7 @@ use OGame\Http\Controllers\ChangeNickController;
 use OGame\Http\Controllers\CharacterClassController;
 use OGame\Http\Controllers\ChatController;
 use OGame\Http\Controllers\DefenseController;
+use OGame\Http\Controllers\DirectivesController;
 use OGame\Http\Controllers\FacilitiesController;
 use OGame\Http\Controllers\FleetController;
 use OGame\Http\Controllers\FleetEventsController;
@@ -253,6 +254,12 @@ Route::middleware(['auth', 'banned', 'globalgame', 'locale', 'firstlogin'])->gro
 
     Route::get('/overlay/changenick', [ChangeNickController::class, 'overlay'])->name('changenick.overlay');
     Route::post('ajax/changenick/rename', [ChangeNickController::class, 'rename'])->name('changenick.rename');
+
+    // Directives (quest system) overlay; the panel link in the left menu feeds
+    // the overlay endpoint through the vanilla overlay framework.
+    Route::get('/ajax/directives/overlay', [DirectivesController::class, 'overlay'])->name('directives.overlay');
+    Route::post('/ajax/directives/claim', [DirectivesController::class, 'claim'])->name('directives.claim');
+    Route::post('/ajax/directives/claim-all', [DirectivesController::class, 'claimAll'])->name('directives.claim_all');
 
     Route::get('/overlay/payment', [PaymentController::class, 'overlay'])->name('payment.overlay');
     Route::get('/overlay/payment/iframe', [PaymentController::class, 'iframe'])->name('payment.iframesrc');

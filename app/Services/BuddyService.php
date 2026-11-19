@@ -193,6 +193,9 @@ class BuddyService
             'buddy_request_id' => $buddyRequest->id,
         ]);
 
+        // Directives: record the one-off "Send a buddy request" activity marker.
+        resolve(DirectiveService::class)->recordActivity($senderId, DirectiveService::ACTIVITY_BUDDY_REQUEST_SENT);
+
         return $buddyRequest;
     }
 
