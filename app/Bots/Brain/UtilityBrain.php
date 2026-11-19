@@ -150,6 +150,12 @@ final class UtilityBrain implements BotBrain
         $maxActions = (int) config('bots.economy.build_actions_per_visit', 3);
         $actions = 0;
 
+        // Stop the bleeding first: a red power bar means every queued mine
+        // waiting to be built would deepen the deficit.
+        if ($this->isPowerShortage($planet)) {
+            $actions += $this->cancelQueuedMineBacklog($planet);
+        }
+
         for ($i = 0; $i < $maxActions; $i++) {
             $added = false;
 
@@ -177,6 +183,48 @@ final class UtilityBrain implements BotBrain
         }
 
         return $actions;
+    }
+
+    /**
+     * True when the planet's power production no longer covers its consumption,
+     * i.e. the production factor is penalised below its 100% ceiling.
+     */
+    private function isPowerShortage(PlanetService $planet): bool
+    {
+        return $planet->getResourceProductionFactor()
+            < (float) config('bots.economy.energy_floor_factor', 100);
+    }
+
+    /**
+     * Drop every unprocessed construction order for energy-hungry mines while
+     * the planet is short on power. Vanilla players stop the mine line the
+     * moment the power bar goes red and buy power instead. Queued items cost
+     * nothing until they start (the queue is charged at start time), so
+     * cancelling only prevents the deficit from growing; an in-progress mine
+     * refunds its cost, which pays for the power plant queued right after.
+     */
+    private function cancelQueuedMineBacklog(PlanetService $planet): int
+    {
+        $canceled = 0;
+
+        foreach (array_keys(self::MINE_MAP) as $machineName) {
+            $objectId = ObjectService::getObjectByMachineName($machineName)->id;
+
+            foreach ($this->buildingQueueService->retrieveQueueItems($planet) as $queueItem) {
+                if ((int) $queueItem->object_id !== $objectId) {
+                    continue;
+                }
+
+                try {
+                    $this->buildingQueueService->cancel($planet, (int) $queueItem->id, $objectId);
+                    $canceled++;
+                } catch (Exception) {
+                    continue;
+                }
+            }
+        }
+
+        return $canceled;
     }
 
     /**
@@ -212,8 +260,9 @@ final class UtilityBrain implements BotBrain
         // at full production factor.
         $energyFactor = $planet->getResourceProductionFactor();
         $energyFloor = (int) config('bots.economy.energy_floor_factor', 100);
+        $powerShortage = $energyFactor < $energyFloor;
 
-        if ($energyFactor < $energyFloor) {
+        if ($powerShortage) {
             $score['solar_plant'] = ($score['solar_plant'] ?? 0.0) + 100;
 
             // Players stop doubling up on solar plants once they get pricey
@@ -317,6 +366,15 @@ final class UtilityBrain implements BotBrain
             if ($planet->getObjectLevel('research_lab') < $neededLabLevel) {
                 $score['research_lab'] = 60.0;
             }
+        }
+
+        if ($powerShortage) {
+            // A power-starved planet only expands its power grid this visit:
+            // mines, factories, shipyard and lab all add energy consumption, so
+            // queuing any of them deepens the deficit. This mirrors the vanilla
+            // player habit of fixing the red power bar before anything else;
+            // the queued mine backlog itself is cancelled in buildStructures().
+            $score = array_intersect_key($score, array_flip(['solar_plant', 'fusion_plant']));
         }
 
         // Human wobble: multiply all scores by a small random factor so that
