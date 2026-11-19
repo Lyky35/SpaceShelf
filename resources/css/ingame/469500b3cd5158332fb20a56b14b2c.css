@@ -4383,6 +4383,7 @@ table#eventz {
     display: none;
 }
 #messages_collapsed .event_list {
+    padding: 0;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;

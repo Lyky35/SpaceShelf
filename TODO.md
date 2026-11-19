@@ -548,10 +548,27 @@ account out of every in-game page.
       regression test as `FacilitiesMenuShortcutTest` (overview must render
       the Space Dock shortcut href), based on the fork's
       `IsolatedAccountTestCase` instead of upstream's `AccountTestCase`.
+- [x] **#1004 — class selection screen clips into the fleet event widget.**
+      The class-selection page tags `<body id="characterclassselection">`,
+      and its CSS rule `#characterclassselection p { padding: 10px }`
+      leaked into the collapsed fleet-event widget's two `p.event_list`
+      paragraphs, inflating the widget content to 77px inside its
+      deliberately 38px `#messages_collapsed` box; the "Next: …" row
+      overflowed behind the page's 250px header banner. Reproduced
+      headlessly (Chromium+Playwright against the live app, with a real
+      active expedition fleet): widget text spanned y=136–153 and was
+      clipped by the banner top at y=143. **Fixed 2026-11-18:** added
+      `padding: 0` to `#messages_collapsed .event_list` in
+      `469500b3…css` so the shared widget is immune to page-scoped `p`
+      rules (this also immunises it against the identical
+      `#allianceclassselection p` leak). Upstream has the same rule and
+      no fix PR exists. Assets rebuilt (`ingame-CwR1lBWK.css`); live
+      headless re-check: content fits (scrollHeight 38) and the "Next"
+      row renders fully inside the box at y=116–133.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1004 (class selection screen clips into fleet widget), #296 (full
+- [ ] #296 (full
       report tooltip covers loot amounts), #305 (admin settings form
       validation), #1510/#668 (incoming fleet details not gated by
       espionage level), #1538 (flaky `testFleetDispatchValidSpeeds` —
