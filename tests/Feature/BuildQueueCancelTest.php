@@ -19,6 +19,10 @@ class BuildQueueCancelTest extends IsolatedAccountTestCase
      */
     public function testBuildQueueCancelMultiple(): void
     {
+        // Items are charged when they are queued, so the planet must be able to
+        // cover all four upgrades for this scenario to reach the queue.
+        $this->planetAddResources(new Resources(10000, 10000, 0, 0));
+
         // ---
         // Step 1: Issue a request to build three metal mines
         // ---

@@ -93,7 +93,7 @@ class BuildingQueueServiceTest extends UnitTestCase
     }
 
     /**
-     * Test that downgrade deducts resources when started.
+     * Test that downgrade deducts resources when queued.
      */
     public function testDowngradeDeductsResources(): void
     {
@@ -128,10 +128,12 @@ class BuildingQueueServiceTest extends UnitTestCase
         $initial_crystal = $this->planetService->crystal()->get();
         $initial_deuterium = $this->planetService->deuterium()->get();
 
-        // Add downgrade request
+        // Add downgrade request (resources are charged right away, as queue-time
+        // charging is the vanilla OGame behaviour)
         $this->buildingQueueService->addDowngrade($this->planetService, $building->id);
 
-        // Start the downgrade (this should deduct resources)
+        // Attempt to start the next queue item; the downgrade already started via
+        // addDowngrade, so this does not charge anything extra.
         $this->buildingQueueService->start($this->planetService);
 
         // Reload planet from database to get updated resources
@@ -146,14 +148,32 @@ class BuildingQueueServiceTest extends UnitTestCase
 
     /**
      * Test that downgrade fails when not enough resources.
+     *
+     * A real planet is required because the tear down cost is now charged
+     * atomically in the database at queue time.
      */
     public function testAddDowngradeNotEnoughResources(): void
     {
-        $this->createAndSetPlanetModel([
+        // Create user in database for foreign key constraints
+        $user = User::factory()->create();
+
+        // Create planet in database for foreign key constraints (use DB lookup to avoid coordinate conflicts)
+        $coords = $this->getSafeEmptyCoordinate(new Coordinate(1, 1, 1));
+        $planet = Planet::factory()->create([
+            'user_id' => $user->id,
+            'galaxy' => $coords->galaxy,
+            'system' => $coords->system,
+            'planet' => $coords->position,
             'metal_mine' => 5,
             'metal' => 0,
             'crystal' => 0,
             'deuterium' => 0,
+        ]);
+        $this->planetService->setPlanet($planet);
+        $this->planetService->updateResourceProductionStats(false);
+
+        $this->createAndSetUserTechModel([
+            'ion_technology' => 0,
         ]);
 
         $building = ObjectService::getObjectByMachineName('metal_mine');

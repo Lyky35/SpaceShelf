@@ -133,11 +133,25 @@ class BuildingQueueService
             }
         }
 
+        // Charge the upgrade cost at queue time, like vanilla OGame: once the item is
+        // queued its price is locked in and can only be reclaimed by canceling it.
+        $price = ObjectService::getObjectRawPrice($building->machine_name, $next_level);
+        try {
+            $planet->deductResources($price);
+        } catch (RuntimeException $e) {
+            throw new Exception('Not enough resources to build this object.');
+        }
+
         $queue = new BuildingQueue();
         $queue->planet_id = $planet->getPlanetId();
         $queue->object_id = $building->id;
         $queue->object_level_target = $next_level;
         $queue->is_downgrade = false; // Explicitly set to false for upgrades
+
+        // Store the charged price so it can be refunded if this item is canceled.
+        $queue->metal = $price->metal->get();
+        $queue->crystal = $price->crystal->get();
+        $queue->deuterium = $price->deuterium->get();
 
         // Save the new queue item
         $queue->save();
@@ -234,8 +248,11 @@ class BuildingQueueService
         // Get downgrade cost based on level_after_queue (after all queue items complete)
         $downgrade_price = ObjectService::getObjectDowngradePrice($building->machine_name, $planet, $level_after_queue);
 
-        // Check if planet has enough resources
-        if (!$planet->hasResources($downgrade_price)) {
+        // Charge the tear down cost at queue time, like vanilla OGame. The price is
+        // locked in here and can only be reclaimed by canceling the queue item.
+        try {
+            $planet->deductResources($downgrade_price);
+        } catch (RuntimeException $e) {
             throw new Exception('Not enough resources to downgrade this building.');
         }
 
@@ -246,6 +263,11 @@ class BuildingQueueService
         $queue->object_id = $building->id;
         $queue->object_level_target = $level_after_queue - 1;
         $queue->is_downgrade = true;
+
+        // Store the charged price so it can be refunded if this item is canceled.
+        $queue->metal = $downgrade_price->metal->get();
+        $queue->crystal = $downgrade_price->crystal->get();
+        $queue->deuterium = $downgrade_price->deuterium->get();
 
         // Save the new queue item
         $queue->save();
@@ -317,9 +339,9 @@ class BuildingQueueService
     /**
      * Start building the next item in the queue (if available).
      *
-     * This actually starts the building process and deducts the resources
-     * from the planet. If there are not enough resources the build attempt
-     * will fail.
+     * Resources are already charged when an item is added to the queue, as in
+     * vanilla OGame. This method only performs sanity checks on the queued
+     * items and starts the timer of the next one when the queue is idle.
      *
      * @param PlanetService $planet
      * @param int $time_start
@@ -350,12 +372,12 @@ class BuildingQueueService
             $object = ObjectService::getObjectById($queue_item->object_id);
             $is_downgrade = $queue_item->is_downgrade ?? false;
 
-            // Get price and build time based on whether it's an upgrade or downgrade
+            // Get build time based on whether it's an upgrade or downgrade.
+            // No price is calculated here: it was already charged and stored on
+            // the queue item when it was added to the queue.
             if ($is_downgrade) {
-                $price = ObjectService::getObjectDowngradePrice($object->machine_name, $planet);
                 $build_time = $planet->getBuildingDowngradeTime($object->machine_name);
             } else {
-                $price = ObjectService::getObjectPrice($object->machine_name, $planet);
                 $build_time = $planet->getBuildingConstructionTime($object->machine_name);
             }
 
@@ -430,15 +452,6 @@ class BuildingQueueService
                 }
             }
 
-            // Deduct resources
-            try {
-                $planet->deductResources($price);
-            } catch (RuntimeException $e) {
-                // Insufficient resources so we cancel the build request.
-                $this->cancel($planet, $queue_item->id, $queue_item->object_id);
-                continue;
-            }
-
             if (!$time_start) {
                 $time_start = (int)Date::now()->timestamp;
             }
@@ -447,9 +460,6 @@ class BuildingQueueService
             $queue_item->time_start = $time_start;
             $queue_item->time_end = $queue_item->time_start + $queue_item->time_duration;
             $queue_item->building = 1;
-            $queue_item->metal = $price->metal->get();
-            $queue_item->crystal = $price->crystal->get();
-            $queue_item->deuterium = $price->deuterium->get();
             $queue_item->save();
 
             // If the calculated end time is lower than the current time,
@@ -482,10 +492,10 @@ class BuildingQueueService
 
         // If object is found: add canceled flag.
         if ($queue_item) {
-            // Give back resources if the current entry was already building.
-            if ($queue_item->building === 1) {
-                $planet->addResources(new Resources($queue_item->metal, $queue_item->crystal, $queue_item->deuterium, 0));
-            }
+            // Give back the resources that were charged when the item was queued
+            // (vanilla OGame refunds the full price of any non-processed item,
+            // whether it was already under construction or still waiting).
+            $planet->addResources(new Resources($queue_item->metal, $queue_item->crystal, $queue_item->deuterium, 0));
 
             // Add canceled flag to the main entry.
             $queue_item->building = 0;

@@ -168,10 +168,11 @@ player behaves):**
 
 - Energy factor < 100 % (power bar red) → build power (solar, then fusion at
   high solar levels) / solar satellites first. While the planet is power
-  short, queued mine orders are cancelled (the queue is only charged at
-  start time, so this is free) and no energy-hungry candidates (mines,
-  factories, shipyard, lab) are queued at all — vanilla players fix the red
-  power bar before expanding anything else. See `BotEnergyBalanceTest`.
+  short, queued mine orders are cancelled (items are charged at queue time,
+  as in vanilla, and cancelling refunds them, so this costs nothing) and no
+  energy-hungry candidates (mines, factories, shipyard, lab) are queued at
+  all — vanilla players fix the red power bar before expanding anything else.
+  See `BotEnergyBalanceTest`.
 - Otherwise pick the resource whose **storage saturation × demand** is worst:
   crystal starves shipyard → prioritize crystal mine when crystal < production
   needs; deuterium blocks research/colonies → prioritizes fusion + terraforming
