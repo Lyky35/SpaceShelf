@@ -9,23 +9,6 @@
         <div style="padding: 20px; text-align: center;">No fleet movements detected at this location.</div>
     @else
         @foreach ($fleet_movements as $movement)
-            {{-- Hidden tooltip content for this fleet movement --}}
-            <div id="fleet-tooltip-{{ $movement['mission_id'] }}" style="display: none;">
-                <div class="htmlTooltip">
-                    <h1>Fleet details:</h1>
-                    <div class="splitLine"></div>
-                    <table cellpadding="0" cellspacing="0" class="fleetinfo">
-                        <tr><th colspan="2">Ships:</th></tr>
-                        @foreach ($movement['ships'] as $ship_type => $count)
-                            <tr>
-                                <td>{{ ucwords(str_replace('_', ' ', $ship_type)) }}:</td>
-                                <td class="value">{{ number_format($count, 0, ',', '.') }}</td>
-                            </tr>
-                        @endforeach
-                    </table>
-                </div>
-            </div>
-
             <div class="{{ $loop->even ? 'eventFleet even' : 'eventFleet odd' }}" id="eventRow-{{ $movement['mission_id'] }}" data-mission-type="{{ $movement['mission_type'] }}" data-return-flight="{{ $movement['is_return_trip'] ? 'true' : 'false' }}" data-arrival-time="{{ $movement['display_time'] }}">
                 <ul>
                     <li class="countDown">
@@ -49,7 +32,7 @@
                         </a>
                     </li>
                     <li class="detailsFleet">
-                        <span class="dark_highlight_tablet tooltipClose tooltipRight tooltipRel" rel="fleet-tooltip-{{ $movement['mission_id'] }}">
+                        <span class="dark_highlight_tablet">
                             {{ $movement['ship_count'] }}
                             <img src="/img/icons/{{ $movement['fleet_icon'] }}" alt="">
                         </span>

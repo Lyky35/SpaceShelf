@@ -286,6 +286,12 @@ class PhalanxTest extends FleetDispatchTestCase
         $contentHtml = $response->json('content_html');
         $this->assertStringContainsString('Own fleet', $contentHtml);
         $this->assertStringContainsString('Attack', $contentHtml);
+
+        // The sensor phalanx must only ever reveal total ship counts, never a
+        // per-ship composition (vanilla shows totals only; the overlay used to
+        // leak fleet details for any fleet it saw, upstream #668).
+        $this->assertStringNotContainsString('Fleet details', $contentHtml);
+        $this->assertStringNotContainsString('Light Fighter', $contentHtml);
     }
 
     /**

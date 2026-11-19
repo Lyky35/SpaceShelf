@@ -14,6 +14,7 @@ use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
 use OGame\Models\User;
 use OGame\Services\FleetMissionService;
+use OGame\Services\IncomingFleetIntelService;
 use OGame\Services\PlayerService;
 use OGame\ViewModels\FleetEventRowViewModel;
 
@@ -199,7 +200,7 @@ class FleetEventsController extends OGameController
      * @param PlanetServiceFactory $planetServiceFactory
      * @return View
      */
-    public function fetchEventList(PlayerService $player, FleetMissionService $fleetMissionService, PlanetServiceFactory $planetServiceFactory): View
+    public function fetchEventList(PlayerService $player, FleetMissionService $fleetMissionService, PlanetServiceFactory $planetServiceFactory, IncomingFleetIntelService $incomingFleetIntelService): View
     {
         // Get all the fleet movements for the current user.
         $friendlyMissionRows = $fleetMissionService->getActiveFleetMissionsForCurrentPlayer();
@@ -271,6 +272,11 @@ class FleetEventsController extends OGameController
             $eventRowViewModel->union_id = $row->union_id;
             $eventRowViewModel->union_slot = $row->union_slot;
             $eventRowViewModel->user_id = $row->user_id;
+
+            // Redact foreign fleet intel by the viewer's espionage technology (upstream #668, #1510)
+            $intel = $incomingFleetIntelService->getIntel($player, $row->user_id ?? 0);
+            $eventRowViewModel->intel_level = $intel->level;
+            $eventRowViewModel->intel_show_cargo = $intel->showCargo;
 
             $friendlyStatus = $this->determineFriendly($row, $player);
             $eventRowViewModel->friendly_status = $friendlyStatus->value;
@@ -346,6 +352,8 @@ class FleetEventsController extends OGameController
                 $waitEndRow->fleet_unit_count = $eventRowViewModel->fleet_unit_count;
                 $waitEndRow->fleet_units = $eventRowViewModel->fleet_units;
                 $waitEndRow->resources = $eventRowViewModel->resources;
+                $waitEndRow->intel_level = $eventRowViewModel->intel_level;
+                $waitEndRow->intel_show_cargo = $eventRowViewModel->intel_show_cargo;
                 $fleet_events[] = $waitEndRow;
             }
 
@@ -383,6 +391,8 @@ class FleetEventsController extends OGameController
                 $returnTripRow->fleet_unit_count = $eventRowViewModel->fleet_unit_count;
                 $returnTripRow->fleet_units = $eventRowViewModel->fleet_units;
                 $returnTripRow->resources = new Resources(0, 0, 0, 0);
+                $returnTripRow->intel_level = $eventRowViewModel->intel_level;
+                $returnTripRow->intel_show_cargo = $eventRowViewModel->intel_show_cargo;
                 $returnTripRow->destination_player_id = $eventRowViewModel->destination_player_id;
                 $returnTripRow->destination_player_name = $eventRowViewModel->destination_player_name;
                 $fleet_events[] = $returnTripRow;
@@ -474,6 +484,11 @@ class FleetEventsController extends OGameController
                     $vm->fleet_unit_count = $fleetMissionService->getFleetUnitCount($row);
                     $vm->fleet_units = $fleetMissionService->getFleetUnits($row);
                     $vm->resources = new Resources(0, 0, 0, 0);
+
+                    // Redact foreign union member fleets by the viewer's espionage technology (upstream #668)
+                    $intel = $incomingFleetIntelService->getIntel($player, $row->user_id ?? 0);
+                    $vm->intel_level = $intel->level;
+                    $vm->intel_show_cargo = $intel->showCargo;
                 }
 
                 // Resolve player name for all fleets
@@ -557,6 +572,13 @@ class FleetEventsController extends OGameController
 
             // Attach all member fleets (own + foreign) for expanded view
             $summaryRow->union_member_fleets = $allMemberViewModels;
+
+            // A union is gated by its initiator: a foreign union is redacted based on the
+            // viewer's espionage technology; own and alliance unions stay fully visible (upstream #668).
+            $summaryRow->user_id = $initiator->user_id;
+            $summaryIntel = $incomingFleetIntelService->getIntel($player, $initiator->user_id ?? 0);
+            $summaryRow->intel_level = $summaryIntel->level;
+            $summaryRow->intel_show_cargo = $summaryIntel->showCargo;
 
             $nonUnionEvents[] = $summaryRow;
         }

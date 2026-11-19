@@ -2,6 +2,7 @@
 
 namespace OGame\ViewModels;
 
+use OGame\Enums\FleetIntelLevel;
 use OGame\Enums\FleetMissionStatus;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
@@ -131,6 +132,20 @@ class FleetEventRowViewModel
     public string $destination_player_name = '';
 
     /**
+     * How much detail about this fleet's composition the viewing player is
+     * allowed to see, based on their Espionage Technology level (upstream
+     * #668, #1510). Defaults to full intel so rows that are not built
+     * through the intel service keep showing everything.
+     */
+    public FleetIntelLevel $intel_level = FleetIntelLevel::ShipCounts;
+
+    /**
+     * Whether the fleet shipment (cargo) may be shown. False for all
+     * foreign fleets, regardless of the viewer's espionage level.
+     */
+    public bool $intel_show_cargo = true;
+
+    /**
      * Get the fleet ownership label shown in the event row tooltip: hostile
      * incoming fleets must not be labelled as own fleets (upstream #1216).
      */
@@ -141,5 +156,60 @@ class FleetEventRowViewModel
             FleetMissionStatus::Neutral->value => __('t_ingame.fleet.friendly_fleet'),
             default => __('t_ingame.fleet.own_fleet'),
         };
+    }
+
+    /**
+     * Whether the total number of ships in this fleet may be shown to the
+     * viewing player. Hidden at espionage technology 0-1 for foreign
+     * fleets; always visible for own and alliance fleets (upstream #668).
+     */
+    public function seesUnitTotal(): bool
+    {
+        return $this->intel_level->value >= FleetIntelLevel::UnitCount->value;
+    }
+
+    /**
+     * Whether the ship types in this fleet may be shown to the viewing
+     * player (visible from espionage technology 4 for foreign fleets).
+     */
+    public function seesShipTypes(): bool
+    {
+        return $this->intel_level->value >= FleetIntelLevel::ShipTypes->value;
+    }
+
+    /**
+     * Whether the exact per-type ship counts of this fleet may be shown to
+     * the viewing player (visible from espionage technology 8 for foreign
+     * fleets; always for own and alliance fleets).
+     */
+    public function seesShipCounts(): bool
+    {
+        return $this->intel_level->value >= FleetIntelLevel::ShipCounts->value;
+    }
+
+    /**
+     * Whether the fleet shipment (cargo) may be shown. Never for foreign
+     * fleets, even at espionage technology 8+.
+     */
+    public function seesCargo(): bool
+    {
+        return $this->intel_show_cargo;
+    }
+
+    /**
+     * Merged ship types and totals across all member fleets of an ACS
+     * union, used to render the union summary tooltip for foreign unions.
+     */
+    public function getUnionShipTypes(): UnitCollection
+    {
+        $units = new UnitCollection();
+
+        foreach ($this->union_member_fleets as $memberFleet) {
+            foreach ($memberFleet->fleet_units->units as $unit) {
+                $units->addUnit($unit->unitObject, $unit->amount);
+            }
+        }
+
+        return $units;
     }
 }

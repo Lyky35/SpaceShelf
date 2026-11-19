@@ -47,9 +47,11 @@ if ($fleet_event->is_return_trip) {
     <span class="marker01"></span>
     <span class="marker02"></span>
 
+    @if ($fleet_event->seesShipTypes())
     <span class="fleetDetailButton">
         <a href="#bl{{ $fleet_event->id }}" rel="bl{{ $fleet_event->id }}" title="{{ __('t_ingame.fleet.fleet_details') }}" class="tooltipRel tooltipClose {{ $fleetIconClass }}"></a>
     </span>
+    @endif
 
     @if ($fleet_event->is_recallable && !$fleet_event->is_return_trip && !$fleet_event->is_at_destination)
         <span class="reversal reversal_time" ref="{{ $fleet_event->id }}">
@@ -79,8 +81,9 @@ if ($fleet_event->is_return_trip) {
             </div>
 
             <div class="route fixed">
-                <a href="#bl{{ $fleet_event->id }}" rel="bl{{ $fleet_event->id }}" title="{{ __('t_ingame.fleet.fleet_details') }}" class="tooltipRel tooltipClose basic2 {{ $fleetIconClass }}" id="route_{{ $fleet_event->id }}" style="margin-left: {{ $fleet_event->is_at_destination ? 274 : 0 }}px;"></a>
+                <a href="{{ $fleet_event->seesShipTypes() ? '#bl' . $fleet_event->id : '#' }}" @if ($fleet_event->seesShipTypes())rel="bl{{ $fleet_event->id }}" title="{{ __('t_ingame.fleet.fleet_details') }}" class="tooltipRel tooltipClose basic2 {{ $fleetIconClass }}" @else class="basic2 {{ $fleetIconClass }}" @endif id="route_{{ $fleet_event->id }}" style="margin-left: {{ $fleet_event->is_at_destination ? 274 : 0 }}px;"></a>
 
+                @if ($fleet_event->seesShipTypes())
                 <div style="display:none;" id="bl{{ $fleet_event->id }}">
                     <div class="htmlTooltip">
                         <h1>{{ __('t_ingame.fleet.fleet_details') }}:</h1>
@@ -92,9 +95,10 @@ if ($fleet_event->is_return_trip) {
                             @foreach ($fleet_event->fleet_units->units as $fleet_unit)
                                 <tr>
                                     <td>{{ $fleet_unit->unitObject->title }}:</td>
-                                    <td class="value">{{ number_format($fleet_unit->amount) }}</td>
+                                    <td class="value">@if ($fleet_event->seesShipCounts()){{ number_format($fleet_unit->amount) }}@endif</td>
                                 </tr>
                             @endforeach
+                            @if ($fleet_event->seesCargo())
                             <tr>
                                 <td colspan="2">&nbsp;</td>
                             </tr>
@@ -113,9 +117,11 @@ if ($fleet_event->is_return_trip) {
                                 <td>{{ __('t_ingame.fleet.deuterium') }}:</td>
                                 <td class="value">{{ $fleet_event->resources->deuterium->getFormattedLong() }}</td>
                             </tr>
+                            @endif
                         </table>
                     </div>
                 </div>
+                @endif
             </div>
 
             <div class="destination fixed">

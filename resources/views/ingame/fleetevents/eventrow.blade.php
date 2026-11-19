@@ -43,9 +43,12 @@
         </td>
 
         <td class="detailsFleet">
-            <span>{{ $fleet_event_row->fleet_unit_count }}</span>
+            @if ($fleet_event_row->seesUnitTotal())
+                <span>{{ $fleet_event_row->fleet_unit_count }}</span>
+            @endif
         </td>
         <td class="icon_movement_reserve">
+            @if ($fleet_event_row->seesShipTypes())
             <span class="tooltip tooltipRight tooltipClose"
                   title="&lt;div class=&quot;htmlTooltip&quot;&gt;
     &lt;h1&gt;@lang('Fleet details'):&lt;/h1&gt;
@@ -58,9 +61,10 @@
             @foreach ($fleet_event_row->fleet_units->units as $fleet_unit)
                 &lt;tr&gt;
                     &lt;td colspan=&quot;2&quot;&gt;{{ $fleet_unit->unitObject->title }}:&lt;/td&gt;
-                    &lt;td class=&quot;value&quot;&gt;{{ $fleet_unit->amount }}&lt;/td&gt;
+                    &lt;td class=&quot;value&quot;&gt;@if ($fleet_event_row->seesShipCounts()){{ $fleet_unit->amount }}@endif&lt;/td&gt;
                 &lt;/tr&gt;
             @endforeach
+            @if ($fleet_event_row->seesCargo())
 
                 &lt;tr&gt;
                     &lt;th colspan=&quot;3&quot;&gt;&nbsp;&lt;/th&gt;
@@ -83,11 +87,15 @@
                     &lt;td colspan=&quot;2&quot;&gt;@lang('Deuterium'):&lt;/td&gt;
                     &lt;td class=&quot;value&quot;&gt;{{ $fleet_event_row->resources->deuterium->getFormattedLong() }}&lt;/td&gt;
                 &lt;/tr&gt;
+            @endif
             &lt;/table&gt;
     &lt;/div&gt;
 ">
                 &nbsp;
             </span>
+            @else
+                &nbsp;
+            @endif
         </td>
 
         <td class="destFleet">
@@ -168,9 +176,12 @@
         </td>
 
         <td class="detailsFleet">
-            <span>{{ $fleet_event_row->fleet_unit_count }}</span>
+            @if ($fleet_event_row->seesUnitTotal())
+                <span>{{ $fleet_event_row->fleet_unit_count }}</span>
+            @endif
         </td>
         <td class="icon_movement">
+            @if ($fleet_event_row->seesShipTypes())
             <span class="tooltip tooltipRight tooltipClose"
                   title="&lt;div class=&quot;htmlTooltip&quot;&gt;
     &lt;h1&gt;@lang('Fleet details'):&lt;/h1&gt;
@@ -183,9 +194,10 @@
             @foreach ($fleet_event_row->fleet_units->units as $fleet_unit)
                 &lt;tr&gt;
                     &lt;td colspan=&quot;2&quot;&gt;{{ $fleet_unit->unitObject->title }}:&lt;/td&gt;
-                    &lt;td class=&quot;value&quot;&gt;{{ $fleet_unit->amount }}&lt;/td&gt;
+                    &lt;td class=&quot;value&quot;&gt;@if ($fleet_event_row->seesShipCounts()){{ $fleet_unit->amount }}@endif&lt;/td&gt;
                 &lt;/tr&gt;
             @endforeach
+            @if ($fleet_event_row->seesCargo())
 
                 &lt;tr&gt;
                     &lt;th colspan=&quot;3&quot;&gt;&nbsp;&lt;/th&gt;
@@ -208,11 +220,15 @@
                     &lt;td colspan=&quot;2&quot;&gt;@lang('Deuterium'):&lt;/td&gt;
                     &lt;td class=&quot;value&quot;&gt;{{ $fleet_event_row->resources->deuterium->getFormattedLong() }}&lt;/td&gt;
                 &lt;/tr&gt;
+            @endif
             &lt;/table&gt;
     &lt;/div&gt;
 ">
                 &nbsp;
             </span>
+            @else
+                &nbsp;
+            @endif
         </td>
 
         <td class="destFleet">
@@ -234,9 +250,9 @@
             @endswitch
         </td>
         <td class="destCoords">
-            <a href="{{ route('galaxy.index', ['galaxy' => $fleet_event_row->destination_planet_coords->galaxy, 'system' => $fleet_event_row->destination_planet_coords->system]) }}"
+            <a href="{{ route('galaxy.index', ['galaxy' => $fleet_event_row->origin_planet_coords->galaxy, 'system' => $fleet_event_row->origin_planet_coords->system]) }}"
                target="_top">
-                [{{ $fleet_event_row->destination_planet_coords->asString() }}]
+                [{{ $fleet_event_row->origin_planet_coords->asString() }}]
             </a>
         </td>
         <td class="sendMail">
@@ -288,4 +304,3 @@
         wrappedCountdown();
     })(jQuery);
 </script>
-

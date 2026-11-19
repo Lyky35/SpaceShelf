@@ -21,9 +21,12 @@
     <td class="coordsOrigin textBeefy">{{ $fleet_event_row->union_player_count }} / {{ $fleet_event_row->union_max_players }}</td>
 
     <td class="detailsFleet">
-        <span>{{ $fleet_event_row->fleet_unit_count }}</span>
+        @if ($fleet_event_row->seesUnitTotal())
+            <span>{{ $fleet_event_row->fleet_unit_count }}</span>
+        @endif
     </td>
     <td class="icon_movement">
+        @if ($fleet_event_row->intel_show_cargo)
         <span class="tooltip tooltipRight tooltipClose"
               title="&lt;div class=&quot;htmlTooltip&quot;&gt;
     &lt;h1&gt;@lang('Fleet details'):&lt;/h1&gt;
@@ -53,6 +56,30 @@
 ">
             &nbsp;
         </span>
+        @elseif ($fleet_event_row->seesShipTypes())
+        {{-- Foreign union: only the merged ship types/counts the viewer's espionage technology reveals --}}
+        <span class="tooltip tooltipRight tooltipClose"
+              title="&lt;div class=&quot;htmlTooltip&quot;&gt;
+    &lt;h1&gt;@lang('Fleet details'):&lt;/h1&gt;
+    &lt;div class=&quot;splitLine&quot;&gt;&lt;/div&gt;
+            &lt;table cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; class=&quot;fleetinfo&quot;&gt;
+            &lt;tr&gt;
+                &lt;th colspan=&quot;3&quot;&gt;@lang('Ships'):&lt;/th&gt;
+            &lt;/tr&gt;
+            @foreach ($fleet_event_row->getUnionShipTypes()->units as $fleet_unit)
+                &lt;tr&gt;
+                    &lt;td colspan=&quot;2&quot;&gt;{{ $fleet_unit->unitObject->title }}:&lt;/td&gt;
+                    &lt;td class=&quot;value&quot;&gt;@if ($fleet_event_row->seesShipCounts()){{ $fleet_unit->amount }}@endif&lt;/td&gt;
+                &lt;/tr&gt;
+            @endforeach
+            &lt;/table&gt;
+    &lt;/div&gt;
+">
+            &nbsp;
+        </span>
+        @else
+            &nbsp;
+        @endif
     </td>
 
     <td class="destFleet">
@@ -123,9 +150,12 @@
         </td>
 
         <td class="detailsFleet">
-            <span>{{ $member_fleet->fleet_unit_count }}</span>
+            @if ($member_fleet->seesUnitTotal())
+                <span>{{ $member_fleet->fleet_unit_count }}</span>
+            @endif
         </td>
         <td class="icon_movement">
+            @if ($member_fleet->seesShipTypes())
             <span class="tooltip tooltipRight tooltipClose"
                   title="&lt;div class=&quot;htmlTooltip&quot;&gt;
     &lt;h1&gt;@lang('Fleet details'):&lt;/h1&gt;
@@ -137,9 +167,10 @@
             @foreach ($member_fleet->fleet_units->units as $fleet_unit)
                 &lt;tr&gt;
                     &lt;td colspan=&quot;2&quot;&gt;{{ $fleet_unit->unitObject->title }}:&lt;/td&gt;
-                    &lt;td class=&quot;value&quot;&gt;{{ $fleet_unit->amount }}&lt;/td&gt;
+                    &lt;td class=&quot;value&quot;&gt;@if ($member_fleet->seesShipCounts()){{ $fleet_unit->amount }}@endif&lt;/td&gt;
                 &lt;/tr&gt;
             @endforeach
+            @if ($member_fleet->seesCargo())
 
                 &lt;tr&gt;
                     &lt;th colspan=&quot;3&quot;&gt;&nbsp;&lt;/th&gt;
@@ -162,11 +193,15 @@
                     &lt;td colspan=&quot;2&quot;&gt;@lang('Deuterium'):&lt;/td&gt;
                     &lt;td class=&quot;value&quot;&gt;{{ $member_fleet->resources->deuterium->getFormattedLong() }}&lt;/td&gt;
                 &lt;/tr&gt;
+            @endif
             &lt;/table&gt;
     &lt;/div&gt;
 ">
                 &nbsp;
             </span>
+            @else
+                &nbsp;
+            @endif
         </td>
 
         <td class="destFleet">

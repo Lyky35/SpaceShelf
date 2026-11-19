@@ -25,6 +25,7 @@ use OGame\Services\CharacterClassService;
 use OGame\Services\CoordinateDistanceCalculator;
 use OGame\Services\FleetMissionService;
 use OGame\Services\FleetUnionService;
+use OGame\Services\IncomingFleetIntelService;
 use OGame\Services\MessageService;
 use OGame\Services\ObjectService;
 use OGame\Services\PlanetService;
@@ -127,7 +128,7 @@ class FleetController extends OGameController
      * @param PlanetServiceFactory $planetServiceFactory
      * @return View|RedirectResponse
      */
-    public function movement(PlayerService $player, FleetMissionService $fleetMissionService, PlanetServiceFactory $planetServiceFactory): View|RedirectResponse
+    public function movement(PlayerService $player, FleetMissionService $fleetMissionService, PlanetServiceFactory $planetServiceFactory, IncomingFleetIntelService $incomingFleetIntelService): View|RedirectResponse
     {
         // Get all the fleet movements for the current user.
         $friendlyMissionRows = $fleetMissionService->getActiveFleetMissionsForCurrentPlayer();
@@ -223,6 +224,12 @@ class FleetController extends OGameController
 
             // Track union membership for ACS Attack grouping
             $eventRowViewModel->union_id = $row->union_id;
+            $eventRowViewModel->user_id = $row->user_id;
+
+            // Redact foreign fleet intel by the viewer's espionage technology (upstream #668, #1510)
+            $intel = $incomingFleetIntelService->getIntel($player, $row->user_id ?? 0);
+            $eventRowViewModel->intel_level = $intel->level;
+            $eventRowViewModel->intel_show_cargo = $intel->showCargo;
 
             // ACS Attack (type 2) outbound trips display as regular Attack in the movement page
             // with the allianceName tag showing the union identifier.

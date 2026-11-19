@@ -204,7 +204,6 @@ class PhalanxService
                                 'position' => $mission->position_from,
                                 'planet_name' => $planet_names[$mission->planet_id_from] ?? '',
                             ],
-                            'ships' => $ships,
                             'ship_count' => array_sum($ships),
                             'fleet_speed' => $fleet_speed,
                         ];
@@ -280,7 +279,6 @@ class PhalanxService
                     'position' => $mission->position_to,
                     'planet_name' => $planet_names[$mission->planet_id_to] ?? '',
                 ],
-                'ships' => $ships,
                 'ship_count' => array_sum($ships),
                 'fleet_speed' => $fleet_speed,
             ];
