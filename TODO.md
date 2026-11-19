@@ -566,10 +566,33 @@ account out of every in-game page.
       headless re-check: content fits (scrollHeight 38) and the "Next"
       row renders fully inside the box at y=116–133.
 
+- [x] **#296 — full battle report loot/debris tooltips show nothing.**
+      Hovering a loot or debris amount in the full combat report showed
+      no tooltip at all: the 2024-scraped template carries the amounts
+      in `data-tooltip-title`, but this UI's legacy Tipped tooltip
+      engine (`tooltips.js`) only reads the `title` attribute and skips
+      elements without one — the correct amount was already rendered,
+      just never displayed. The espionage report already uses `title=`
+      for its resource amounts, making the battle report the outlier.
+      Upstream #296 is still open (maintainer TODO: audit all tooltip
+      occurrences in messages). **Fixed 2026-11-18:** converted the 19
+      `data-tooltip-title` attributes holding correct dynamic amounts in
+      `battle_report_full.blade.php` to `title=` (the loot
+      metal/crystal/deuterium rows plus the debris total and
+      metal/crystal/deuterium breakdown rows in the total,
+      attacker-collected, defender-collected and remaining sections);
+      visible content unchanged. Chrome tooltips (buttons, planet icon,
+      retreat info), the commented-out food/population rows and the
+      stale hardcoded API-key hashcode tooltip deliberately left
+      untouched. `testBattleReport` now asserts `title="1,000"` and
+      `title="500"` render and that no `res_value` span carries
+      `data-tooltip-title` anymore; live Chromium+Playwright check
+      against a real report message showed a `tpd-skin-cloud` tooltip
+      with "70,000" when hovering "70K".
+
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #296 (full
-      report tooltip covers loot amounts), #305 (admin settings form
+- [ ] #305 (admin settings form
       validation), #1510/#668 (incoming fleet details not gated by
       espionage level), #1538 (flaky `testFleetDispatchValidSpeeds` —
       random foreign-planet fixture unchanged, in
