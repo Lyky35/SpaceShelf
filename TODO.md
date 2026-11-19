@@ -533,11 +533,25 @@ account out of every in-game page.
       `resources/js/ingame/e7c74974620fa35b197315ebdbb8c2.js`; assets
       rebuilt (`node --check` clean, `npm run build` → hashed
       `ingame-5fd92af6.js` + manifest).
+- [x] **#1542/#1539 — Facilities menu shortcut icon does not reach the
+      Space Dock.** On planets the little icon next to "Facilities" in the
+      top menu was a dead `<div>` (only moons with a Jump Gate got a live
+      shortcut). Upstream #1539 is still open and PR #1542 unmerged.
+      **Fixed 2026-11-18** (audit confirmed the bug present, while the fork
+      already carried the receiving half: `facilities/index.blade.php`
+      auto-clicks the Space Dock card on `?openSpaceDock=1`): ported PR
+      #1542 verbatim — `@elseif ($currentPlanet->isPlanet())` in
+      `main.blade.php` wraps the icon in a link to
+      `/facilities?openSpaceDock=1` titled with
+      `t_resources.space_dock.title`; Jump Gate shortcut on moons and the
+      inert icon on moonless-without-gate remain unchanged. Ported the PR's
+      regression test as `FacilitiesMenuShortcutTest` (overview must render
+      the Space Dock shortcut href), based on the fork's
+      `IsolatedAccountTestCase` instead of upstream's `AccountTestCase`.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1542/#1539 (Facilities shortcut doesn't reach Space Dock),
-      #1004 (class selection screen clips into fleet widget), #296 (full
+- [ ] #1004 (class selection screen clips into fleet widget), #296 (full
       report tooltip covers loot amounts), #305 (admin settings form
       validation), #1510/#668 (incoming fleet details not gated by
       espionage level), #1538 (flaky `testFleetDispatchValidSpeeds` —
