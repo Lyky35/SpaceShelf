@@ -517,11 +517,26 @@ account out of every in-game page.
       hostile too (types 1/2/6/9/10 already were). Tests:
       `FleetDispatchEventLabelsTest` (sender sees "Own fleet", victim sees
       "Enemy fleet").
+- [x] **#1514/#1541 — Recycle mission is not auto-selected for the
+      expedition debris field at position 16.** Once #1497 (fork commit
+      `6ed418f7`, upstream commit 2026-07-21) blocked expedition missions
+      on debris fields, Recycle became the only available mission for
+      pos-16 expedition debris, yet Fleet Dispatch II still defaults to no
+      mission selected. **Fixed 2026-11-18** (bug verified present: the
+      server's `checkTarget` `orders` map enables only mission 8 for a
+      pos-16 debris target, and `refreshMissions` in the bundle only
+      auto-selects Expedition). Ported upstream PR #1541 verbatim:
+      `refreshMissions` now also selects the Recycle mission when it is
+      the only available one (`isOnlyMissionAvailable` + no currently
+      valid mission), mirroring the Expedition branch and leaving
+      multi-mission targets untouched. JS-only change in
+      `resources/js/ingame/e7c74974620fa35b197315ebdbb8c2.js`; assets
+      rebuilt (`node --check` clean, `npm run build` → hashed
+      `ingame-5fd92af6.js` + manifest).
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1514/#1541 (recycle mission not auto-selected at position 16), #1513
-      (dev shortcut creates no expedition debris
+- [ ] #1513 (dev shortcut creates no expedition debris
       field), #1542/#1539 (Facilities shortcut doesn't reach Space Dock),
       #1004 (class selection screen clips into fleet widget), #296 (full
       report tooltip covers loot amounts), #305 (admin settings form
