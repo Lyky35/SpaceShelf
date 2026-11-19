@@ -592,8 +592,7 @@ account out of every in-game page.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #305 (admin settings form
-      validation), #1510/#668 (incoming fleet details not gated by
+- [ ] #1510/#668 (incoming fleet details not gated by
       espionage level), #1538 (flaky `testFleetDispatchValidSpeeds` —
       random foreign-planet fixture unchanged, in
       `tests/Traits/CreatesForeignFixtures.php`).
@@ -653,6 +652,22 @@ account out of every in-game page.
   original misdiagnosis). Upstream's maintainer himself routes further
   work to PR #1541 (the Recycle auto-selection, shipped here on
   2026-11-18). No fork change needed.
+- **#305** (admin server settings form has no validation) — verified
+  present, but *present by design and upstream scope*: upstream keeps
+  it as an open **enhancement** whose UX the maintainer has not settled
+  (the issue body contrasts basic vs per-field validation; the comment
+  thread adds a third "dynamic validation" option the maintainer
+  prefers, plus a generic wrapper for admin and user forms, with open
+  questions about Laravel's built-in validation). The fork's
+  `Admin\ServerSettingsController::update()` is byte-identical to
+  upstream HEAD and writes all ~50 `request()` values unvalidated.
+  Impact is an admin-only footgun: the page sits behind the `admin`
+  middleware and every `SettingsService` getter casts (`(int)`,
+  `(float)`), so garbage input degrades predictably ("abc" → 0) rather
+  than crashing or reaching players — nothing a regular bug fix would
+  address. A fork-side fix would mean committing to one undecided UX
+  for ~50 fields and colliding with whatever upstream ships. Skip;
+  revisit only if upstream implements a design worth porting.
 
 ## Bot AI roadmap (docs/BOT-AI-PLAN.md phases 2–6)
 
