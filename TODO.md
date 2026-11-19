@@ -630,9 +630,8 @@ account out of every in-game page.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1538 (flaky `testFleetDispatchValidSpeeds` —
-      random foreign-planet fixture unchanged, in
-      `tests/Traits/CreatesForeignFixtures.php`).
+None remaining — every entry has been audited; the last one (#1538) moved
+to the audit exclusions below on 2026-11-19.
 
 ### Audit exclusions (verified NOT present — don't re-investigate)
 
@@ -705,6 +704,24 @@ account out of every in-game page.
   address. A fork-side fix would mean committing to one undecided UX
   for ~50 fields and colliding with whatever upstream ships. Skip;
   revisit only if upstream implements a design worth porting.
+- **#1538** (flaky `testFleetDispatchValidSpeeds` — random foreign-planet
+  fixture in `tests/Traits/CreatesForeignFixtures.php`) — the upstream
+  flake mechanism does not exist in the fork. The Cursor-authored upstream
+  report claims `getNearbyForeignPlanet()` picks a target with
+  `inRandomOrder()` and can land on a vacation-mode player whose account
+  blocks attack dispatch, failing the `speed 1` assertion. The fork
+  replaced those probes: `CreatesForeignFixtures::createForeignPlanet()`
+  always creates a fresh `User::factory()` player, and the factory sets
+  neither `vacation_mode` nor any ban flag; separately, the fork's fleet
+  dispatch path has no vacation-mode gate at all (`vacation_mode` appears
+  only in views and the dev `PreviewSeedUsers` command). The fixture's
+  remaining randomness is bounded: `TestCase::getSafeEmptyCoordinate()`
+  (`:31`) stays in the viewer's own galaxy, picks systems anchor±10 at
+  positions 13–15 with a DB collision check, so the worst-case fuel for
+  one light fighter at 10% speed is ~20k deuterium against the 1M granted
+  by `FleetDispatchAttackTest::basicSetup()` (`:56`). 40 consecutive
+  green runs of the test on HEAD (1.5s each, 40 assertions) show no
+  flakiness; no code change needed.
 
 ## Bot AI roadmap (docs/BOT-AI-PLAN.md phases 2–6)
 
