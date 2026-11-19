@@ -481,6 +481,15 @@ class MessagesTest extends MoonTestCase
         // rendered into battle reports (upstream #1561).
         $response->assertDontSee('data-raw-', false);
 
+        // Loot and debris resource amounts must carry working tooltips. The
+        // legacy tooltip engine only reads the `title` attribute, so the
+        // scraped `data-tooltip-title` variants render no tooltip at all
+        // (upstream #296). The fixture loot is 1000 metal / 500 crystal /
+        // 100 deuterium and the debris field is 1000 metal / 500 crystal.
+        $response->assertSee('<span class="res_value tooltipCustom" title="1,000"', false);
+        $response->assertSee('<span class="res_value tooltipCustom" title="500"', false);
+        $response->assertDontSee('<span class="res_value tooltipCustom" data-tooltip-title', false);
+
         // The message list preview must be free of the mock metadata too.
         $response = $this->get('/messages');
         $response->assertStatus(200);

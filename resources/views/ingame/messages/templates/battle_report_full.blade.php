@@ -107,21 +107,21 @@
             <ul class="detail_list clearfix">
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall metal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $loot_resources->metal->getFormattedLong() }}">{{ $loot_resources->metal->getFormatted() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $loot_resources->metal->getFormattedLong() }}">{{ $loot_resources->metal->getFormatted() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall crystal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $loot_resources->crystal->getFormattedLong() }}">{{ $loot_resources->crystal->getFormatted() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $loot_resources->crystal->getFormattedLong() }}">{{ $loot_resources->crystal->getFormatted() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall deuterium"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $loot_resources->deuterium->getFormattedLong() }}">{{ $loot_resources->deuterium->getFormatted() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $loot_resources->deuterium->getFormattedLong() }}">{{ $loot_resources->deuterium->getFormatted() }}</span>
                 </li>
                 <!-- TODO: Implement food -->
                 <!--
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall food"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="0">0</span>
+                    <span class="res_value tooltipCustom" title="0">0</span>
                 </li>
                 -->
             </ul>
@@ -134,21 +134,21 @@
                 <div class="c-left"></div>
                 <div class="c-right"></div>
                 <span class="title_txt">{{ __('t_ingame.messages.battle_debris') }}:</span>
-                <span class="title_txt tooltipCustom" data-tooltip-title="{{ $debris_sum_formatted }}">{{ $debris_sum_formatted }}</span>
+                <span class="title_txt tooltipCustom" title="{{ $debris_sum_formatted }}">{{ $debris_sum_formatted }}</span>
                 <span class="title_txt">=&gt; {{ $debris_collectors_needed }} {{ $is_expedition_battle ? __('t_ingame.messages.battle_pathfinder') : __('t_ingame.messages.battle_recycler') }}</span>
             </div>
             <ul class="detail_list clearfix">
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall metal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $debris_resources->metal->getFormattedLong() }}">{{ $debris_resources->metal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $debris_resources->metal->getFormattedLong() }}">{{ $debris_resources->metal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall crystal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $debris_resources->crystal->getFormattedLong() }}">{{ $debris_resources->crystal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $debris_resources->crystal->getFormattedLong() }}">{{ $debris_resources->crystal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall deuterium"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $debris_resources->deuterium->getFormattedLong() }}">{{ $debris_resources->deuterium->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $debris_resources->deuterium->getFormattedLong() }}">{{ $debris_resources->deuterium->getFormattedLong() }}</span>
                 </li>
             </ul>
 @if ($collected_debris_resources->sum() > 0)
@@ -157,35 +157,35 @@
                 <div class="c-left"></div>
                 <div class="c-right"></div>
                 <span class="title_txt">{{ __('t_ingame.messages.battle_mined_after') }}:</span>
-                <span class="title_txt tooltipCustom" data-tooltip-title="{{ number_format($collected_debris_resources->sum(), 0, ',', '.') }}">{{ number_format($collected_debris_resources->sum(), 0, ',', '.') }}</span>
+                <span class="title_txt tooltipCustom" title="{{ number_format($collected_debris_resources->sum(), 0, ',', '.') }}">{{ number_format($collected_debris_resources->sum(), 0, ',', '.') }}</span>
                 <span class="title_txt">=&gt; {{ $total_reapers_used }} {{ __('t_ingame.messages.battle_reaper') }}</span>
             </div>
             <ul class="detail_list clearfix">
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall metal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $attacker_collected_debris_resources->metal->getFormattedLong() }}">{{ $attacker_collected_debris_resources->metal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $attacker_collected_debris_resources->metal->getFormattedLong() }}">{{ $attacker_collected_debris_resources->metal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall crystal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $attacker_collected_debris_resources->crystal->getFormattedLong() }}">{{ $attacker_collected_debris_resources->crystal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $attacker_collected_debris_resources->crystal->getFormattedLong() }}">{{ $attacker_collected_debris_resources->crystal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall deuterium"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $attacker_collected_debris_resources->deuterium->getFormattedLong() }}">{{ $attacker_collected_debris_resources->deuterium->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $attacker_collected_debris_resources->deuterium->getFormattedLong() }}">{{ $attacker_collected_debris_resources->deuterium->getFormattedLong() }}</span>
                 </li>
             </ul>
             <ul class="detail_list clearfix">
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall metal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $defender_collected_debris_resources->metal->getFormattedLong() }}">{{ $defender_collected_debris_resources->metal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $defender_collected_debris_resources->metal->getFormattedLong() }}">{{ $defender_collected_debris_resources->metal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall crystal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $defender_collected_debris_resources->crystal->getFormattedLong() }}">{{ $defender_collected_debris_resources->crystal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $defender_collected_debris_resources->crystal->getFormattedLong() }}">{{ $defender_collected_debris_resources->crystal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall deuterium"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $defender_collected_debris_resources->deuterium->getFormattedLong() }}">{{ $defender_collected_debris_resources->deuterium->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $defender_collected_debris_resources->deuterium->getFormattedLong() }}">{{ $defender_collected_debris_resources->deuterium->getFormattedLong() }}</span>
                 </li>
             </ul>
             <!-- Trümmerfeld übrig -->
@@ -193,21 +193,21 @@
                 <div class="c-left"></div>
                 <div class="c-right"></div>
                 <span class="title_txt">{{ __('t_ingame.messages.battle_debris_left') }}:</span>
-                <span class="title_txt tooltipCustom" data-tooltip-title="{{ number_format($remaining_debris_resources->sum(), 0, ',', '.') }}">{{ number_format($remaining_debris_resources->sum(), 0, ',', '.') }}</span>
+                <span class="title_txt tooltipCustom" title="{{ number_format($remaining_debris_resources->sum(), 0, ',', '.') }}">{{ number_format($remaining_debris_resources->sum(), 0, ',', '.') }}</span>
                 <span class="title_txt">=&gt; {{ $remaining_debris_collectors_needed }} {{ $is_expedition_battle ? __('t_ingame.messages.battle_pathfinder') : __('t_ingame.messages.battle_recycler') }}</span>
             </div>
             <ul class="detail_list clearfix">
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall metal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $remaining_debris_resources->metal->getFormattedLong() }}">{{ $remaining_debris_resources->metal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $remaining_debris_resources->metal->getFormattedLong() }}">{{ $remaining_debris_resources->metal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall crystal"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $remaining_debris_resources->crystal->getFormattedLong() }}">{{ $remaining_debris_resources->crystal->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $remaining_debris_resources->crystal->getFormattedLong() }}">{{ $remaining_debris_resources->crystal->getFormattedLong() }}</span>
                 </li>
                 <li class="resource_list_el_small">
                     <div class="resourceIconSmall deuterium"></div>
-                    <span class="res_value tooltipCustom" data-tooltip-title="{{ $remaining_debris_resources->deuterium->getFormattedLong() }}">{{ $remaining_debris_resources->deuterium->getFormattedLong() }}</span>
+                    <span class="res_value tooltipCustom" title="{{ $remaining_debris_resources->deuterium->getFormattedLong() }}">{{ $remaining_debris_resources->deuterium->getFormattedLong() }}</span>
                 </li>
             </ul>
 @endif
