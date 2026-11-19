@@ -384,7 +384,11 @@ class DirectiveService
         string $state
     ): array {
         [$current, $target] = $this->conditionProgress($mission['condition'], $player);
-        if ($state === 'collected') {
+        // A mission that has already been completed (or collected) shows as done
+        // even when live game state would regress the raw counter — e.g. units
+        // that completed the mission were since dispatched into a fleet. Vanilla
+        // quest completion is sticky once recorded.
+        if ($state !== 'in_progress') {
             $current = $target;
         }
 

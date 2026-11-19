@@ -147,6 +147,33 @@ class DirectivesTest extends IsolatedAccountTestCase
     }
 
     /**
+     * A mission completed once stays completed and claimable even when live game
+     * state regresses afterwards (e.g. the building is demolished, the units that
+     * satisfied the condition sailed away with a fleet). Vanilla quest completion
+     * is sticky; the progress display must not fall back to "0 / 1" with an
+     * enabled Collect button, as that looks like a claimable but unmet mission.
+     */
+    public function testCompletedMissionStaysClaimableAfterConditionRegresses(): void
+    {
+        $this->planetSetObjectLevel('shipyard', 1);
+        $this->overlay('directive_ii')->assertSee('data-state="completed"', false);
+
+        $this->planetSetObjectLevel('shipyard', 0);
+
+        $overlay = $this->overlay('directive_ii');
+        $overlay->assertSee('data-state="completed"', false);
+        // Exactly one satisfied progress row (the shipyard mission), rendered
+        // with the target reached instead of the regressed 0 / 1.
+        $this->assertSame(1, substr_count((string) $overlay->getContent(), '1 / 1'));
+
+        $metalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal');
+        $claim = $this->claim('directive_ii', 'ii_shipyard');
+        $claim->assertStatus(200);
+        $claim->assertJson(['success' => true]);
+        $this->assertSame($metalBefore + 1000, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal'));
+    }
+
+    /**
      * Condition boundaries: one level/unit/marker below the target does not
      * complete, hitting the target does.
      */

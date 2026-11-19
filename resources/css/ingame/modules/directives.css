@@ -1,0 +1,48 @@
+/*
+ * Fork-side layout rules for the Directives quest overlay.
+ *
+ * The vendored vanilla client CSS positions #ipiOverviewChapterRewards
+ * (chapter bonus + "Claim All") absolutely at bottom:0 inside
+ * #ipiOverviewContent and lets #ipiOverviewTasklist scroll, but vanilla
+ * gives the scroll region its height through JavaScript we do not ship.
+ * Pin the height here so the Claim All bar stays docked to the bottom of
+ * the overlay instead of floating over the task list or the left menu.
+ */
+#ipioverviewlayer {
+    display: flex;
+    flex-direction: column;
+    height: 72vh;
+    min-height: 460px;
+}
+
+#ipioverviewlayer #ipiOverviewContent {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#ipioverviewlayer #ipiOverviewTasklist {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 100px 0;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+#ipioverviewlayer #ipiOverviewChapterRewards .ipiOverviewChapterRewardsText {
+    max-width: 400px;
+}
+
+#ipioverviewlayer .ipiTaskCompletedMark {
+    color: #99cc00;
+}
+
+#ipioverviewlayer .ipiChapterItem .ipiTabDoneMark {
+    color: #99cc00;
+}
+
+#ipioverviewlayer .ipiTaskItemContentCollect .textBeefy {
+    color: #848484;
+}
