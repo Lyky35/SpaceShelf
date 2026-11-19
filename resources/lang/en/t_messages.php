@@ -488,4 +488,13 @@ NOTE: The total strength of all participants compared to the total strength of d
         'body' => 'Your repair request on planet :planet has been completed.
 :ship_count ships have been put back into service.',
     ],
+
+    // ------------------------
+    // Starter Aid reward (see StarterAidService); :text contains the full,
+    // personalized reward text defined in t_rewards.php.
+    'starter_aid' => [
+        'from' => 'System Message',
+        'subject' => 'Starter Aid',
+        'body' => ':text',
+    ],
 ];

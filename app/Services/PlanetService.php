@@ -2077,6 +2077,82 @@ class PlanetService
     }
 
     /**
+     * Atomically add resources to the planet using a single UPDATE query.
+     * This prevents the grant from being lost to a concurrent planet update that
+     * saves a stale whole-row copy of the planet.
+     *
+     * @param Resources $resources The resources to add.
+     * @return void
+     */
+    public function addResourcesAtomic(Resources $resources): void
+    {
+        $metalAmount = (int)$resources->metal->get();
+        $crystalAmount = (int)$resources->crystal->get();
+        $deuteriumAmount = (int)$resources->deuterium->get();
+
+        // Build the update array
+        $updates = [];
+        if ($metalAmount > 0) {
+            $updates['metal'] = DB::raw("metal + {$metalAmount}");
+        }
+        if ($crystalAmount > 0) {
+            $updates['crystal'] = DB::raw("crystal + {$crystalAmount}");
+        }
+        if ($deuteriumAmount > 0) {
+            $updates['deuterium'] = DB::raw("deuterium + {$deuteriumAmount}");
+        }
+
+        // If no resources to add, there is nothing to do
+        if (empty($updates)) {
+            return;
+        }
+
+        // Execute atomic update - returns number of affected rows
+        $affected = Planet::where('id', $this->getPlanetId())->update($updates);
+
+        if ($affected > 0) {
+            // Sync in-memory model with the added values
+            if ($metalAmount > 0) {
+                $this->planet->metal += $metalAmount;
+            }
+            if ($crystalAmount > 0) {
+                $this->planet->crystal += $crystalAmount;
+            }
+            if ($deuteriumAmount > 0) {
+                $this->planet->deuterium += $deuteriumAmount;
+            }
+        }
+    }
+
+    /**
+     * Atomically add units to the planet using a single UPDATE query.
+     * This prevents the grant from being lost to a concurrent planet update that
+     * saves a stale whole-row copy of the planet.
+     *
+     * @param string $machine_name The machine name of the unit to add.
+     * @param int $amount The amount of units to add.
+     * @return void
+     * @throws Exception
+     */
+    public function addUnitAtomic(string $machine_name, int $amount): void
+    {
+        if ($amount < 1) {
+            return;
+        }
+
+        $object = ObjectService::getUnitObjectByMachineName($machine_name);
+
+        // Execute atomic update - returns number of affected rows
+        $affected = Planet::where('id', $this->getPlanetId())
+            ->update([$object->machine_name => DB::raw("{$object->machine_name} + {$amount}")]);
+
+        if ($affected > 0) {
+            // Sync in-memory model
+            $this->planet->{$object->machine_name} += $amount;
+        }
+    }
+
+    /**
      * Atomically deduct both resources and units in a single transaction.
      * This is the primary method for fleet dispatch to prevent race conditions.
      *

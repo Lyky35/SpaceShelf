@@ -44,6 +44,7 @@ use OGame\GameMessages\MoonDestructionSuccess;
 use OGame\GameMessages\PlanetRelocationSuccess;
 use OGame\GameMessages\ReturnOfFleet;
 use OGame\GameMessages\ReturnOfFleetWithResources;
+use OGame\GameMessages\StarterAid;
 use OGame\GameMessages\TransportArrived;
 use OGame\GameMessages\TransportReceived;
 use OGame\GameMessages\WelcomeMessage;
@@ -63,6 +64,7 @@ class GameMessageFactory
      */
     private static array $gameMessageClasses = [
         'welcome_message' => WelcomeMessage::class,
+        'starter_aid' => StarterAid::class,
         'return_of_fleet_with_resources' => ReturnOfFleetWithResources::class,
         'return_of_fleet' => ReturnOfFleet::class,
         'transport_arrived' => TransportArrived::class,

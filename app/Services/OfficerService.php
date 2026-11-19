@@ -26,6 +26,12 @@ class OfficerService
     public const MAX_WEEKS_PER_PURCHASE = 13;
 
     /**
+     * Seconds in a week and a day, for expiry calculations.
+     */
+    private const SECONDS_PER_WEEK = 604800;
+    private const SECONDS_PER_DAY = 86400;
+
+    /**
      * OfficerService constructor.
      *
      * @param DarkMatterService $darkMatterService
@@ -102,14 +108,65 @@ class OfficerService
             }
 
             $column = $officer->getExpiresAtColumn();
-            $currentExpiry = $lockedUser->{$column};
-            $baseTime = ($currentExpiry !== null && $currentExpiry->isFuture()) ? $currentExpiry : now();
-            $lockedUser->{$column} = $baseTime->addWeeks($weeks);
+            $lockedUser->{$column} = $this->calculateExtendedExpiry($lockedUser, $officer, $weeks * self::SECONDS_PER_WEEK);
             $lockedUser->save();
 
             // Reflect the change on the caller's user instance
             $user->{$column} = $lockedUser->{$column};
         });
+    }
+
+    /**
+     * Grant (or extend) an officer for the given amount of days without charging
+     * Dark Matter. Used for reward grants such as the Starter Aid "Commanding Staff"
+     * reward. If the officer is still active, the expiry is extended from the current
+     * expiry; otherwise a fresh period starts from now.
+     *
+     * @param User $user
+     * @param Officer $officer
+     * @param int $days
+     * @return void
+     * @throws Exception
+     */
+    public function grant(User $user, Officer $officer, int $days): void
+    {
+        if ($days < 1) {
+            throw new Exception('Invalid amount of days to grant officer for');
+        }
+
+        DB::transaction(function () use ($user, $officer, $days): void {
+            // Lock the user row and extend the officer expiry, same as a paid hire.
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+            if ($lockedUser === null) {
+                throw new Exception('User not found.');
+            }
+
+            $column = $officer->getExpiresAtColumn();
+            $lockedUser->{$column} = $this->calculateExtendedExpiry($lockedUser, $officer, $days * self::SECONDS_PER_DAY);
+            $lockedUser->save();
+
+            // Reflect the change on the caller's user instance
+            $user->{$column} = $lockedUser->{$column};
+        });
+    }
+
+    /**
+     * Calculate the new officer expiry when extending by the given amount of seconds.
+     * The new period starts from the current expiry if the officer is still active,
+     * else from now.
+     *
+     * @param User $lockedUser User row already locked for update.
+     * @param Officer $officer
+     * @param int $seconds
+     * @return Carbon
+     */
+    private function calculateExtendedExpiry(User $lockedUser, Officer $officer, int $seconds): Carbon
+    {
+        $column = $officer->getExpiresAtColumn();
+        $currentExpiry = $lockedUser->{$column};
+        $baseTime = ($currentExpiry !== null && $currentExpiry->isFuture()) ? $currentExpiry : now();
+
+        return $baseTime->addSeconds($seconds);
     }
 
     /**
