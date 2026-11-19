@@ -536,8 +536,7 @@ account out of every in-game page.
 
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1513 (dev shortcut creates no expedition debris
-      field), #1542/#1539 (Facilities shortcut doesn't reach Space Dock),
+- [ ] #1542/#1539 (Facilities shortcut doesn't reach Space Dock),
       #1004 (class selection screen clips into fleet widget), #296 (full
       report tooltip covers loot amounts), #305 (admin settings form
       validation), #1510/#668 (incoming fleet details not gated by
@@ -585,6 +584,21 @@ account out of every in-game page.
   (`LocalizationStrings.ok` = "Ok") to the green `#fleetstatusrow` at the
   bottom of the galaxy — rendering exactly the vanilla string. No fork
   change needed.
+- **#1513** (dev shortcut for expedition debris field reports success but
+  creates nothing) — still open upstream, but the symptom does not
+  reproduce here. `DeveloperShortcutsController::createDebris()` (blame:
+  unchanged since 2024-11, predating the 2026-07-21 report; fork code
+  byte-identical to upstream HEAD) runs
+  `loadOrCreateForCoordinates` → `appendResources` → `save()`, and an
+  empirical tinker run of that exact flow persisted a full-resources
+  debris_fields row at 1:1:16. The display half is present since 2025-12:
+  `GalaxyController::createExpeditionDebrisRow()` renders the pos-16 row
+  whenever `getResources()->any()`, gated behind `hasExpeditionDebrisFieldsVisible`
+  (Discoverer class only, by design — a non-Discoverer tester creating
+  pos-16 debris would see success but no row, which likely explains the
+  original misdiagnosis). Upstream's maintainer himself routes further
+  work to PR #1541 (the Recycle auto-selection, shipped here on
+  2026-11-18). No fork change needed.
 
 ## Bot AI roadmap (docs/BOT-AI-PLAN.md phases 2–6)
 
