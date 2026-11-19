@@ -590,10 +590,47 @@ account out of every in-game page.
       against a real report message showed a `tpd-skin-cloud` tooltip
       with "70,000" when hovering "70K".
 
+- [x] **#1510/#668 — incoming fleet details not gated by espionage
+      level.** The fleet event list and the fleet movement page revealed
+      a foreign attacker's full fleet composition and cargo to the
+      target at any espionage technology, and the sensor phalanx overlay
+      shipped a per-ship breakdown (`ships` map + "Fleet details"
+      tooltip) for every fleet in range. Vanilla gates foreign fleet
+      intel on Espionage Technology: 0-1 shows only the attack
+      notification, 2-3 the total ship count, 4-7 the ship types without
+      counts and 8+ the exact per-type counts; cargo is never revealed
+      for foreign fleets while own and alliance ("gold") fleets stay
+      fully visible. Upstream #668 and its duplicate #1510 are still
+      open; #1510 is a Cursor-authored report whose author admits vanilla
+      errors in the linked stalled PR, so it was treated as reference
+      only. **Fixed 2026-11-18:** added `FleetIntelLevel` enum,
+      `FleetIntel` value object and `IncomingFleetIntelService` (tier
+      from `getEffectiveEspionageLevel()`; the own/alliance check reads
+      the fleet owner's alliance straight from the database to dodge
+      stale `PlayerServiceFactory` cache state), wired into
+      `FleetEventsController` (main rows, hold/return synthetic rows,
+      foreign ACS member rows, union summary — a union is gated by its
+      initiator and foreign unions get the merged ship-type table the
+      allowed tier reveals) and `FleetController::movement`; blades
+      (`eventrow`, `eventrow-union`, `movement-row`) render through new
+      `sees*()` view-model helpers; `PhalanxService` now sends totals
+      only and the phalanx template dropped its composition tooltip
+      (vanilla phalanx never shows fleet composition). New
+      `IncomingFleetEspionageIntelTest` (8 tests) covers all four tiers,
+      own-fleet visibility, the alliance rule and both pages;
+      `PhalanxTest::testSuccessfulScanWithIncomingFleet` now asserts the
+      scan shows no composition. Live check with three throwaway users
+      at 1:26:4: the defender's event list showed nothing (spy 0), the
+      union total 17 only (spy 2), merged ship types without counts
+      (spy 4) and exact per-type counts (spy 8) — never "Shipment" —
+      and a real ACS union (two allied attackers, one defender)
+      exercised the union summary/member gates including per-member
+      counts; the movement page matched; the union initiator still saw
+      the full member-breakdown tooltip. Audit users removed afterwards.
+
 ### Presumed present (identical upstream code; not individually verified)
 
-- [ ] #1510/#668 (incoming fleet details not gated by
-      espionage level), #1538 (flaky `testFleetDispatchValidSpeeds` —
+- [ ] #1538 (flaky `testFleetDispatchValidSpeeds` —
       random foreign-planet fixture unchanged, in
       `tests/Traits/CreatesForeignFixtures.php`).
 
