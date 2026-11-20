@@ -21,7 +21,9 @@ class ResearchQueueCancelTest extends IsolatedAccountTestCase
      */
     public function testResearchQueueCancelMultiple(): void
     {
-        $this->planetAddResources(new Resources(0, 10000, 5000, 0));
+        // Queue-time charging: the queue is only capped by the planet balance, so
+        // fund all four levels of energy technology (price doubles per level).
+        $this->planetAddResources(new Resources(0, 20000, 10000, 0));
         $this->planetSetObjectLevel('research_lab', 1);
 
         // ---

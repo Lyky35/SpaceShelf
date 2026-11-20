@@ -141,10 +141,24 @@ class ResearchQueueService
             throw new Exception('Requirements not met to build this object.');
         }
 
+        // Charge the research price at queue time, like vanilla OGame: once the item is
+        // queued its price is locked in and can only be reclaimed by canceling it.
+        $price = ObjectService::getObjectRawPrice($object->machine_name, $next_level);
+        try {
+            $planet->deductResources($price);
+        } catch (RuntimeException $e) {
+            throw new Exception('Not enough resources to research this object.');
+        }
+
         $queue = new $this->model();
         $queue->planet_id = $planet->getPlanetId();
         $queue->object_id = $research_object_id;
         $queue->object_level_target = $next_level;
+
+        // Store the charged price so it can be refunded if this item is canceled.
+        $queue->metal = $price->metal->get();
+        $queue->crystal = $price->crystal->get();
+        $queue->deuterium = $price->deuterium->get();
 
         // Save the new queue item
         $queue->save();
@@ -286,9 +300,9 @@ class ResearchQueueService
     /**
      * Start researching the next item in the queue (if available).
      *
-     * This actually starts the research process and deducts the resources
-     * from the planet. If there are not enough resources the build attempt
-     * will fail.
+     * This runs the sanity checks on the next queue item and starts its timer.
+     * Resources were already charged when the item was queued; items that fail
+     * a sanity check are canceled, which refunds the stored price.
      *
      * @param PlayerService $player
      *
@@ -318,9 +332,6 @@ class ResearchQueueService
         foreach ($queue_items as $queue_item) {
             $planet = $player->planets->getById($queue_item->planet_id);
             $object = ObjectService::getResearchObjectById($queue_item->object_id);
-
-            // See if the planet has enough resources for this research attempt.
-            $price = ObjectService::getObjectPrice($object->machine_name, $planet);
             $research_time = $planet->getTechnologyResearchTime($object->machine_name);
 
             // Only start the queue item if there are no other queue items researching
@@ -360,15 +371,6 @@ class ResearchQueueService
                 continue;
             }
 
-            // Deduct resources
-            try {
-                $planet->deductResources($price);
-            } catch (RuntimeException $e) {
-                // Insufficient resources so we cancel the research request.
-                $this->cancel($player, $queue_item->id, $queue_item->object_id);
-                continue;
-            }
-
             if (!$time_start) {
                 $time_start = (int)Date::now()->timestamp;
             }
@@ -377,9 +379,6 @@ class ResearchQueueService
             $queue_item->time_start = $time_start;
             $queue_item->time_end = $queue_item->time_start + $queue_item->time_duration;
             $queue_item->building = 1;
-            $queue_item->metal = $price->metal->get();
-            $queue_item->crystal = $price->crystal->get();
-            $queue_item->deuterium = $price->deuterium->get();
             $queue_item->save();
 
             // If the calculated end time is lower than the current time,
@@ -427,8 +426,10 @@ class ResearchQueueService
             // if user cancels research order for Energy Technology which is requirement
             // for Impulse Drive then Impulse Drive will also be canceled.
 
-            // Give back resources if the current entry was already building.
-            if ($queue_item->building === 1) {
+            // Refund the price that was charged when this item was queued, whether
+            // it was still waiting or already researching. Items that carry no
+            // stored price were never charged and refund nothing.
+            if (!empty($queue_item->metal) || !empty($queue_item->crystal) || !empty($queue_item->deuterium)) {
                 $planet->addResources(new Resources($queue_item->metal, $queue_item->crystal, $queue_item->deuterium, 0));
             }
 
