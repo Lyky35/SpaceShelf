@@ -200,6 +200,47 @@ accounts) rather than scripting pseudo-diplomacy.
   on own-alliance members — humans can currently raid allies; bots would
   have to self-enforce until the engine enforces it.
 
+## Test / CI quirks
+
+### 1. The "42 notices" in parallel test runs — diagnosed (2026-11-20), fix pending
+
+`pest --parallel` (and the CI `--shard=X/3 --parallel` jobs) print a yellow
+run of `!` marks and `Tests: 42 notices` even though everything passes.
+Diagnosed 2026-11-20; deliberately left unfixed, documented here so nobody
+re-investigates.
+
+- **Not a PHP notice, not a race, not a code bug.** They are PHPUnit 13
+  "PHPUnit Notice" events: *"No expectations were configured for the mock
+  object for `…`. Consider refactoring your test code to use a test stub
+  instead. The `#[AllowMockObjectsWithoutExpectations]` attribute can be
+  used to opt out of this check."* — raised by `MockObjectRegistry` when a
+  `createMock()` double is built as a pure placeholder (no `expects()`,
+  no stubbed methods, none ever called).
+- **All 42 come from two files** (deterministic, sums exactly):
+  - `tests/Unit/CharacterClassServiceTest.php` — 34 tests, `DarkMatterService`
+    + `SettingsService` mocked in `setUp()`, never configured → 34 notices
+    (CI shard 2).
+  - `tests/Unit/JumpGateCooldownTest.php` — 8 tests, one placeholder
+    `SettingsService` mock (line 169) → 8 notices (CI shard 3).
+- **Why only parallel:** serial Pest treats PHPUnit-Notice events as
+  informational (a serial `./vendor/bin/pest` run of the whole suite reports
+  1355 passed, zero notices). The parallel `WrapperRunner` aggregates
+  `testTriggeredPhpunitNoticeEvents()` from worker streams and
+  `StateGenerator.php:118/142` maps them onto `TestResult::NOTICE`, which
+  produces the `!` marks and the summary line. Reporting-path asymmetry only;
+  exit code stays 0 and CI stays green.
+- **Fix options when desired** (pick one, ~1 line each file):
+  1. Add `#[AllowMockObjectsWithoutExpectations]` to the two test classes
+     (PHPUnit's own opt-out — recommended).
+  2. Replace `createMock()` with `createStub()` for the placeholder mocks.
+  3. Leave as-is (cost: confusing "N notices" line in every CI log).
+- **Re-counting / attribution recipe** if the number ever changes: bisect by
+  test class — `pest tests/Unit --parallel --filter "Tests.Unit.[A-E]"`, etc.
+  (paratest takes a single path, so split with `--filter` regexes, not
+  multiple file args), then per file
+  `pest tests/Unit/SomeTest.php --parallel --display-notices` to see the
+  message text.
+
 ## Inherited upstream bugs — open OGameX issues verified present (2026-11-17)
 
 Audit of all 113 open issues on the upstream repository (`lanedirt/OGameX`).
