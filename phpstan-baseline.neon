@@ -1,0 +1,43 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Exception\\RequestException\:\:getResponse\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/Test/TestCommand.php
+
+		-
+			message: '#^Unable to resolve the template type TReason in call to static method GuzzleHttp\\Promise\\Utils\:\:settle\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Console/Commands/Test/TestCommand.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to static method GuzzleHttp\\Promise\\Utils\:\:settle\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Console/Commands/Test/TestCommand.php
+
+		-
+			message: '#^Unable to resolve the template type TReason in call to static method GuzzleHttp\\Promise\\Utils\:\:settle\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Console/Commands/Test/TestRaceConditionFleetDispatch.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to static method GuzzleHttp\\Promise\\Utils\:\:settle\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Console/Commands/Test/TestRaceConditionFleetDispatch.php
+
+		-
+			message: '#^Unable to resolve the template type TReason in call to static method GuzzleHttp\\Promise\\Utils\:\:settle\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Console/Commands/Test/TestRaceConditionUnitQueueCreation.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to static method GuzzleHttp\\Promise\\Utils\:\:settle\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Console/Commands/Test/TestRaceConditionUnitQueueCreation.php

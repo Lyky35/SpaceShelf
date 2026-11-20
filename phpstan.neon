@@ -8,6 +8,9 @@ services:
 
 includes:
     - vendor/larastan/larastan/extension.neon
+    # Fork-local baseline for the inherited Guzzle template-type errors in
+    # app/Console/Commands/Test/ (byte-identical to upstream; see 0.17.0 notes).
+    - phpstan-baseline.neon
 
 parameters:
 
