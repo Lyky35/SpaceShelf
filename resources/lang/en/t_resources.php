@@ -154,10 +154,13 @@ To use the Phalanx, click on any planet in the Galaxy View within your sensors r
         'description_long' => 'As various fields of research advanced, it was discovered that the current technology of energy distribution was not sufficient enough to begin certain specialized research. With each upgrade of your Energy Technology, new research can be conducted which unlocks development of more sophisticated ships and defenses.',
     ],
 
+    // Fork deviation (c3346ea7, v0.16.0): laser tech scales laser tower attack
+    // by +10%/level — vanilla laser tech has no combat effect.
+    // best-effort, not documented upstream.
     'laser_technology' => [
         'title'            => 'Laser Technology',
         'description'      => 'Focusing light produces a beam that causes damage when it strikes an object.',
-        'description_long' => 'Lasers (light amplification by stimulated emission of radiation) produce an intense, energy rich emission of coherent light. These devices can be used in all sorts of areas, from optical computers to heavy laser weapons, which effortlessly cut through armour technology. The laser technology provides an important basis for research of other weapon technologies.',
+        'description_long' => 'Lasers (light amplification by stimulated emission of radiation) produce an intense, energy rich emission of coherent light. These devices can be used in all sorts of areas, from optical computers to heavy laser weapons, which effortlessly cut through armour technology. The laser technology provides an important basis for research of other weapon technologies. With each level of Laser Technology researched, the attack strength of Light Lasers and Heavy Lasers is increased by 10% of their base value.',
     ],
 
     'ion_technology' => [
