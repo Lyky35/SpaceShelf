@@ -251,6 +251,51 @@ class DirectivesTest extends IsolatedAccountTestCase
     }
 
     /**
+     * The Directive I resource-collection missions complete once their
+     * buildings/units exist and pay out on claim. Solar satellites are tracked
+     * as a unit count and only complete at their target amount.
+     */
+    public function testDirectiveIResourceCollectionMissions(): void
+    {
+        $this->planetSetObjectLevel('metal_mine', 1);
+
+        $overlay = $this->overlay('directive_i');
+        $overlay->assertStatus(200);
+        $overlay->assertSee('Metal Mine');
+        $overlay->assertSee('data-state="completed"', false);
+
+        $metalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal');
+
+        $claim = $this->claim('directive_i', 'i_metal_mine');
+        $claim->assertStatus(200);
+        $claim->assertJson(['success' => true]);
+        $this->assertSame(400, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal') - $metalBefore);
+
+        $this->assertDatabaseHas('directive_progress', [
+            'user_id' => $this->currentUserId,
+            'directive_id' => 'directive_i',
+            'mission_id' => 'i_metal_mine',
+            'status' => 'claimed',
+        ]);
+
+        // Solar satellites need 3 to complete: two are not enough.
+        $this->planetAddUnit('solar_satellite', 2);
+        $this->overlay('directive_i');
+        $notEnough = $this->claim('directive_i', 'i_solar_satellites');
+        $notEnough->assertStatus(400);
+        $notEnough->assertJson(['success' => false]);
+
+        $this->planetAddUnit('solar_satellite', 1);
+        $this->overlay('directive_i');
+
+        $metalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal');
+        $claim = $this->claim('directive_i', 'i_solar_satellites');
+        $claim->assertStatus(200);
+        $claim->assertJson(['success' => true]);
+        $this->assertSame(800, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal') - $metalBefore);
+    }
+
+    /**
      * Sending a buddy request marks the activity, which completes the mission and
      * allows claiming its Dark Matter reward.
      */
@@ -378,8 +423,9 @@ class DirectivesTest extends IsolatedAccountTestCase
 
         $overview = $this->get('/overview');
         $overview->assertSee('ipiHintCollect', false);
-        // With the welcome mission done (but unclaimed), the next mission is shown.
-        $overview->assertSee('Civilian ships');
+        // With the welcome mission done (but unclaimed), the next mission in
+        // Directive I is shown.
+        $overview->assertSee('Metal Mine');
 
         $this->claim('directive_i', 'i_welcome_cadet')->assertStatus(200);
 

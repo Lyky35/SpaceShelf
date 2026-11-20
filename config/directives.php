@@ -20,10 +20,13 @@
 |   entirely as lifeforms are unimplemented), the Directive I chapter bonus
 |   and per-mission sub-step texts for Directive II. Chapters appear as tabs
 |   as soon as they are defined here.
-| - Best-effort, NOT verified: the per-mission rewards of Directive II.
-|   They follow the scale of the verified chapter bonus and of the other
-|   documented rewards; replace them once the vanilla quest data can be
-|   dumped from a live universe. Each such reward is marked below.
+| - Best-effort, NOT verified: the per-mission rewards of Directive II and the
+|   Directive I mission set beyond the verified "Welcome Cadet!" entry (the
+|   resource-collection missions are themed on "A Sound Economy" and titled
+|   with in-game building/unit names). They follow the scale of the verified
+|   chapter bonus and of the other documented rewards; replace them once the
+|   vanilla quest data can be dumped from a live universe. Each such reward is
+|   marked below.
 |
 | Mission condition types (implemented in DirectiveService):
 | - activity: one-off marker (see DirectiveService::ACTIVITY_*)
@@ -55,6 +58,123 @@ return [
                     ],
                     'rewards' => [
                         'dark_matter' => 500,
+                    ],
+                ],
+                // The Directive I missions below are best-effort (NOT documented
+                // upstream): they follow the chapter's "A Sound Economy" theme of
+                // resource collection — mines, storage, power plants and solar
+                // satellites. Titles use the exact in-game building/unit names and
+                // rewards follow the scale of the Directive II best-effort rewards.
+                // Replace them once the vanilla quest data can be dumped from a
+                // live universe.
+                'i_metal_mine' => [
+                    'title' => 't_directives.missions.i_metal_mine.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'metal_mine',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 400, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_crystal_mine' => [
+                    'title' => 't_directives.missions.i_crystal_mine.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'crystal_mine',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'crystal' => 400, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_deuterium_synthesizer' => [
+                    'title' => 't_directives.missions.i_deuterium_synthesizer.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'deuterium_synthesizer',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'deuterium' => 200, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_solar_plant' => [
+                    'title' => 't_directives.missions.i_solar_plant.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'solar_plant',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 500, // best-effort, not documented upstream
+                        'crystal' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_metal_storage' => [
+                    'title' => 't_directives.missions.i_metal_storage.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'metal_store',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_crystal_storage' => [
+                    'title' => 't_directives.missions.i_crystal_storage.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'crystal_store',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'crystal' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_deuterium_tank' => [
+                    'title' => 't_directives.missions.i_deuterium_tank.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'deuterium_store',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'deuterium' => 250, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_solar_satellites' => [
+                    'title' => 't_directives.missions.i_solar_satellites.title',
+                    'condition' => [
+                        'type' => 'unit_count',
+                        'objects' => ['solar_satellite'],
+                        'target' => 3,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 800, // best-effort, not documented upstream
+                    ],
+                ],
+                'i_fusion_reactor' => [
+                    'title' => 't_directives.missions.i_fusion_reactor.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'fusion_plant',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 1000, // best-effort, not documented upstream
+                        'crystal' => 500, // best-effort, not documented upstream
                     ],
                 ],
             ],

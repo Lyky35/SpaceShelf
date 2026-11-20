@@ -34,6 +34,36 @@ return [
                 'open_overview' => 'Open the mission overview',
             ],
         ],
+        // Best-effort Directive I mission titles; verify against original OGame
+        // Directive I quest text when it can be sourced. Titles use the exact
+        // in-game building/unit names.
+        'i_metal_mine' => [
+            'title' => 'Metal Mine',
+        ],
+        'i_crystal_mine' => [
+            'title' => 'Crystal Mine',
+        ],
+        'i_deuterium_synthesizer' => [
+            'title' => 'Deuterium Synthesizer',
+        ],
+        'i_solar_plant' => [
+            'title' => 'Solar Plant',
+        ],
+        'i_metal_storage' => [
+            'title' => 'Metal Storage',
+        ],
+        'i_crystal_storage' => [
+            'title' => 'Crystal Storage',
+        ],
+        'i_deuterium_tank' => [
+            'title' => 'Deuterium Tank',
+        ],
+        'i_solar_satellites' => [
+            'title' => 'Solar Satellites',
+        ],
+        'i_fusion_reactor' => [
+            'title' => 'Fusion Reactor',
+        ],
         'ii_civilian_ships' => [
             'title' => 'Civilian ships',
         ],
