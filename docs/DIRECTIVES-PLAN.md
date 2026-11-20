@@ -1,8 +1,10 @@
 # SpaceShelf — Directives (quest system) implementation plan
 
 Status: **P1 + P2 implemented (2026-11-19). P0 partially done:
-Directive I + II shipped with screenshot-verified content, other chapters
-deferred until their text can be sourced.** The quest engine
+Directive I + II shipped with screenshot-verified content, Directive III
+added as a fully best-effort science chapter (one research_level mission per
+technology), chapters V and VII deferred until their text can be sourced.**
+The quest engine
 (`DirectiveService`), overlay UI, claim endpoints and the rewired
 `#ipimenucomponent` panel are live; `config/directives.php` is the catalog
 where future chapters simply drop in. Directive VI (Alien Life) stays

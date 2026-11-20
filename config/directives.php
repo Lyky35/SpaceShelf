@@ -15,18 +15,20 @@
 |   sub-step "Open the mission overview" and its 500 Dark Matter reward,
 |   and the Directive II chapter bonus (1,500 metal / 750 crystal /
 |   250 deuterium / 2,000 Dark Matter).
-| - NOT documented upstream and therefore intentionally absent: chapter III,
-|   V and VII content (Directive VI is the Lifeforms chapter, skipped
-|   entirely as lifeforms are unimplemented), the Directive I chapter bonus
-|   and per-mission sub-step texts for Directive II. Chapters appear as tabs
-|   as soon as they are defined here.
-| - Best-effort, NOT verified: the per-mission rewards of Directive II and the
+| - NOT documented upstream and therefore intentionally absent: chapter V and
+|   VII content (Directive VI is the Lifeforms chapter, skipped entirely as
+|   lifeforms are unimplemented), the Directive I chapter bonus and
+|   per-mission sub-step texts for Directive II. Chapters appear as tabs as
+|   soon as they are defined here.
+| - Best-effort, NOT verified: the per-mission rewards of Directive II, the
 |   Directive I mission set beyond the verified "Welcome Cadet!" entry (the
 |   resource-collection missions are themed on "A Sound Economy" and titled
-|   with in-game building/unit names). They follow the scale of the verified
-|   chapter bonus and of the other documented rewards; replace them once the
-|   vanilla quest data can be dumped from a live universe. Each such reward is
-|   marked below.
+|   with in-game building/unit names), and the entire Directive III science
+|   chapter (its title, its one-per-technology research missions and its
+|   rewards; mission titles reuse the exact in-game research names). They
+|   follow the scale of the verified chapter bonus and of the other documented
+|   rewards; replace them once the vanilla quest data can be dumped from a
+|   live universe. Each such reward is marked below.
 |
 | Mission condition types (implemented in DirectiveService):
 | - activity: one-off marker (see DirectiveService::ACTIVITY_*)
@@ -304,6 +306,205 @@ return [
                     ],
                     'rewards' => [
                         'dark_matter' => 200, // best-effort, not documented upstream
+                    ],
+                ],
+            ],
+        ],
+        'directive_iii' => [
+            'tab' => 'III',
+            'title' => 't_directives.chapters.directive_iii.title',
+            'chapter_rewards' => [
+                'metal' => 3000, // best-effort, not documented upstream
+                'crystal' => 1500, // best-effort, not documented upstream
+                'deuterium' => 750, // best-effort, not documented upstream
+                'dark_matter' => 3000, // best-effort, not documented upstream
+            ],
+            'missions' => [
+                // The Directive III chapter is entirely best-effort (NOT
+                // documented upstream): vanilla's Directive III quest text has
+                // never been sourced. The chapter is themed on science and
+                // research — one research_level mission per technology,
+                // completed by researching the technology to level 1. Titles
+                // reuse the exact in-game research names so the rows match the
+                // research screen's vocabulary. Energy Technology and
+                // Combustion Drive are skipped here because Directive II
+                // already has research missions for them. Rewards follow the
+                // scale of the Directive II best-effort rewards. Replace the
+                // whole chapter once the vanilla quest data can be dumped from
+                // a live universe.
+                'iii_computer_technology' => [
+                    'title' => 't_directives.missions.iii_computer_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'computer_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 600, // best-effort, not documented upstream
+                        'crystal' => 600, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_espionage_technology' => [
+                    'title' => 't_directives.missions.iii_espionage_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'espionage_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 500, // best-effort, not documented upstream
+                        'crystal' => 400, // best-effort, not documented upstream
+                        'deuterium' => 200, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_weapon_technology' => [
+                    'title' => 't_directives.missions.iii_weapon_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'weapon_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 500, // best-effort, not documented upstream
+                        'crystal' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_shielding_technology' => [
+                    'title' => 't_directives.missions.iii_shielding_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'shielding_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 500, // best-effort, not documented upstream
+                        'crystal' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_armor_technology' => [
+                    'title' => 't_directives.missions.iii_armor_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'armor_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 500, // best-effort, not documented upstream
+                        'crystal' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_laser_technology' => [
+                    'title' => 't_directives.missions.iii_laser_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'laser_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 800, // best-effort, not documented upstream
+                        'crystal' => 800, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_ion_technology' => [
+                    'title' => 't_directives.missions.iii_ion_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'ion_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 1000, // best-effort, not documented upstream
+                        'crystal' => 600, // best-effort, not documented upstream
+                        'deuterium' => 200, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_hyperspace_technology' => [
+                    'title' => 't_directives.missions.iii_hyperspace_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'hyperspace_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 1000, // best-effort, not documented upstream
+                        'crystal' => 1000, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_impulse_drive' => [
+                    'title' => 't_directives.missions.iii_impulse_drive.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'impulse_drive',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 1200, // best-effort, not documented upstream
+                        'crystal' => 900, // best-effort, not documented upstream
+                        'deuterium' => 300, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_hyperspace_drive' => [
+                    'title' => 't_directives.missions.iii_hyperspace_drive.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'hyperspace_drive',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 1500, // best-effort, not documented upstream
+                        'crystal' => 1200, // best-effort, not documented upstream
+                        'deuterium' => 400, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_astrophysics' => [
+                    'title' => 't_directives.missions.iii_astrophysics.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'astrophysics',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 1000, // best-effort, not documented upstream
+                        'crystal' => 400, // best-effort, not documented upstream
+                        'deuterium' => 200, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_plasma_technology' => [
+                    'title' => 't_directives.missions.iii_plasma_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'plasma_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 1500, // best-effort, not documented upstream
+                        'crystal' => 1500, // best-effort, not documented upstream
+                        'deuterium' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_intergalactic_research_network' => [
+                    'title' => 't_directives.missions.iii_intergalactic_research_network.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'intergalactic_research_network',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'metal' => 1200, // best-effort, not documented upstream
+                        'crystal' => 1200, // best-effort, not documented upstream
+                        'deuterium' => 600, // best-effort, not documented upstream
+                        'dark_matter' => 100, // best-effort, not documented upstream
+                    ],
+                ],
+                'iii_graviton_technology' => [
+                    'title' => 't_directives.missions.iii_graviton_technology.title',
+                    'condition' => [
+                        'type' => 'research_level',
+                        'object' => 'graviton_technology',
+                        'target' => 1,
+                    ],
+                    'rewards' => [
+                        'dark_matter' => 2000, // best-effort, not documented upstream
                     ],
                 ],
             ],

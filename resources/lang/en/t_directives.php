@@ -24,6 +24,11 @@ return [
         'directive_ii' => [
             'title' => 'Directive II – The First Ship',
         ],
+        // Best-effort chapter title; verify against original OGame Directive III
+        // text when it can be sourced.
+        'directive_iii' => [
+            'title' => 'Directive III – The Pursuit of Knowledge',
+        ],
     ],
 
     'missions' => [
@@ -93,6 +98,50 @@ return [
         ],
         'ii_buddy_request' => [
             'title' => 'Send a buddy request',
+        ],
+        // Best-effort Directive III mission titles; the chapter itself is not
+        // documented upstream. Titles reuse the exact in-game research names.
+        'iii_computer_technology' => [
+            'title' => 'Computer Technology',
+        ],
+        'iii_espionage_technology' => [
+            'title' => 'Espionage Technology',
+        ],
+        'iii_weapon_technology' => [
+            'title' => 'Weapon Technology',
+        ],
+        'iii_shielding_technology' => [
+            'title' => 'Shield Technology',
+        ],
+        'iii_armor_technology' => [
+            'title' => 'Armour Technology',
+        ],
+        'iii_laser_technology' => [
+            'title' => 'Laser Technology',
+        ],
+        'iii_ion_technology' => [
+            'title' => 'Ion Technology',
+        ],
+        'iii_hyperspace_technology' => [
+            'title' => 'Hyperspace Technology',
+        ],
+        'iii_impulse_drive' => [
+            'title' => 'Impulse Drive',
+        ],
+        'iii_hyperspace_drive' => [
+            'title' => 'Hyperspace Drive',
+        ],
+        'iii_astrophysics' => [
+            'title' => 'Astrophysics',
+        ],
+        'iii_plasma_technology' => [
+            'title' => 'Plasma Technology',
+        ],
+        'iii_intergalactic_research_network' => [
+            'title' => 'Intergalactic Research Network',
+        ],
+        'iii_graviton_technology' => [
+            'title' => 'Graviton Technology',
         ],
     ],
 

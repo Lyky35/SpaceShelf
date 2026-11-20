@@ -24,6 +24,14 @@ use Tests\IsolatedAccountTestCase;
 class DirectivesTest extends IsolatedAccountTestCase
 {
     /**
+     * New players start at computer technology level 0. The shared harness grants
+     * level 5 by default (fleet-slot realism for fleet tests); with that default
+     * the Directive III "Computer Technology" mission would auto-complete on the
+     * first page view, which would break the fresh-account badge expectations.
+     */
+    protected int $defaultComputerTechnologyLevel = 0;
+
+    /**
      * Fetch the Directives overlay for the given chapter.
      */
     private function overlay(string $chapter = ''): TestResponse
@@ -293,6 +301,74 @@ class DirectivesTest extends IsolatedAccountTestCase
         $claim->assertStatus(200);
         $claim->assertJson(['success' => true]);
         $this->assertSame(800, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal') - $metalBefore);
+    }
+
+    /**
+     * Directive III is the science chapter: research_level missions track each
+     * technology individually and only their own research completes them; the
+     * chapter bonus unlocks exactly once after all fourteen missions have been
+     * claimed.
+     */
+    public function testDirectiveIIIScienceChapter(): void
+    {
+        // A tech that Directive II already covers (and Directive III therefore
+        // skips) must not complete or unlock anything in this chapter.
+        $this->playerSetResearchLevel('energy_technology', 1);
+        $this->overlay('directive_iii');
+        $this->claim('directive_iii', 'iii_laser_technology')->assertStatus(400);
+        $this->claim('directive_iii', '')->assertStatus(400);
+
+        $this->playerSetResearchLevel('computer_technology', 1);
+
+        $overlay = $this->overlay('directive_iii');
+        $overlay->assertStatus(200);
+        $overlay->assertSee('Computer Technology');
+        $overlay->assertSee('data-state="completed"', false);
+
+        $metalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal');
+        $crystalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal');
+
+        $claim = $this->claim('directive_iii', 'iii_computer_technology');
+        $claim->assertStatus(200);
+        $claim->assertJson(['success' => true]);
+        $this->assertSame(600, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal') - $metalBefore);
+        $this->assertSame(600, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal') - $crystalBefore);
+
+        // Research every science tech and let "Claim All" sweep the remaining
+        // missions, then the chapter bonus exactly once.
+        /** @var array<string, array<string, mixed>> $missions */
+        $missions = config('directives.chapters.directive_iii.missions');
+        foreach ($missions as $mission) {
+            $this->playerSetResearchLevel((string) $mission['condition']['object'], 1);
+        }
+
+        $metalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal');
+        $crystalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal');
+        $deuteriumBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('deuterium');
+        $dmBefore = $this->darkMatter();
+
+        $first = $this->claimAll('directive_iii');
+        $first->assertStatus(200);
+        $first->assertJson(['success' => true, 'granted' => 13]);
+
+        $second = $this->claimAll('directive_iii');
+        $second->assertStatus(200);
+        $second->assertJson(['success' => true, 'granted' => 1]);
+
+        $this->assertDatabaseHas('directive_progress', [
+            'user_id' => $this->currentUserId,
+            'directive_id' => 'directive_iii',
+            'mission_id' => '',
+            'status' => 'claimed',
+        ]);
+
+        // Remaining 13 missions: 11,200 metal / 9,500 crystal / 2,400 deuterium /
+        // 2,100 Dark Matter, plus the best-effort chapter bonus of 3,000 metal /
+        // 1,500 crystal / 750 deuterium / 3,000 Dark Matter.
+        $this->assertSame(11200 + 3000, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal') - $metalBefore);
+        $this->assertSame(9500 + 1500, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal') - $crystalBefore);
+        $this->assertSame(2400 + 750, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('deuterium') - $deuteriumBefore);
+        $this->assertSame($dmBefore + 5100, $this->darkMatter());
     }
 
     /**
