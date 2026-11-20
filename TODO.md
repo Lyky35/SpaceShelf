@@ -121,12 +121,15 @@ are incomplete:
       at the storage cap); the stale TODO comments in
       `BattleReport.php`/`PlanetService.php` are replaced accordingly)
 
-### 5. Directives (quest system) — engine + Directives I & II live (upstream #843)
+### 5. Directives (quest system) — engine + Directives I–III live (upstream #843)
 
-**Status: P1 + P2 implemented (2026-11-19). The quest engine and the full
-overlay UI are live; P0 content is partial — Directives I + II shipped with
-screenshot-verified text, chapters III/V/VII pending a vanilla dump. Full
-spec and phase table in `docs/DIRECTIVES-PLAN.md`.**
+**Status: P1 + P2 implemented (2026-11-19); P0 content now covers Directives
+I–III (2026-11-20). The quest engine and the full overlay UI are live;
+Directive I missions ship screenshot-verified text, Directive II mission
+titles and chapter bonus are verified, Directive III is best-effort with its
+titles reusing the exact in-game research names; chapters IV/V/VII stay
+pending a vanilla dump. Full spec and phase table in
+`docs/DIRECTIVES-PLAN.md`.**
 
 Implemented:
 
@@ -137,6 +140,12 @@ Implemented:
   rewards are best-effort, marked `// best-effort, not documented upstream`
   in the config. Directive VI – Alien Life stays skipped (lifeforms
   unimplemented, #228). New chapters drop into the config as tabs.
+  Directive I gained 9 best-effort resource-collection missions (one per
+  mine/storage/solar/fusion/satellite build), themed on "A Sound Economy"
+  (2026-11-20); **Directive III – The Pursuit of Knowledge** adds 14
+  best-effort `research_level` missions (one per remaining tech at level 1;
+  titles are the exact in-game research names, skipping energy technology
+  and combustion drive which Directive II already covers) (2026-11-20).
 - `directive_progress` + `directive_activity_markers` migrations,
   `DirectiveProgressStatus` enum, `DirectiveService` condition engine
   (`activity` / `alliance` / `building_level` / `research_level` /
@@ -155,11 +164,11 @@ Implemented:
 - Activity hooks: overlay open (`directives_opened`), planet rename
   (`PlanetAbandonController::rename`), buddy request
   (`BuddyService::sendRequest`).
-- Tests: `tests/Feature/DirectivesTest.php` (9 tests).
+- Tests: `tests/Feature/DirectivesTest.php` (12 tests).
 
 Remaining:
 
-- [ ] P0 follow-up: chapters III, IV, V, VII (plus Directive I chapter
+- [ ] P0 follow-up: chapters IV, V, VII (plus Directive I chapter
       bonus, Directive II per-mission sub-steps/rewards, and the
       un-verified "Collect"/claim-feedback strings) — needs a live vanilla
       `ipioverview` dump; the engine is content-agnostic, so it is config
