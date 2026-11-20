@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use OGame\Bots\Personality;
 use OGame\Enums\Officer;
+use OGame\Enums\StarterAidReward;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\BuildingQueue;
 use OGame\Models\Enums\PlanetType;
@@ -14,12 +15,14 @@ use OGame\Models\UnitQueue;
 use OGame\Services\BuildingQueueService;
 use OGame\Services\CharacterClassService;
 use OGame\Services\ColonisationTargetFinder;
+use OGame\Services\DirectiveService;
 use OGame\Services\FleetMissionService;
 use OGame\Services\ObjectService;
 use OGame\Services\OfficerService;
 use OGame\Services\PlanetService;
 use OGame\Services\PlayerService;
 use OGame\Services\ResearchQueueService;
+use OGame\Services\StarterAidService;
 use OGame\Services\UnitQueueService;
 use Throwable;
 
@@ -110,6 +113,8 @@ final class UtilityBrain implements BotBrain
         private UnitQueueService $unitQueueService,
         private ColonisationTargetFinder $colonisationTargetFinder,
         private OfficerService $officerService,
+        private StarterAidService $starterAidService,
+        private DirectiveService $directiveService,
         private WarPolicy $warPolicy,
         private ExpeditionPolicy $expeditionPolicy,
     ) {
@@ -122,6 +127,10 @@ final class UtilityBrain implements BotBrain
     {
         $player = $snapshot->player;
         $actions = 0;
+
+        // Collect all pending rewards first, like an active player's first login
+        // action, so their resources and Dark Matter are usable this heartbeat.
+        $actions += $this->claimRewards($player);
 
         foreach ($snapshot->planets as $planet) {
             $actions += $this->buildStructures($planet, $personality);
@@ -140,6 +149,40 @@ final class UtilityBrain implements BotBrain
         $actions += $this->hireOfficer($player, $personality);
 
         return $actions;
+    }
+
+    /**
+     * Claim every reward that is pending collection, the way an active player
+     * does on login: unlocked Starter Aid dispatches (day 2 onwards, one per
+     * day) and completed directive missions plus chapter bonuses. Both claim
+     * paths are guarded against double grants on the service side.
+     */
+    private function claimRewards(PlayerService $player): int
+    {
+        $claimed = 0;
+
+        foreach (StarterAidReward::ordered() as $reward) {
+            if (
+                $this->starterAidService->isRewardClaimable($player, $reward)
+                && $this->starterAidService->claim($player, $reward)
+            ) {
+                $claimed++;
+            }
+        }
+
+        // The vanilla "Claim All" button: collect every completed row per
+        // chapter, then press it once more so a chapter bonus unlocked by the
+        // last mission's claim is taken during the same visit.
+        foreach (array_keys($this->directiveService->getChapters()) as $chapterId) {
+            $granted = $this->directiveService->claimAll($player, $chapterId);
+            if ($granted > 0) {
+                $granted += $this->directiveService->claimAll($player, $chapterId);
+            }
+
+            $claimed += $granted;
+        }
+
+        return $claimed;
     }
 
     /**
