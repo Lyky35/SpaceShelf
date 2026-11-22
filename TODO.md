@@ -546,7 +546,28 @@ account out of every in-game page.
       loads `storage/rust-libs/libbattle_engine_ffi.so` through PHP FFI and
       our `lib.rs` is upstream code verbatim (fork diff = comment renames
       only), so the per-call leak is ours too. Upstream's fix is the v2
-      engine rewrite (open PR).
+      engine rewrite (PR #1558, verified still OPEN 2026-11-22).
+      **Empirically confirmed 2026-11-22 (review only, deliberately not
+      fixed):** `lib.rs:157` returns `CString::into_raw()` and the crate
+      exports no free counterpart; `RustBattleEngine.php:71-72` copies the
+      result via `FFI::string()` and drops the pointer. Looping 50 battles
+      through the real .so in the app container leaked ~32 kB RSS per
+      medium battle (~14 kB output + allocator overhead); a control loop
+      that freed the same pointer via libc `free()` grew 0 kB, so a
+      `free_battle_result()` export is exactly sufficient. Exposure: the
+      default engine is rust (settings `battle_engine`), the queue worker
+      runs `queue:work` without `--max-memory` and php-fpm workers never
+      recycle, so leakage is unbounded — but slow: ~300 MB per 10 000
+      battles per process, capped in practice by deploy restarts. Output
+      scales with unit-types × fleets × rounds, not raw unit counts.
+      Secondary: `update_peak_memory()` polls `memory_stats()` per round
+      unconditionally (PHP never reads the metrics); measured negligible
+      (14–28 ms per battle, dominated by the fight itself).
+      Options if we act: (a) wait for upstream PR #1558; (b) ~6-line
+      fork-local fix: `free_battle_result` FFI export + call after
+      `FFI::string()` — the .so is built from source in the Dockerfile and
+      not git-tracked, so CI rebuilds it; (c) ops-only bounds:
+      `queue:work --max-memory=…` + fpm `pm.max_requests`.
 - [x] **#1561 — battle report templates carry stale hardcoded `data-raw-*`
       mock metadata** (`battle_report_full.blade.php:74–76`: fixed
       timestamp, fake hashcode).
