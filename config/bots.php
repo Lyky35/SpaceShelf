@@ -294,16 +294,22 @@ return [
     ],
 
     'research' => [
-        // Research order. The first affordable + researchable item wins.
+        // Research order. The first affordable + researchable item wins, so
+        // the vanilla expansion chain leads: impulse drive 3 plus espionage
+        // 4 plus a level-3 lab gate astrophysics, which is what opens colony
+        // slots (colonisation) and expedition gates. Items whose
+        // prerequisites are unmet or which are too expensive just fall
+        // through the list, so a fresh bot still self-paces on computer and
+        // energy tech while it saves up for the chain.
         'priority' => [
-            'energy_technology',
-            'computer_technology',
-            'astrophysics',
-            'laser_technology',
             'impulse_drive',
+            'espionage_technology',
+            'astrophysics',
+            'computer_technology',
+            'energy_technology',
+            'laser_technology',
             'combustion_drive',
             'hyperspace_technology',
-            'espionage_technology',
             'weapon_technology',
             'shielding_technology',
             'armor_technology',
@@ -331,9 +337,11 @@ return [
         ],
 
         // Which personality trait scales which research group's cap. Defense
-        // tech (turret tiers, shields) follows defense_bias; weapons and all
-        // drive technologies (which also gate colony ships and fighters)
-        // follow aggression.
+        // tech (turret tiers, shields) follows defense_bias; weapons and the
+        // drive technologies (which also gate fighters) follow aggression.
+        // Espionage tracks research drive instead: astrophysics requires
+        // espionage level 4, so an aggression-scaled cap would sink passive
+        // profiles below the astrophysics gate for good.
         'cap_scaling' => [
             'economy' => [
                 'group' => [
@@ -352,9 +360,15 @@ return [
             'fleet' => [
                 'group' => [
                     'weapon_technology', 'plasma_technology', 'impulse_drive',
-                    'combustion_drive', 'hyperspace_technology', 'espionage_technology',
+                    'combustion_drive', 'hyperspace_technology',
                 ],
                 'trait' => 'aggression',
+            ],
+            'intel' => [
+                'group' => [
+                    'espionage_technology',
+                ],
+                'trait' => 'researchDrive',
             ],
         ],
     ],
