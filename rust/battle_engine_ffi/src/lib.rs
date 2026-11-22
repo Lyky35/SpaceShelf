@@ -157,6 +157,20 @@ pub extern "C" fn fight_battle_rounds(input_json: *const c_char) -> *mut c_char 
     c_str.into_raw()
 }
 
+/// Free a battle result string previously returned by `fight_battle_rounds`.
+///
+/// The result is allocated by Rust and must be freed by Rust. Callers (PHP FFI)
+/// must invoke this after copying the result string, otherwise every battle
+/// leaks its output buffer for the lifetime of the process.
+#[no_mangle]
+pub extern "C" fn free_battle_result(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        unsafe {
+            let _ = CString::from_raw(ptr);
+        }
+    }
+}
+
 /// Process the battle rounds and return the battle output.
 fn process_battle_rounds(input: BattleInput) -> BattleOutput {
     let mut peak_memory = 0;
