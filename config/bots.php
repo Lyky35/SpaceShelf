@@ -298,10 +298,16 @@ return [
         'save_fleet' => [
             // Fly the military fleet away when our own fleet plus defense
             // sample a win chance below this ratio against the incoming
-            // attack: to another owned planet (transport), or to deep space
-            // as an expedition when we only have one planet and have
-            // researched astrophysics.
+            // attack (plain attacks AND ACS attack fleets): to another
+            // owned planet (transport), or to deep space as an expedition
+            // when we only have one planet and have researched astrophysics.
             'min_win_chance' => 0.3,
+
+            // Chance that an endangered planet actually attempts the save
+            // when everything else lines up. Humans do not always notice
+            // (or bother to) — a roll above this and the fleet sits put.
+            // Endangered planets still count as unsafe havens either way.
+            'attempt_chance' => 0.4,
 
             // Ignore incoming attack fleets smaller than this many units.
             'min_threat_size' => 10,

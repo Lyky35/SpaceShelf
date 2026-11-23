@@ -39,6 +39,7 @@ use Throwable;
 final class WarPolicy
 {
     private const MISSION_TYPE_ATTACK = 1;
+    private const MISSION_TYPE_ACS_ATTACK = 2;
     private const MISSION_TYPE_TRANSPORT = 3;
     private const MISSION_TYPE_ESPIONAGE = 6;
     private const MISSION_TYPE_MISSILE = 10;
@@ -88,7 +89,10 @@ final class WarPolicy
     /**
      * Fleet save: when an incoming hostile fleet would beat our fleet plus
      * defense on a planet, fly the military ships to a safe haven instead of
-     * feeding them to defense.
+     * feeding them to defense. ACS attack fleets count as threats too (they
+     * arrive as separate mission rows and are simulated as one combined
+     * battle), and the save itself only gets attempted `attempt_chance` of
+     * the time — a human does not always notice or bother.
      */
     private function saveFleets(BrainSnapshot $snapshot): int
     {
@@ -96,6 +100,7 @@ final class WarPolicy
         $minFleet = (int) config('bots.war.save_fleet.min_fleet_size', 5);
         $minWin = (float) config('bots.war.save_fleet.min_win_chance', 0.3);
         $maxMissions = (int) config('bots.war.save_fleet.actions_per_visit', 1);
+        $attemptChance = (float) config('bots.war.save_fleet.attempt_chance', 0.4);
         $samples = (int) config('bots.war.attack.sim_samples', 3);
         $now = (int) Date::now()->timestamp;
         $player = $snapshot->player;
@@ -105,7 +110,7 @@ final class WarPolicy
         $threats = [];
         foreach ($snapshot->planets as $planet) {
             $incoming = FleetMission::where('planet_id_to', $planet->getPlanetId())
-                ->where('mission_type', self::MISSION_TYPE_ATTACK)
+                ->whereIn('mission_type', [self::MISSION_TYPE_ATTACK, self::MISSION_TYPE_ACS_ATTACK])
                 ->where('processed', 0)
                 ->where('canceled', 0)
                 ->where('time_arrival', '>', $now)
@@ -125,6 +130,12 @@ final class WarPolicy
 
             $incoming = $threats[$planet->getPlanetId()] ?? [];
             if ($incoming === []) {
+                continue;
+            }
+
+            // Not every endangered fleet gets saved — endangered planets
+            // still contaminate the safe-haven map below either way.
+            if (random_int(1, 100) > (int) round($attemptChance * 100)) {
                 continue;
             }
 

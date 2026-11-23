@@ -88,6 +88,22 @@ class BotWarAITest extends IsolatedAccountTestCase
     }
 
     /**
+     * The bot's non-home colony (bots spawn with a second planet).
+     */
+    private function secondPlanet(PlayerService $player): PlanetService
+    {
+        $home = $this->homePlanet($player);
+
+        foreach ($player->planets->allPlanets() as $planet) {
+            if ($planet->getPlanetId() !== $home->getPlanetId()) {
+                return $planet;
+            }
+        }
+
+        $this->fail('Bot has no second planet to use as a colony.');
+    }
+
+    /**
      * Create a foreign player whose planet sits at a free position in the
      * bot's home system, so the war policy's range scan finds it.
      *
@@ -580,7 +596,10 @@ class BotWarAITest extends IsolatedAccountTestCase
 
     public function testSavesFleetFromOverwhelmingIncomingAttack(): void
     {
-        config(['bots.war.raid_probability_scale' => 0.0]);
+        config([
+            'bots.war.raid_probability_scale' => 0.0,
+            'bots.war.save_fleet.attempt_chance' => 1.0,
+        ]);
 
         $bot = $this->createBot('general');
         $player = $this->reloadPlayer($bot);
@@ -627,5 +646,184 @@ class BotWarAITest extends IsolatedAccountTestCase
 
         $this->assertNotNull($save, 'Outnumbered fleet should flee to deep space.');
         $this->assertGreaterThanOrEqual(5, $save->light_fighter);
+    }
+
+    public function testSavesFleetFromIncomingAcsAttack(): void
+    {
+        config([
+            'bots.war.raid_probability_scale' => 0.0,
+            'bots.war.save_fleet.attempt_chance' => 1.0,
+        ]);
+
+        $bot = $this->createBot('general');
+        $player = $this->reloadPlayer($bot);
+        $player->setResearchLevel('astrophysics', 1);
+
+        $home = $this->homePlanet($player);
+        $home->addUnit('light_fighter', 20);
+        $home->addResources(new Resources(0, 0, 50000, 0));
+
+        // Single-planet scenario again: the ACS fleet must read as a threat
+        // exactly like a plain attack, so the fleet flees to deep space.
+        Planet::where('user_id', $bot->user_id)
+            ->where('id', '!=', $home->getPlanetId())
+            ->delete();
+
+        $attackerUser = User::factory()->create();
+        UserTech::factory()->create(['user_id' => $attackerUser->id]);
+
+        $coords = $home->getPlanetCoordinates();
+        $now = (int) Date::now()->timestamp;
+        FleetMission::forceCreate([
+            'user_id' => $attackerUser->id,
+            'mission_type' => 2,
+            'planet_id_to' => $home->getPlanetId(),
+            'galaxy_to' => $coords->galaxy,
+            'system_to' => $coords->system,
+            'position_to' => $coords->position,
+            'time_departure' => $now,
+            'time_arrival' => $now + 7200,
+            'processed' => 0,
+            'canceled' => 0,
+            'light_fighter' => 150,
+        ]);
+
+        $this->playOnce($bot);
+
+        $save = FleetMission::where('user_id', $bot->user_id)
+            ->where('mission_type', 15)
+            ->where('position_to', 16)
+            ->first();
+
+        $this->assertNotNull($save, 'ACS attack inbound should trigger the fleet save too.');
+        $this->assertGreaterThanOrEqual(5, $save->light_fighter);
+    }
+
+    public function testFleetSaveHavenSkipsAcsTargetedPlanet(): void
+    {
+        config([
+            'bots.war.raid_probability_scale' => 0.0,
+            'bots.war.save_fleet.attempt_chance' => 1.0,
+        ]);
+
+        $bot = $this->createBot('general');
+        $player = $this->reloadPlayer($bot);
+        $player->setResearchLevel('astrophysics', 1);
+
+        $home = $this->homePlanet($player);
+        $home->addUnit('light_fighter', 20);
+        $home->addResources(new Resources(0, 0, 50000, 0));
+
+        // The second colony is the only transport haven — but an ACS fleet
+        // is inbound on it, so it must not be used as the shelter.
+        $colony = $this->secondPlanet($player);
+        $colony->addUnit('light_fighter', 10);
+        $colony->addResources(new Resources(0, 0, 50000, 0));
+
+        $attackerUser = User::factory()->create();
+        UserTech::factory()->create(['user_id' => $attackerUser->id]);
+
+        $now = (int) Date::now()->timestamp;
+
+        // Plain attack on the home world (triggers the save) and an ACS
+        // attack on the colony (contaminates the haven).
+        $homeCoords = $home->getPlanetCoordinates();
+        FleetMission::forceCreate([
+            'user_id' => $attackerUser->id,
+            'mission_type' => 1,
+            'planet_id_to' => $home->getPlanetId(),
+            'galaxy_to' => $homeCoords->galaxy,
+            'system_to' => $homeCoords->system,
+            'position_to' => $homeCoords->position,
+            'time_departure' => $now,
+            'time_arrival' => $now + 7200,
+            'processed' => 0,
+            'canceled' => 0,
+            'light_fighter' => 150,
+        ]);
+
+        $colonyCoords = $colony->getPlanetCoordinates();
+        FleetMission::forceCreate([
+            'user_id' => $attackerUser->id,
+            'mission_type' => 2,
+            'planet_id_to' => $colony->getPlanetId(),
+            'galaxy_to' => $colonyCoords->galaxy,
+            'system_to' => $colonyCoords->system,
+            'position_to' => $colonyCoords->position,
+            'time_departure' => $now,
+            'time_arrival' => $now + 7500,
+            'processed' => 0,
+            'canceled' => 0,
+            'light_fighter' => 150,
+        ]);
+
+        $this->playOnce($bot);
+
+        // Whatever fled, it must not have transported onto the ACS-targeted
+        // colony; with both planets endangered the only shelter is deep space.
+        $this->assertSame(
+            0,
+            FleetMission::where('user_id', $bot->user_id)
+                ->where('mission_type', 3)
+                ->where('galaxy_to', $colonyCoords->galaxy)
+                ->where('system_to', $colonyCoords->system)
+                ->where('position_to', $colonyCoords->position)
+                ->count(),
+            'An ACS-targeted planet must never serve as the fleet-save haven.',
+        );
+
+        $this->assertGreaterThan(
+            0,
+            FleetMission::where('user_id', $bot->user_id)
+                ->where('mission_type', 15)
+                ->where('position_to', 16)
+                ->count(),
+            'With every planet endangered the save should go to deep space.',
+        );
+    }
+
+    public function testFleetSaveOnlyAttemptedOnTheRoll(): void
+    {
+        config([
+            'bots.war.raid_probability_scale' => 0.0,
+            'bots.war.save_fleet.attempt_chance' => 0.0,
+        ]);
+
+        $bot = $this->createBot('general');
+        $player = $this->reloadPlayer($bot);
+        $player->setResearchLevel('astrophysics', 1);
+
+        $home = $this->homePlanet($player);
+        $home->addUnit('light_fighter', 20);
+        $home->addResources(new Resources(0, 0, 50000, 0));
+
+        $attackerUser = User::factory()->create();
+        UserTech::factory()->create(['user_id' => $attackerUser->id]);
+
+        $coords = $home->getPlanetCoordinates();
+        $now = (int) Date::now()->timestamp;
+        FleetMission::forceCreate([
+            'user_id' => $attackerUser->id,
+            'mission_type' => 1,
+            'planet_id_to' => $home->getPlanetId(),
+            'galaxy_to' => $coords->galaxy,
+            'system_to' => $coords->system,
+            'position_to' => $coords->position,
+            'time_departure' => $now,
+            'time_arrival' => $now + 7200,
+            'processed' => 0,
+            'canceled' => 0,
+            'light_fighter' => 150,
+        ]);
+
+        $this->playOnce($bot);
+
+        $this->assertSame(
+            0,
+            FleetMission::where('user_id', $bot->user_id)
+                ->whereIn('mission_type', [3, 15])
+                ->count(),
+            'A failed attempt roll must leave the fleet sitting in the harbor.',
+        );
     }
 }
