@@ -33,6 +33,7 @@ class BotsController extends OGameController
             'bots' => Bot::with('user.highscore')->orderBy('id')->paginate(50),
             'profiles' => array_keys((array) config('bots.personalities')),
             'enabledCount' => Bot::where('enabled', true)->count(),
+            'hiatusCount' => Bot::whereNotNull('inactive_since')->count(),
         ]);
     }
 

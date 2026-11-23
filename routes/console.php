@@ -1,5 +1,6 @@
 <?php
 
+use OGame\Console\Commands\Bots\BotPopulation;
 use OGame\Console\Commands\Bots\TickBots;
 use OGame\Console\Commands\Scheduler\CleanupDestroyedPlanets;
 use OGame\Console\Commands\Scheduler\CleanupWreckFields;
@@ -47,3 +48,9 @@ Schedule::command(DarkMatterRegenerateCommand::class)->everyFiveMinutes()->witho
 // overlap lock lets a killed tick process recover within minutes instead of
 // silencing every bot until the stale lock ages out.
 Schedule::command(TickBots::class)->everyMinute()->withoutOverlapping(5);
+
+// Bot population lifecycle: weekly-per-bot hiatus dice, permanent-account
+// deletions and pool top-up. Daily so hiatuses end and expiries purge on
+// time while the roll itself is staggered per bot. Runs after the 03:00
+// destroyed-planet purge.
+Schedule::command(BotPopulation::class)->dailyAt('04:00')->withoutOverlapping();

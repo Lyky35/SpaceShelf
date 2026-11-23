@@ -67,6 +67,13 @@ class BotHeartbeatJob implements ShouldQueue
             return;
         }
 
+        // A bot that went on population hiatus is "logged off": any job still
+        // queued for it is discarded silently — its state is picked up by the
+        // heartbeat scheduled when the hiatus ends.
+        if ($bot->inactive_since !== null) {
+            return;
+        }
+
         // Stale duplicate guard: bot:tick reserves the appointment at
         // dispatch time, so a heartbeat that completed (or failed) inside the
         // lease window means any further job for this bot is a leftover from

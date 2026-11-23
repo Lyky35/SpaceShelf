@@ -16,7 +16,7 @@
         </div>
 
         <p style="font-size: 11px; color: #999;">
-            {{ $bots->total() }} bot player(s), {{ $enabledCount }} enabled.
+            {{ $bots->total() }} bot player(s), {{ $enabledCount }} enabled, {{ $hiatusCount }} on hiatus (pool target {{ (int) config('bots.population.target_size') }}).
             Profile switches rebuild the bot's personality and sync its character class; hidden bots are removed from the public highscore.
         </p>
 
@@ -40,7 +40,15 @@
                     </td>
                     <td style="padding: 4px 6px; text-align: right;">{{ number_format((int) ($bot->user->highscore->general ?? 0)) }}</td>
                     <td style="padding: 4px 6px; text-align: right;">{{ $bot->total_ticks }} / {{ $bot->last_actions ?? '—' }}</td>
-                    <td style="padding: 4px 6px;">{{ $bot->enabled ? ($bot->next_action_at?->format('Y-m-d H:i') ?? '—') : 'paused' }}</td>
+                    <td style="padding: 4px 6px;">
+                        @if ($bot->inactive_since)
+                            {{ $bot->inactive_until ? 'hiatus until ' . $bot->inactive_until->format('Y-m-d') : 'gone for good (' . $bot->inactive_since->format('Y-m-d') . ')' }}
+                        @elseif ($bot->enabled)
+                            {{ $bot->next_action_at?->format('Y-m-d H:i') ?? '—' }}
+                        @else
+                            paused
+                        @endif
+                    </td>
                     <td style="padding: 4px 6px; white-space: nowrap;">
                         <form method="post" action="{{ route('admin.bots.enabled', $bot) }}" style="display: inline;">
                             @csrf

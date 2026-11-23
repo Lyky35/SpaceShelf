@@ -42,6 +42,55 @@ return [
         'dispatch_lease_minutes' => 10,
     ],
 
+    /*
+    | Population lifecycle (best-effort, NOT documented upstream): keeps a
+    | standing pool of bot accounts with organic churn. Bots older than
+    | `min_age_days` roll dice once per week (staggered per bot): they go on
+    | a multi-day hiatus, hiatuses running 7+ days can turn permanent, and
+    | permanently inactive accounts are deleted like lapsed players. Every
+    | deletion is refilled with a fresh bot so the pool stays at
+    | `target_size`. Hiatused bots keep no fleets moving and play nothing —
+    | they just stop logging in.
+    */
+    'population' => [
+        'enabled' => env('BOTS_POPULATION_ENABLED', true),
+
+        // Pool size counted over all non-deleted bots (hiatused included).
+        'target_size' => env('BOTS_TARGET_SIZE', 450),
+
+        // Per-bot dice cadence and the minimum account age before a bot can
+        // ever go on hiatus.
+        'roll_interval_days' => 7,
+        'min_age_days' => 7,
+
+        // Combined per-roll odds: long hiatus (7-30 days) is checked first,
+        // short hiatus (2-5 days) otherwise.
+        'short' => ['chance' => 0.20, 'days' => [2, 5]],
+        'long' => ['chance' => 0.05, 'days' => [7, 30]],
+
+        // Bots inside the top `top_rank` of the public highscore only have
+        // `chance` to go inactive at all (hidden bots have no rank and get
+        // the normal odds). The chance is split proportionally between the
+        // short and long hiatus tiers.
+        'protected' => ['top_rank' => 25, 'chance' => 0.01],
+
+        // Hard cap on simultaneous hiatused bots (permanent ones included):
+        // while at the cap no NEW hiatuses start, but existing hiatuses end
+        // and permanent ones still get deleted on schedule.
+        'max_hiatus_bots' => 100,
+
+        // A hiatus that reaches `permanent_after_days` rolls this chance to
+        // become permanent; permanent accounts are deleted this many days
+        // after their hiatus started.
+        'permanent_after_days' => 7,
+        'permanent_chance' => 0.25,
+        'deletion_after_days' => 35,
+
+        // Fresh bots created per population pass to close the gap to
+        // target_size (keeps large backfills gentle).
+        'top_up_per_pass' => 25,
+    ],
+
     'colonisation' => [
         // Maximum system distance from the home planet a bot will colonize.
         'max_system_distance' => 12,

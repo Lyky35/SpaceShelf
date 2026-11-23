@@ -26,7 +26,9 @@ final class BotRegistry
     private const BOT_USER_IDS_CACHE_TTL = 300;
 
     /**
-     * Return enabled bots whose next scheduled heartbeat is due.
+     * Return enabled bots whose next scheduled heartbeat is due. Bots on a
+     * population hiatus are never due: they are "logged off" until the
+     * population scheduler reactivates them.
      *
      * @param int $limit
      * @return Collection<int, Bot>
@@ -35,6 +37,7 @@ final class BotRegistry
     {
         return Bot::query()
             ->where('enabled', true)
+            ->whereNull('inactive_since')
             ->where('next_action_at', '<=', now())
             ->oldest('next_action_at')
             ->limit($limit)

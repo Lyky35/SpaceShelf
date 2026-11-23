@@ -25,6 +25,9 @@ use OGame\Bots\Personality;
  * @property Carbon|null $last_action_at
  * @property int $total_ticks
  * @property int|null $last_actions
+ * @property Carbon|null $inactive_since Set while the bot is on a population hiatus (null = playing)
+ * @property Carbon|null $inactive_until When a hiatused bot resumes; null on a hiatus = permanently inactive
+ * @property Carbon|null $last_roll_at Per-bot weekly dice clock for the population scheduler
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User $user
@@ -39,6 +42,9 @@ use OGame\Bots\Personality;
     'last_action_at',
     'total_ticks',
     'last_actions',
+    'inactive_since',
+    'inactive_until',
+    'last_roll_at',
 ])]
 class Bot extends Model
 {
@@ -75,6 +81,9 @@ class Bot extends Model
             'hide_from_highscore' => 'boolean',
             'next_action_at' => 'datetime',
             'last_action_at' => 'datetime',
+            'inactive_since' => 'datetime',
+            'inactive_until' => 'datetime',
+            'last_roll_at' => 'datetime',
         ];
     }
 }
