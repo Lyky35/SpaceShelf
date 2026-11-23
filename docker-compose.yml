@@ -2,14 +2,18 @@ services:
 
   # MariaDB Service
   spaceshelf-db:
-    image: mariadb:11.3.2-jammy
+    image: mariadb:11.4.13
     restart: unless-stopped
     tty: true
     volumes:
      - spaceshelf-dbdata:/var/lib/mysql
      - ./mysql/my.cnf:/etc/mysql/my.cnf
     ports:
-      - "${DB_EXTERNAL_PORT:-3306}:3306"
+      # Bound to localhost by default: this dev stack runs with the root
+      # password from compose below, so the DB must not sit open on the LAN.
+      # Set DB_BIND=0.0.0.0 in .env to re-expose (e.g. GUI clients on other
+      # machines), and change the root password before doing so.
+      - "${DB_BIND:-127.0.0.1}:${DB_EXTERNAL_PORT:-3306}:3306"
     environment:
       MARIADB_DATABASE: laravel
       MARIADB_ROOT_PASSWORD: toor
@@ -84,7 +88,7 @@ services:
 
   # Nginx Service
   spaceshelf-webserver:
-    image: nginx:alpine
+    image: nginx:1.30.7-alpine
     restart: unless-stopped
     tty: true
     volumes:
@@ -121,12 +125,15 @@ services:
 
   # PhpMyAdmin
   spaceshelf-phpmyadmin:
-    image: phpmyadmin
+    image: phpmyadmin:5.2.3
     restart: always
     ports:
-      - "${PHPMYADMIN_PORT:-8080}:80"
+      # Local admin tool: keep it off the LAN, and no arbitrary-server
+      # login mode (PMA_ARBITRARY would turn it into an SSRF/credential
+      # probe against any host it can reach).
+      - "${PHPMYADMIN_BIND:-127.0.0.1}:${PHPMYADMIN_PORT:-8080}:80"
     environment:
-      - PMA_ARBITRARY=1
+      - PMA_ARBITRARY=0
       - PMA_HOST=ogame-db
       - UPLOAD_LIMIT=1G
     networks:
