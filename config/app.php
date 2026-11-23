@@ -127,6 +127,6 @@ return [
     | Custom SpaceShelf app settings
     |--------------------------------------------------------------------------
      */
-    'version' => '0.17.0',
+    'version' => '0.17.1',
     'discord_alert_webhook' => env('DISCORD_ALERT_WEBHOOK', false),
 ];
