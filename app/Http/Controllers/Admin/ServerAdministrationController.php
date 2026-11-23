@@ -20,6 +20,7 @@ use OGame\Models\FleetMission;
 use OGame\Models\Planet;
 use OGame\Models\User;
 use OGame\Services\FleetMissionService;
+use OGame\Services\ObjectService;
 use OGame\Services\SettingsService;
 use RuntimeException;
 use stdClass;
@@ -151,6 +152,7 @@ class ServerAdministrationController extends OGameController
         $botSuspects = $allSuspects->reject(fn ($s) => in_array($s['user']?->id, $dismissedUserIds, true))->values();
         $stuckMissionsSettings = $this->stuckMissionsSettings();
         $stuckMissions = $this->getStuckFleetMissions($stuckMissionsSettings['min_overdue_hours']);
+        $activeFleets = $this->getActiveFleetMissions($botUserIds);
         $attackBlockUntil = (int) $settingsService->get('attack_block_until', 0);
 
         return view('ingame.admin.server-administration', [
@@ -158,6 +160,7 @@ class ServerAdministrationController extends OGameController
             'botSuspects'           => $botSuspects,
             'activeBans'            => $activeBans,
             'banHistory'            => $banHistory,
+            'activeFleets'          => $activeFleets,
             'stuckMissions'         => $stuckMissions,
             'stuckMissionsSettings' => $stuckMissionsSettings,
             'detectionSettings'     => $settings,
@@ -842,6 +845,123 @@ class ServerAdministrationController extends OGameController
         $collection = collect($stuckMissionRows);
 
         return $collection;
+    }
+
+    /**
+     * All fleet legs currently on the board: in flight, holding at the
+     * target, or arrived but not processed yet (owner logged off). Completed
+     * and canceled legs are omitted; broken rows surface in the stuck
+     * missions section below.
+     *
+     * @param array<int> $botUserIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function getActiveFleetMissions(array $botUserIds, int $limit = 300): Collection
+    {
+        $now = time();
+
+        $missions = FleetMission::query()
+            ->where('processed', 0)
+            ->where('canceled', 0)
+            ->orderBy('time_arrival')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get();
+
+        if ($missions->isEmpty()) {
+            return collect();
+        }
+
+        $users = User::whereIn('id', $missions->pluck('user_id')->unique()->all())
+            ->get()
+            ->keyBy('id');
+
+        $missionTypeLabels = collect(GameMissionFactory::getAllMissions())
+            ->mapWithKeys(fn ($mission, $id) => [$id => $mission::getName()]);
+
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = [];
+
+        foreach ($missions as $mission) {
+            $arrival = (int) $mission->time_arrival;
+            $holding = (int) ($mission->time_holding ?? 0);
+
+            if ($arrival > $now) {
+                $statusLabel = 'In flight';
+                $statusColor = '#3498db';
+                $statusDetail = 'ETA ' . date('H:i', $arrival) . ' (' . $this->formatCountdown($arrival - $now) . ')';
+            } elseif ($holding > $now) {
+                $statusLabel = 'Holding';
+                $statusColor = '#f1c40f';
+                $statusDetail = 'until ' . date('H:i', $holding) . ' (' . $this->formatCountdown($holding - $now) . ')';
+            } else {
+                $statusLabel = 'Awaiting processing';
+                $statusColor = '#e67e22';
+                $statusDetail = 'waiting ' . $this->formatCountdown($now - $arrival);
+            }
+
+            $missionLabel = $missionTypeLabels->get($mission->mission_type);
+            if ($missionLabel === null) {
+                $missionLabel = $mission->union_id !== null ? 'ACS Attack' : 'Unknown';
+            }
+
+            $rows[] = [
+                'id' => (int) $mission->id,
+                'parent_id' => $mission->parent_id,
+                'mission_type' => (int) $mission->mission_type,
+                'mission_label' => $missionLabel,
+                'is_acs' => $mission->union_id !== null,
+                'user' => $users->get($mission->user_id),
+                'is_bot' => in_array((int) $mission->user_id, $botUserIds, true),
+                'coordinates_from' => $mission->galaxy_from . ':' . $mission->system_from . ':' . $mission->position_from,
+                'coordinates_to' => $mission->galaxy_to . ':' . $mission->system_to . ':' . $mission->position_to,
+                'type_from_label' => $this->planetTypeLabel((int) $mission->type_from),
+                'type_to_label' => $this->planetTypeLabel((int) $mission->type_to),
+                'unit_count' => $this->fleetUnitCount($mission),
+                'cargo' => (int) $mission->metal + (int) $mission->crystal + (int) $mission->deuterium,
+                'status_label' => $statusLabel,
+                'status_color' => $statusColor,
+                'status_detail' => $statusDetail,
+            ];
+        }
+
+        return collect($rows);
+    }
+
+    /**
+     * Total ships (plus missiles) aboard a fleet mission row.
+     */
+    private function fleetUnitCount(FleetMission $mission): int
+    {
+        $count = 0;
+
+        foreach (ObjectService::getShipObjects() as $ship) {
+            $count += (int) $mission->{$ship->machine_name};
+        }
+
+        if (isset($mission->interplanetary_missile)) {
+            $count += (int) $mission->interplanetary_missile;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Compact duration label: "3d 04h", "04:12" (h:m) or "0:00:45" (h:m:s).
+     */
+    private function formatCountdown(int $seconds): string
+    {
+        $seconds = max(0, $seconds);
+
+        if ($seconds >= 86400) {
+            return sprintf('%dd %02dh', intdiv($seconds, 86400), intdiv($seconds % 86400, 3600));
+        }
+
+        if ($seconds >= 3600) {
+            return sprintf('%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60));
+        }
+
+        return sprintf('0:%02d:%02d', intdiv($seconds, 60), $seconds % 60);
     }
 
     /**

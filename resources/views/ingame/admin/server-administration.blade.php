@@ -395,6 +395,84 @@
                         .stuck-missions-scroll::-webkit-scrollbar-track { background: #090909; border-radius: 5px; }
                     </style>
 
+                    {{-- ===== ACTIVE FLEET MISSIONS ===== --}}
+                    <p class="box_highlight textCenter no_buddies" style="margin-top: 20px;">@lang('Active Fleet Missions')</p>
+                    @if ($activeFleets->isEmpty())
+                        <div class="group bborder" style="display: block;">
+                            <p style="text-align: center; padding: 10px;">No fleets currently in transit.</p>
+                        </div>
+                    @else
+                        <div class="group bborder" style="display: block;">
+                            <div style="padding: 8px 10px; color: #aaa; font-size: 11px;">
+                                {{ $activeFleets->count() }} mission leg(s) currently on the board. Arrived legs resolve when their owner logs in (or on their bot heartbeat).
+                            </div>
+                            <div style="max-height: 320px; overflow-y: auto;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed;">
+                                    <colgroup>
+                                        <col style="width: 17%">
+                                        <col style="width: 14%">
+                                        <col style="width: 11%">
+                                        <col style="width: 11%">
+                                        <col style="width: 8%">
+                                        <col style="width: 12%">
+                                        <col style="width: 27%">
+                                    </colgroup>
+                                    <thead>
+                                        <tr style="background: #0d0d1a; color: #aaa; font-size: 11px;">
+                                            <th style="padding: 4px 6px; text-align: left;">Mission</th>
+                                            <th style="padding: 4px 6px; text-align: left;">Player</th>
+                                            <th style="padding: 4px 6px; text-align: left;">From</th>
+                                            <th style="padding: 4px 6px; text-align: left;">To</th>
+                                            <th style="padding: 4px 6px; text-align: right;">Fleet</th>
+                                            <th style="padding: 4px 6px; text-align: right;">Cargo</th>
+                                            <th style="padding: 4px 6px; text-align: left;">Schedule</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($activeFleets as $flight)
+                                            <tr style="border-top: 1px solid #222;">
+                                                <td style="padding: 4px 6px; vertical-align: middle; overflow: hidden;">
+                                                    <strong style="color: #aaa;">#{{ $flight['id'] }}</strong>
+                                                    <span style="font-size: 10px; background: #0a1a1a; padding: 1px 5px; border-radius: 3px; color: #aaa; margin-left: 2px;">{{ $flight['mission_label'] }}</span>
+                                                    @if ($flight['is_acs'])
+                                                        <span style="font-size: 10px; background: #1a1200; padding: 1px 5px; border-radius: 3px; color: #f1c40f; margin-left: 2px;">ACS</span>
+                                                    @endif
+                                                    @if ($flight['parent_id'])
+                                                        <div style="font-size: 10px; color: #666;">&#8617; return of #{{ $flight['parent_id'] }}</div>
+                                                    @endif
+                                                </td>
+                                                <td style="padding: 4px 6px; vertical-align: middle; overflow: hidden;">
+                                                    {{ $flight['user']?->username ?? 'Unknown' }}
+                                                    @if ($flight['is_bot'])
+                                                        <span style="font-size: 10px; background: #001a2a; padding: 1px 5px; border-radius: 3px; color: #3498db; margin-left: 2px;">BOT</span>
+                                                    @endif
+                                                </td>
+                                                <td style="padding: 4px 6px; vertical-align: middle; font-family: monospace; overflow: hidden;">
+                                                    {{ $flight['coordinates_from'] }}
+                                                    <div style="font-size: 10px; color: #666;">{{ $flight['type_from_label'] }}</div>
+                                                </td>
+                                                <td style="padding: 4px 6px; vertical-align: middle; font-family: monospace; overflow: hidden;">
+                                                    {{ $flight['coordinates_to'] }}
+                                                    <div style="font-size: 10px; color: #666;">{{ $flight['type_to_label'] }}</div>
+                                                </td>
+                                                <td style="padding: 4px 6px; vertical-align: middle; text-align: right;">
+                                                    {{ number_format($flight['unit_count']) }}
+                                                </td>
+                                                <td style="padding: 4px 6px; vertical-align: middle; text-align: right;">
+                                                    {{ $flight['cargo'] > 0 ? number_format($flight['cargo']) : '&mdash;' }}
+                                                </td>
+                                                <td style="padding: 4px 6px; vertical-align: middle; overflow: hidden;">
+                                                    <span style="font-weight: bold; color: {{ $flight['status_color'] }};">{{ $flight['status_label'] }}</span>
+                                                    <div style="font-size: 10px; color: #888;">{{ $flight['status_detail'] }}</div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- ===== STUCK FLEET MISSIONS ===== --}}
                     <p class="box_highlight textCenter no_buddies" style="margin-top: 20px;">@lang('Stuck Fleet Missions')</p>
                     <form action="{{ route('admin.server-administration.stuck-missions.settings') }}" method="post">
