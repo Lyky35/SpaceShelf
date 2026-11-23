@@ -121,13 +121,16 @@ are incomplete:
       at the storage cap); the stale TODO comments in
       `BattleReport.php`/`PlanetService.php` are replaced accordingly)
 
-### 5. Directives (quest system) — engine + Directives I–III live (upstream #843)
+### 5. Directives (quest system) — engine + Directives I–IV live (upstream #843)
 
 **Status: P1 + P2 implemented (2026-11-19); P0 content now covers Directives
-I–III (2026-11-20). The quest engine and the full overlay UI are live;
+I–IV (2026-11-20; IV added 2026-11-23). The quest engine and the full overlay
+UI are live;
 Directive I missions ship screenshot-verified text, Directive II mission
 titles and chapter bonus are verified, Directive III is best-effort with its
-titles reusing the exact in-game research names; chapters IV/V/VII stay
+titles reusing the exact in-game research names, Directive IV is a
+best-effort defense-structures chapter (fork stand-in for the confirmed
+vanilla chapter "Deep Space"); chapters V/VII stay
 pending a vanilla dump. Full spec and phase table in
 `docs/DIRECTIVES-PLAN.md`.**
 
@@ -145,7 +148,12 @@ Implemented:
   (2026-11-20); **Directive III – The Pursuit of Knowledge** adds 14
   best-effort `research_level` missions (one per remaining tech at level 1;
   titles are the exact in-game research names, skipping energy technology
-  and combustion drive which Directive II already covers) (2026-11-20).
+  and combustion drive which Directive II already covers) (2026-11-20);
+  **Directive IV – A Planet Defended** adds 9 best-effort `building_level`
+  missions (one per defense structure at level 1, in defense-screen order;
+  titles are the exact in-game defense structure names) as the fork's
+  defense-themed stand-in for the confirmed vanilla chapter "Deep Space"
+  (2026-11-23).
 - `directive_progress` + `directive_activity_markers` migrations,
   `DirectiveProgressStatus` enum, `DirectiveService` condition engine
   (`activity` / `alliance` / `building_level` / `research_level` /

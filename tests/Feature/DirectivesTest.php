@@ -372,6 +372,75 @@ class DirectivesTest extends IsolatedAccountTestCase
     }
 
     /**
+     * Directive IV is the defense-structures chapter: each building_level
+     * mission tracks its own structure and only that structure completes it;
+     * the chapter bonus unlocks exactly once all nine missions have been
+     * claimed.
+     */
+    public function testDirectiveIVDefenseChapter(): void
+    {
+        // A structure that belongs to a different mission must not complete
+        // anything else in the chapter, not even the chapter bonus.
+        $this->planetSetDefenseLevel('light_laser', 1);
+        $this->overlay('directive_iv');
+        $this->claim('directive_iv', 'iv_rocket_launcher')->assertStatus(400);
+        $this->claim('directive_iv', '')->assertStatus(400);
+
+        $this->planetSetDefenseLevel('rocket_launcher', 1);
+
+        $overlay = $this->overlay('directive_iv');
+        $overlay->assertStatus(200);
+        $overlay->assertSee('Rocket Launcher');
+        $overlay->assertSee('Large Shield Dome');
+        $overlay->assertSee('data-state="completed"', false);
+
+        $metalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal');
+        $crystalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal');
+
+        $claim = $this->claim('directive_iv', 'iv_rocket_launcher');
+        $claim->assertStatus(200);
+        $claim->assertJson(['success' => true]);
+        $this->assertSame(400, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal') - $metalBefore);
+        $this->assertSame(200, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal') - $crystalBefore);
+
+        // Build every defense structure and let "Claim All" sweep the remaining
+        // missions, then the chapter bonus exactly once.
+        /** @var array<string, array<string, mixed>> $missions */
+        $missions = config('directives.chapters.directive_iv.missions');
+        foreach ($missions as $mission) {
+            $this->planetSetDefenseLevel((string) $mission['condition']['object'], 1);
+        }
+
+        $metalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal');
+        $crystalBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal');
+        $deuteriumBefore = (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('deuterium');
+        $dmBefore = $this->darkMatter();
+
+        $first = $this->claimAll('directive_iv');
+        $first->assertStatus(200);
+        $first->assertJson(['success' => true, 'granted' => 8]);
+
+        $second = $this->claimAll('directive_iv');
+        $second->assertStatus(200);
+        $second->assertJson(['success' => true, 'granted' => 1]);
+
+        $this->assertDatabaseHas('directive_progress', [
+            'user_id' => $this->currentUserId,
+            'directive_id' => 'directive_iv',
+            'mission_id' => '',
+            'status' => 'claimed',
+        ]);
+
+        // Remaining 8 missions: 9,300 metal / 5,650 crystal / 1,850 deuterium,
+        // plus the best-effort chapter bonus of 4,500 metal / 2,250 crystal /
+        // 1,125 deuterium / 4,000 Dark Matter.
+        $this->assertSame(9300 + 4500, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('metal') - $metalBefore);
+        $this->assertSame(5650 + 2250, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('crystal') - $crystalBefore);
+        $this->assertSame(1850 + 1125, (int) DB::table('planets')->where('id', $this->currentPlanetId)->value('deuterium') - $deuteriumBefore);
+        $this->assertSame($dmBefore + 4000, $this->darkMatter());
+    }
+
+    /**
      * Sending a buddy request marks the activity, which completes the mission and
      * allows claiming its Dark Matter reward.
      */

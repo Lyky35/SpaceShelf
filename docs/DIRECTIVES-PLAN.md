@@ -3,7 +3,9 @@
 Status: **P1 + P2 implemented (2026-11-19). P0 partially done:
 Directive I + II shipped with screenshot-verified content, Directive III
 added as a fully best-effort science chapter (one research_level mission per
-technology), chapters V and VII deferred until their text can be sourced.**
+technology), Directive IV as a best-effort defense-structures chapter (fork
+stand-in for the confirmed "Deep Space" chapter), chapters V and VII deferred
+until their text can be sourced.**
 The quest engine
 (`DirectiveService`), overlay UI, claim endpoints and the rewired
 `#ipimenucomponent` panel are live; `config/directives.php` is the catalog
@@ -122,7 +124,8 @@ Directive II – The First Ship (all ten mission titles, chapter bonus
 1,500/750/250 + 2,000 DM — verified). The per-mission Directive II rewards
 are best-effort values marked `// best-effort, not documented upstream`
 in `config/directives.php`; replace them from a vanilla dump when
-possible. Chapters III/V/VII (and the Directive I chapter bonus and
+possible. Chapters V and VII (and the true content of the best-effort
+chapters III + IV, the Directive I chapter bonus and
 Directive II sub-step texts) are not extractable from the public web —
 fan wikis predate the feature, quest data ships server-side in vanilla.
 Ground truth requires a live-universe `ipioverview` dump; the engine is
@@ -262,7 +265,7 @@ until that decision is made.
 
 | Phase | Scope | Estimate | Status (2026-11-19) |
 |---|---|---|---|
-| P0 | Extract 7 chapters / ~70 missions (conditions, rewards, texts) into `config/directives.php` + `t_directives.php` (en) | content-heavy, blocking | **partial** — Directives I + II shipped (II per-mission rewards best-effort); III/V/VII pending a live vanilla dump |
+| P0 | Extract 7 chapters / ~70 missions (conditions, rewards, texts) into `config/directives.php` + `t_directives.php` (en) | content-heavy, blocking | **partial** — Directives I + II shipped (II per-mission rewards best-effort); III + IV shipped as best-effort chapters; V/VII pending a live vanilla dump |
 | P1 | Migration, condition engine, `GlobalGame` lazy evaluation + events, claim endpoints, tests | 1 feature branch | **done** (lazy state checks instead of event counters; activity markers for non-derivable actions) |
 | P2 | `#ipimenucomponent` + overlay markup/JS on the vendored CSS | medium | **done** (`directives.js` event delegation; vanilla `a.overlay` framework opens the layer) |
 | P3 | Guided-flow highlights (needs #978 decision) | open | not started |

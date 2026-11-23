@@ -29,6 +29,15 @@ return [
         'directive_iii' => [
             'title' => 'Directive III – The Pursuit of Knowledge',
         ],
+        // Best-effort chapter title. NOTE: the vanilla Directive IV subtitle
+        // IS sourced ("Deep Space", see docs/DIRECTIVES-PLAN.md §1 confirmed
+        // chapter names) but the fork's Directive IV content is deliberately
+        // defense-themed, so a fitting placeholder subtitle is used; restore
+        // the vanilla subtitle together with the real quest data when an
+        // ipioverview dump lands.
+        'directive_iv' => [
+            'title' => 'Directive IV – A Planet Defended',
+        ],
     ],
 
     'missions' => [
@@ -142,6 +151,36 @@ return [
         ],
         'iii_graviton_technology' => [
             'title' => 'Graviton Technology',
+        ],
+        // Best-effort Directive IV mission titles; the chapter itself is not
+        // documented upstream. Titles reuse the exact in-game defense
+        // structure names.
+        'iv_rocket_launcher' => [
+            'title' => 'Rocket Launcher',
+        ],
+        'iv_light_laser' => [
+            'title' => 'Light Laser',
+        ],
+        'iv_heavy_laser' => [
+            'title' => 'Heavy Laser',
+        ],
+        'iv_gauss_cannon' => [
+            'title' => 'Gauss Cannon',
+        ],
+        'iv_ion_cannon' => [
+            'title' => 'Ion Cannon',
+        ],
+        'iv_plasma_turret' => [
+            'title' => 'Plasma Turret',
+        ],
+        'iv_small_shield_dome' => [
+            'title' => 'Small Shield Dome',
+        ],
+        'iv_large_shield_dome' => [
+            'title' => 'Large Shield Dome',
+        ],
+        'iv_anti_ballistic_missile' => [
+            'title' => 'Anti-Ballistic Missiles',
         ],
     ],
 

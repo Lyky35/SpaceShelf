@@ -3,6 +3,7 @@
 namespace Tests\Traits;
 
 use Exception;
+use Illuminate\Support\Facades\DB;
 use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
 use OGame\Services\ObjectService;
@@ -59,6 +60,19 @@ trait ManagesPlanetState
     {
         $object = ObjectService::getObjectByMachineName($machineName);
         $this->planetService->setObjectLevel($object->id, $objectLevel, true);
+    }
+
+    /**
+     * Set the level of a defense structure on the current user's current planet.
+     * `PlanetService::setObjectLevel()` deliberately rejects defense objects, so
+     * the planets row is written directly; directive-style conditions re-read the
+     * level from the database on the next evaluation.
+     */
+    protected function planetSetDefenseLevel(string $machineName, int $objectLevel): void
+    {
+        DB::table('planets')
+            ->where('id', $this->planetService->getPlanetId())
+            ->update([$machineName => $objectLevel]);
     }
 
     /**

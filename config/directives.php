@@ -23,17 +23,26 @@
 | - Best-effort, NOT verified: the per-mission rewards of Directive II, the
 |   Directive I mission set beyond the verified "Welcome Cadet!" entry (the
 |   resource-collection missions are themed on "A Sound Economy" and titled
-|   with in-game building/unit names), and the entire Directive III science
+|   with in-game building/unit names), the entire Directive III science
 |   chapter (its title, its one-per-technology research missions and its
-|   rewards; mission titles reuse the exact in-game research names). They
+|   rewards; mission titles reuse the exact in-game research names), and the
+|   Directive IV defense chapter (its title and one building_level mission
+|   per defense structure, completed at structure level 1; titles reuse the
+|   exact in-game defense structure names). They
 |   follow the scale of the verified chapter bonus and of the other documented
 |   rewards; replace them once the vanilla quest data can be dumped from a
-|   live universe. Each such reward is marked below.
+|   live universe. Each such reward is marked below. Vanilla's Directive IV
+|   is the confirmed "Deep Space" chapter (docs/DIRECTIVES-PLAN.md §1); this
+|   fork's Directive IV is a deliberately defense-themed stand-in, and the one
+|   sourced vanilla Directive IV mission fragment, "Dispatch an expeditionary
+|   fleet" (plan §1), is intentionally NOT part of it - it lands once the
+|   vanilla quest data can be dumped.
 |
 | Mission condition types (implemented in DirectiveService):
 | - activity: one-off marker (see DirectiveService::ACTIVITY_*)
 | - alliance: player is member of an alliance
-| - building_level: {object, target, scope: any|active}
+| - building_level: {object, target, scope: any|active} - any leveled planet
+|   object, including defense structures
 | - research_level: {object, target}
 | - unit_count: {objects: [machine_name, ...], target, scope: any}
 |
@@ -505,6 +514,155 @@ return [
                     ],
                     'rewards' => [
                         'dark_matter' => 2000, // best-effort, not documented upstream
+                    ],
+                ],
+            ],
+        ],
+        'directive_iv' => [
+            'tab' => 'IV',
+            'title' => 't_directives.chapters.directive_iv.title',
+            'chapter_rewards' => [
+                'metal' => 4500, // best-effort, not documented upstream
+                'crystal' => 2250, // best-effort, not documented upstream
+                'deuterium' => 1125, // best-effort, not documented upstream
+                'dark_matter' => 4000, // best-effort, not documented upstream
+            ],
+            'missions' => [
+                // The Directive IV chapter is entirely best-effort (NOT
+                // documented upstream as such): vanilla's Directive IV is the
+                // "Deep Space" chapter (confirmed name, docs/DIRECTIVES-PLAN.md
+                // §1) and its mission texts were never sourced - the only known
+                // fragment is the "Dispatch an expeditionary fleet" mission,
+                // which does not fit this chapter's theme and waits for a
+                // vanilla dump. This fork's Directive IV is deliberately
+                // defense-themed: one building_level mission per defense
+                // structure from the defense screen, in screen order,
+                // completed by building the structure to level 1 on any
+                // planet. Titles reuse the exact in-game defense structure
+                // names so the rows match the defense screen's vocabulary.
+                // Rewards follow the scale of the other chapters' best-effort
+                // rewards. Replace the whole chapter once the vanilla quest
+                // data can be dumped from a live universe.
+                'iv_rocket_launcher' => [
+                    'title' => 't_directives.missions.iv_rocket_launcher.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'rocket_launcher',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 400, // best-effort, not documented upstream
+                        'crystal' => 200, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_light_laser' => [
+                    'title' => 't_directives.missions.iv_light_laser.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'light_laser',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 500, // best-effort, not documented upstream
+                        'crystal' => 250, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_heavy_laser' => [
+                    'title' => 't_directives.missions.iv_heavy_laser.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'heavy_laser',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 800, // best-effort, not documented upstream
+                        'crystal' => 400, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_gauss_cannon' => [
+                    'title' => 't_directives.missions.iv_gauss_cannon.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'gauss_cannon',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 1200, // best-effort, not documented upstream
+                        'crystal' => 600, // best-effort, not documented upstream
+                        'deuterium' => 300, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_ion_cannon' => [
+                    'title' => 't_directives.missions.iv_ion_cannon.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'ion_cannon',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 1000, // best-effort, not documented upstream
+                        'crystal' => 500, // best-effort, not documented upstream
+                        'deuterium' => 250, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_plasma_turret' => [
+                    'title' => 't_directives.missions.iv_plasma_turret.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'plasma_turret',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 1500, // best-effort, not documented upstream
+                        'crystal' => 800, // best-effort, not documented upstream
+                        'deuterium' => 400, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_small_shield_dome' => [
+                    'title' => 't_directives.missions.iv_small_shield_dome.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'small_shield_dome',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 800, // best-effort, not documented upstream
+                        'crystal' => 800, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_large_shield_dome' => [
+                    'title' => 't_directives.missions.iv_large_shield_dome.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'large_shield_dome',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 1500, // best-effort, not documented upstream
+                        'crystal' => 1500, // best-effort, not documented upstream
+                        'deuterium' => 500, // best-effort, not documented upstream
+                    ],
+                ],
+                'iv_anti_ballistic_missile' => [
+                    'title' => 't_directives.missions.iv_anti_ballistic_missile.title',
+                    'condition' => [
+                        'type' => 'building_level',
+                        'object' => 'anti_ballistic_missile',
+                        'target' => 1,
+                        'scope' => 'any',
+                    ],
+                    'rewards' => [
+                        'metal' => 2000, // best-effort, not documented upstream
+                        'crystal' => 800, // best-effort, not documented upstream
+                        'deuterium' => 400, // best-effort, not documented upstream
                     ],
                 ],
             ],
