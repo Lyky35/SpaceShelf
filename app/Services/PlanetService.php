@@ -2600,15 +2600,31 @@ class PlanetService
     /**
      * Get is the current planet is building something or not.
      *
+     * The check is virtual: an item that has already reached its end time but
+     * has not been processed yet does NOT count as building. Queue processing
+     * is lazy and page loads only touch the current planet (see GlobalGame),
+     * so a finished-but-unprocessed item on an inactive planet would
+     * otherwise keep the planet menu's construction icon lit until that
+     * planet is opened again. The item is materialized as soon as the planet
+     * is touched next.
+     *
      * @return bool
      * @throws Exception
      */
     public function isBuilding(): bool
     {
         $queue = resolve(BuildingQueueService::class);
-        $build_queue = $queue->retrieveQueue($this)->queue;
+        $now = (int) Date::now()->timestamp;
 
-        return count($build_queue) > 0;
+        foreach ($queue->retrieveQueueItems($this) as $item) {
+            // Not started yet (queued behind the current item) or still
+            // running until some point in the future.
+            if ((int) $item->time_start === 0 || (int) $item->time_end > $now) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
