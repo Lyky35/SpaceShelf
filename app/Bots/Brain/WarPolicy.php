@@ -365,27 +365,29 @@ final class WarPolicy
             $simulatedTargets++;
 
             $launched = false;
-            $firstFraction = true;
             $undefendable = false;
+            // fleet_fractions is ordered smallest first: the last entry is
+            // the biggest fleet we would send, and only its simulation
+            // decides whether a target is simply unbeatable for us.
+            $largestFractionKey = array_key_last($fractions);
 
-            foreach ($fractions as $fraction) {
+            foreach ($fractions as $fractionKey => $fraction) {
                 $units = $this->strikeFleet($from, (float) $fraction);
                 if ($units->getAmount() < $minStrike) {
-                    $firstFraction = false;
-
+                    // Fraction too small to count as a strike fleet at all;
+                    // a bigger fraction may still qualify.
                     continue;
                 }
 
                 if (
                     $this->battleWinChance($targetPlanet, [$this->attackerFleet($player, $units)], $samples) < $minWin
                 ) {
-                    // Even the biggest fleet fraction we would send loses —
-                    // remember it as a soft target for the missile volley.
-                    if ($firstFraction) {
+                    // Try a bigger fleet; only when even the biggest one
+                    // loses is the target undefendable — remember it as a
+                    // soft target for the missile volley.
+                    if ($fractionKey === $largestFractionKey) {
                         $undefendable = true;
                     }
-
-                    $firstFraction = false;
 
                     continue;
                 }
@@ -396,9 +398,9 @@ final class WarPolicy
                 $this->attachCargo($from, $player, $units, $loot);
 
                 // The assembled fleet must be able to pay its own fuel from
-                // the strike planet's deuterium stock: skip to a smaller
-                // fraction (or the next target) when we could win but not
-                // reach the fight.
+                // the strike planet's deuterium stock. Every bigger fraction
+                // burns more than this one that just won, so there is no
+                // point trying further — leave the target for a later visit.
                 $consumption = $fleetMissionService->calculateConsumption(
                     $from,
                     $units,
@@ -407,7 +409,7 @@ final class WarPolicy
                     10.0,
                 );
                 if ($from->getResources()->deuterium->get() < $consumption) {
-                    continue;
+                    break;
                 }
 
                 if (

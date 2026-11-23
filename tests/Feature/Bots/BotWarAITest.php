@@ -18,6 +18,7 @@ use OGame\Models\Planet;
 use OGame\Models\Resources;
 use OGame\Models\User;
 use OGame\Models\UserTech;
+use OGame\Services\ObjectService;
 use OGame\Services\PlanetService;
 use OGame\Services\PlayerService;
 use Tests\IsolatedAccountTestCase;
@@ -200,6 +201,14 @@ class BotWarAITest extends IsolatedAccountTestCase
         config(['bots.war.raid_probability_scale' => 1.5]);
     }
 
+    /**
+     * Set a building level on a planet service directly.
+     */
+    private function setPlanetLevel(PlanetService $planet, string $machineName, int $level): void
+    {
+        $planet->setObjectLevel(ObjectService::getObjectByMachineName($machineName)->id, $level);
+    }
+
     public function testSpiesNeighbouringForeignPlanet(): void
     {
         $bot = $this->createBot('general');
@@ -280,6 +289,150 @@ class BotWarAITest extends IsolatedAccountTestCase
 
         $this->assertNotNull($mission, 'Expected an attack on the rich, un defended, scouted target.');
         $this->assertGreaterThan(0, $mission->light_fighter);
+    }
+
+    /**
+     * Fleet sizing: the fraction ladder is tried smallest first, so an
+     * undefended loot target must draw only the smallest strike fraction —
+     * never the bulk of the navy.
+     */
+    public function testRaidLaunchesSmallestSufficientFleet(): void
+    {
+        $this->forceRaidRoll();
+
+        $bot = $this->createBot('general');
+        $player = $this->reloadPlayer($bot);
+
+        [$target, $targetUserId] = $this->createForeignTarget($player);
+        $target->addResources(new Resources(150000, 90000, 0, 0));
+
+        $this->setScore((int) $bot->user_id, 50000);
+        $this->setScore($targetUserId, 50000);
+        $this->createSpyIntel($player, $target, [
+            'metal' => 150000,
+            'crystal' => 90000,
+            'deuterium' => 0,
+        ]);
+
+        $home = $this->homePlanet($player);
+        $home->addUnit('light_fighter', 200);
+        $home->addResources(new Resources(0, 0, 100000, 0));
+
+        $stock = $home->getShipUnits()->getAmountByMachineName('light_fighter');
+        $smallest = (float) config('bots.war.attack.fleet_fractions.0');
+
+        $this->playOnce($bot);
+
+        $coords = $target->getPlanetCoordinates();
+        $mission = FleetMission::where('user_id', $bot->user_id)
+            ->where('mission_type', 1)
+            ->where('galaxy_to', $coords->galaxy)
+            ->where('system_to', $coords->system)
+            ->where('position_to', $coords->position)
+            ->first();
+
+        $this->assertNotNull($mission, 'Expected an attack on the rich, un defended, scouted target.');
+        $this->assertSame(
+            (int) floor($stock * $smallest),
+            (int) $mission->light_fighter,
+            'An undefended target must draw only the smallest strike fraction, not the whole navy.',
+        );
+    }
+
+    /**
+     * A fraction below the minimum strike fleet size is not worth sending at
+     * all; the ladder steps up to the next fraction instead.
+     */
+    public function testRaidStepsUpWhenSmallestFractionIsTooSmallForAStrike(): void
+    {
+        $this->forceRaidRoll();
+
+        $bot = $this->createBot('general');
+        $player = $this->reloadPlayer($bot);
+
+        [$target, $targetUserId] = $this->createForeignTarget($player);
+        $target->addResources(new Resources(150000, 90000, 0, 0));
+
+        $this->setScore((int) $bot->user_id, 50000);
+        $this->setScore($targetUserId, 50000);
+        $this->createSpyIntel($player, $target, [
+            'metal' => 150000,
+            'crystal' => 90000,
+            'deuterium' => 0,
+        ]);
+
+        $home = $this->homePlanet($player);
+        $home->addUnit('light_fighter', 40);
+        $home->addResources(new Resources(0, 0, 100000, 0));
+
+        $this->playOnce($bot);
+
+        $coords = $target->getPlanetCoordinates();
+        $mission = FleetMission::where('user_id', $bot->user_id)
+            ->where('mission_type', 1)
+            ->where('galaxy_to', $coords->galaxy)
+            ->where('system_to', $coords->system)
+            ->where('position_to', $coords->position)
+            ->first();
+
+        $this->assertNotNull($mission, 'Expected an attack with the 40% fraction fleet.');
+
+        // 40 light fighters: the 20% fraction (8) sits below the 10-unit
+        // strike minimum, so the 40% fraction (16) must be the one leaving.
+        $this->assertSame(16, (int) $mission->light_fighter);
+    }
+
+    /**
+     * The undefendable (soft target) marking is decided by the biggest
+     * fraction losing: targets the navy cannot beat must not eat attack
+     * missions — a banked missile volley is the answer instead.
+     */
+    public function testUndefendableTargetDrawsMissilesNotTheAttackFleet(): void
+    {
+        $this->forceRaidRoll();
+        config()->set('bots.war.missiles.probability', 1.0);
+
+        $bot = $this->createBot('general');
+        $player = $this->reloadPlayer($bot);
+
+        [$target, $targetUserId] = $this->createForeignTarget($player);
+        $target->addResources(new Resources(150000, 90000, 0, 0));
+        $target->addUnit('light_fighter', 2000);
+
+        $this->setScore((int) $bot->user_id, 50000);
+        $this->setScore($targetUserId, 50000);
+        $this->createSpyIntel($player, $target, [
+            'metal' => 150000,
+            'crystal' => 90000,
+            'deuterium' => 0,
+        ]);
+
+        $home = $this->homePlanet($player);
+        $this->setPlanetLevel($home, 'missile_silo', 4);
+        $player->setResearchLevel('impulse_drive', 5);
+        $home->addUnit('light_fighter', 200);
+        $home->addUnit('interplanetary_missile', 10);
+        $home->addResources(new Resources(0, 0, 5000000, 0));
+
+        $this->playOnce($bot);
+
+        $coords = $target->getPlanetCoordinates();
+
+        $this->assertSame(
+            0,
+            FleetMission::where('user_id', $bot->user_id)->where('mission_type', 1)->count(),
+            'The navy must not be thrown away against unbeatable force.',
+        );
+
+        $volley = FleetMission::where('user_id', $bot->user_id)
+            ->where('mission_type', 10)
+            ->where('galaxy_to', $coords->galaxy)
+            ->where('system_to', $coords->system)
+            ->where('position_to', $coords->position)
+            ->first();
+
+        $this->assertNotNull($volley, 'A soft target that beats the biggest fraction must draw a missile volley.');
+        $this->assertGreaterThanOrEqual((int) config('bots.war.missiles.volley_min', 4), (int) $volley->interplanetary_missile);
     }
 
     public function testRaidCooldownSkipsRecentlyAttackedTarget(): void

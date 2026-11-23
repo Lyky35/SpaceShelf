@@ -212,12 +212,17 @@ return [
             'success_chance' => 0.7,
 
             // PhpBattleEngine samples per sizing attempt; combat is RNG so a
-            // single sim cannot be trusted.
-            'sim_samples' => 3,
+            // single sim cannot be trusted. Five samples let the win chance
+            // clear `success_chance` at 4/5, three could only ever pass by
+            // sweeping all sims (0/33/67/100% granularity).
+            'sim_samples' => 5,
 
-            // Fractions of the strike planet's military stock to try, largest
-            // first; the smallest fraction meeting success_chance is sent.
-            'fleet_fractions' => [0.8, 0.4, 0.2],
+            // Fractions of the strike planet's military stock to try, smallest
+            // first; the smallest fraction meeting success_chance is sent, so
+            // soft loot targets never draw the whole navy. The largest
+            // fraction decides whether a target counts as undefendable
+            // (missile volley candidates), so keep it last.
+            'fleet_fractions' => [0.2, 0.4, 0.8],
 
             // Never raid the same coordinate again within this many hours
             // (derived from our own outgoing attack missions).
