@@ -67,6 +67,38 @@ class BotHeartbeatJob implements ShouldQueue
             return;
         }
 
+        // Stale duplicate guard: bot:tick reserves the appointment at
+        // dispatch time, so a heartbeat that completed (or failed) inside the
+        // lease window means any further job for this bot is a leftover from
+        // queue lag, a retry, or a manual dispatch — skip it, do not play a
+        // second visit.
+        $leaseMinutes = (int) config('bots.heartbeat.dispatch_lease_minutes', 10);
+        if ($bot->last_action_at !== null && $bot->last_action_at->gt(now()->subMinutes($leaseMinutes))) {
+            Log::debug(sprintf(
+                'SpaceShelf bot %d: skipping stale duplicate heartbeat (last completed %s).',
+                $bot->id,
+                $bot->last_action_at->toIso8601String()
+            ));
+
+            return;
+        }
+
+        // Banned or vacationed bot accounts are frozen: the engine gates
+        // production and mission dispatch for them, so playing the brain
+        // would only pile up queue items the bot can never use. Keep the
+        // appointment cadence but skip the visit entirely.
+        $botUser = $bot->user;
+        if ($botUser === null || $botUser->isBanned() || (bool) $botUser->vacation_mode) {
+            $botRegistry->markHeartbeatComplete($bot, -1);
+
+            Log::debug(sprintf(
+                'SpaceShelf bot %d: heartbeat skipped (user banned or on vacation).',
+                $bot->id
+            ));
+
+            return;
+        }
+
         try {
             // Fresh service instances per heartbeat: never trust state cached
             // in long-lived queue worker singletons.

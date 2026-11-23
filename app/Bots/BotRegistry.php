@@ -4,6 +4,7 @@ namespace OGame\Bots;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use OGame\Models\Bot;
 use OGame\Models\User;
 
@@ -41,6 +42,30 @@ final class BotRegistry
     }
 
     /**
+     * Reserve a due bot for dispatch by pushing its next_action_at forward a
+     * short lease. The update is an atomic compare-and-swap on the due
+     * condition, so two racing tick runs (scheduler + manual) can never
+     * double-book the same bot, and a heartbeat job that never reports back
+     * merely expires its lease instead of silencing the bot.
+     */
+    public function reserveForDispatch(Bot $bot): bool
+    {
+        $leaseUntil = now()->addMinutes((int) config('bots.heartbeat.dispatch_lease_minutes', 10));
+
+        $reserved = Bot::query()
+            ->whereKey($bot->id)
+            ->where('enabled', true)
+            ->where('next_action_at', '<=', now())
+            ->update(['next_action_at' => $leaseUntil]);
+
+        if ($reserved === 1) {
+            $bot->next_action_at = $leaseUntil;
+        }
+
+        return $reserved === 1;
+    }
+
+    /**
      * Record a finished heartbeat and (re)schedule the next one. Also called
      * for failed heartbeats so a failing bot keeps its cadence instead of
      * hammering the queue on every tick.
@@ -54,11 +79,18 @@ final class BotRegistry
         $min = (int) config('bots.heartbeat.next_delay_minutes.0', 45);
         $max = (int) config('bots.heartbeat.next_delay_minutes.1', 90);
 
-        $bot->total_ticks = $bot->total_ticks + 1;
-        $bot->last_action_at = now();
-        $bot->last_actions = $actionCount;
-        $bot->next_action_at = now()->addMinutes(random_int($min, $max));
-        $bot->save();
+        // Single atomic UPDATE: the tick counter increments database-side so
+        // concurrent completions can never overwrite each other's +1.
+        Bot::query()
+            ->whereKey($bot->id)
+            ->update([
+                'total_ticks' => DB::raw('total_ticks + 1'),
+                'last_action_at' => now(),
+                'last_actions' => $actionCount,
+                'next_action_at' => now()->addMinutes(random_int($min, $max)),
+            ]);
+
+        $bot->refresh();
     }
 
     /**

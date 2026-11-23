@@ -43,5 +43,7 @@ Schedule::command(CleanupDestroyedPlanets::class)->dailyAt('03:00')->withoutOver
 Schedule::command(DarkMatterRegenerateCommand::class)->everyFiveMinutes()->withoutOverlapping();
 
 // Dispatch bot player heartbeats; individual bots reschedule themselves with
-// randomized gaps so activity is naturally smeared across the day.
-Schedule::command(TickBots::class)->everyMinute()->withoutOverlapping();
+// randomized gaps so activity is naturally smeared across the day. The short
+// overlap lock lets a killed tick process recover within minutes instead of
+// silencing every bot until the stale lock ages out.
+Schedule::command(TickBots::class)->everyMinute()->withoutOverlapping(5);

@@ -36,13 +36,23 @@ class TickBots extends Command
 
         $spreadSeconds = (int) config('bots.dispatch_spread_seconds', 40);
 
+        $dispatched = 0;
+
         foreach ($dueBots as $bot) {
+            // Reserve the appointment before dispatching: without this, a
+            // lagging worker leaves the bot "due" and every later tick
+            // stacks another heartbeat job for the same visit.
+            if (!$botRegistry->reserveForDispatch($bot)) {
+                continue;
+            }
+
             BotHeartbeatJob::dispatch($bot->id)->delay(
                 now()->addSeconds(random_int(0, max(0, $spreadSeconds)))
             );
+            $dispatched++;
         }
 
-        $this->line(sprintf('Dispatched %d bot heartbeats.', $dueBots->count()));
+        $this->line(sprintf('Dispatched %d bot heartbeats.', $dispatched));
 
         return self::SUCCESS;
     }

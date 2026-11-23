@@ -31,6 +31,15 @@ return [
         // Gap between two heartbeats, i.e. how long the bot "stays logged off"
         // (minutes). Randomized per heartbeat to look organic.
         'next_delay_minutes' => [45, 90],
+
+        // How far `bot:tick` pushes next_action_at forward when it dispatches
+        // a heartbeat job. This reserves the appointment at dispatch time so
+        // a lagging queue worker cannot make the next tick re-dispatch the
+        // same bot; if a job is ever lost, the lease simply expires and the
+        // bot runs again. Also the duplicate-window used by the heartbeat job
+        // to discard stale queued jobs. Must stay well below
+        // next_delay_minutes so legitimate heartbeats are never skipped.
+        'dispatch_lease_minutes' => 10,
     ],
 
     'colonisation' => [
