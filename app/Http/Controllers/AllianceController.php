@@ -643,12 +643,6 @@ class AllianceController extends OGameController
         $action = $request->input('action');
         $userId = $player->getId();
 
-        Log::info('Alliance action called', [
-            'action' => $action,
-            'all_input' => $request->all(),
-            'query' => $request->query->all(),
-        ]);
-
         try {
             $message = '';
             $redirectUrl = null;
@@ -802,11 +796,6 @@ class AllianceController extends OGameController
                     break;
 
                 case 'send_broadcast':
-                    Log::info('send_broadcast case reached', [
-                        'user_id' => $userId,
-                        'request_id' => $request->header('X-Request-ID', uniqid()),
-                    ]);
-
                     $allianceId = $player->getUser()->alliance_id;
                     if ($allianceId === null) {
                         throw new Exception(__('t_ingame.alliance.msg_not_in_alliance'));
@@ -821,19 +810,12 @@ class AllianceController extends OGameController
                         $recipients = [];
                     }
 
-                    Log::info('About to call sendBroadcastMessage', [
-                        'alliance_id' => $allianceId,
-                        'text_length' => strlen($text),
-                    ]);
-
                     $allianceService->sendBroadcastMessage(
                         $allianceId,
                         $userId,
                         $text,
                         $recipients
                     );
-
-                    Log::info('sendBroadcastMessage completed');
 
                     $message = __('t_ingame.alliance.msg_broadcast_sent');
                     break;

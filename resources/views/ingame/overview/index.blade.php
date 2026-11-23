@@ -211,7 +211,7 @@
                                         </a>
                                         <a class="tooltip js_hideTipOnMobile cancelMove icon_link"
                                            href="javascript:void(0);"
-                                           rel="{{ route('planetMove.cancel') }}"
+                                           rel="{{ route('planetMove.cancel', ['_token' => csrf_token()]) }}"
                                            title="{{ __('t_ingame.planet_move.cancel') }}">
                                             <span class="icon icon_quit"></span>
                                         </a>

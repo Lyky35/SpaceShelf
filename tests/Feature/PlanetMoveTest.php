@@ -266,7 +266,7 @@ class PlanetMoveTest extends IsolatedAccountTestCase
         ]);
 
         // Cancel the move.
-        $response = $this->get('/ajax/planet-move/cancel');
+        $response = $this->get('/ajax/planet-move/cancel?_token=' . csrf_token());
         $response->assertStatus(200);
         $response->assertJson(['error' => '']);
 
@@ -283,6 +283,34 @@ class PlanetMoveTest extends IsolatedAccountTestCase
             $this->fail('User not found.');
         }
         $this->assertEquals(500000, $user->dark_matter);
+    }
+
+    /**
+     * Test that cancelling a relocation without a valid CSRF token is rejected.
+     * The cancel route is a GET, so it must verify the token explicitly.
+     */
+    public function testRelocationCancelRequiresCsrfToken(): void
+    {
+        $emptyCoordinate = $this->getNearbyEmptyCoordinate();
+
+        // Schedule a move.
+        $this->post('/ajax/planet-move', [
+            '_token' => csrf_token(),
+            'galaxy' => $emptyCoordinate->galaxy,
+            'system' => $emptyCoordinate->system,
+            'position' => $emptyCoordinate->position,
+        ]);
+
+        // Cancel attempts without (or with a wrong) token must be rejected.
+        $this->get('/ajax/planet-move/cancel')->assertJson(['error' => 'Invalid token.']);
+        $this->get('/ajax/planet-move/cancel?_token=wrong')->assertJson(['error' => 'Invalid token.']);
+
+        // The move must still be active.
+        $move = PlanetMove::where('planet_id', $this->planetService->getPlanetId())->first();
+        if ($move === null) {
+            $this->fail('Planet move not found.');
+        }
+        $this->assertFalse((bool) $move->canceled);
     }
 
     /**
@@ -497,7 +525,7 @@ class PlanetMoveTest extends IsolatedAccountTestCase
         ]);
 
         // Cancel it.
-        $response = $this->get('/ajax/planet-move/cancel');
+        $response = $this->get('/ajax/planet-move/cancel?_token=' . csrf_token());
         $response->assertStatus(200);
         $response->assertJson(['error' => '']);
 

@@ -99,8 +99,13 @@ class PlanetMoveController extends OGameController
     /**
      * Cancel a pending planet relocation.
      */
-    public function cancel(PlayerService $player, PlanetMoveService $planetMoveService): JsonResponse
+    public function cancel(Request $request, PlayerService $player, PlanetMoveService $planetMoveService): JsonResponse
     {
+        // Explicitly verify CSRF token because this request is routed as GET.
+        if (!hash_equals($request->session()->token(), (string)$request->input('_token'))) {
+            return response()->json(['error' => 'Invalid token.']);
+        }
+
         $planet = $player->planets->current();
         $activeMove = $planetMoveService->getActiveMoveForPlanet($planet);
 
