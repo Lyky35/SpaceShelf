@@ -49,10 +49,18 @@ use Illuminate\Support\Carbon;
     'economy',
     'research',
     'military',
+    'military_built',
+    'military_destroyed',
+    'military_lost',
+    'honor',
     'general_rank',
     'economy_rank',
     'research_rank',
     'military_rank',
+    'military_built_rank',
+    'military_destroyed_rank',
+    'military_lost_rank',
+    'honor_rank',
 ])]
 class AllianceHighscore extends Model
 {

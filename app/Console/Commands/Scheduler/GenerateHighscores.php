@@ -31,6 +31,12 @@ class GenerateHighscores extends Command
                     'economy' => $highscoreService->getPlayerScoreEconomy($playerService),
                     'research' => $highscoreService->getPlayerScoreResearch($playerService),
                     'military' => $highscoreService->getPlayerScoreMilitary($playerService),
+                    // Cumulative combat counters tracked incrementally by
+                    // CombatStatsService on the users table.
+                    'military_built' => $player->military_built,
+                    'military_destroyed' => $player->military_destroyed,
+                    'military_lost' => $player->military_lost,
+                    'honor' => $player->honor,
                 ]);
                 unset($playerService);
                 $bar->advance();

@@ -24,6 +24,7 @@ use OGame\Models\Enums\PlanetType;
 use OGame\Models\FleetMission;
 use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
+use OGame\Services\CombatStatsService;
 use OGame\Services\DebrisFieldService;
 use OGame\Services\PlanetService;
 use OGame\Services\PlayerService;
@@ -160,6 +161,18 @@ class MoonDestructionMission extends GameMission
 
         // Set the attacker's origin planet ID on the battle result for the battle report.
         $battleResult->attackerPlanetId = $mission->planet_id_from;
+
+        // Record cumulative combat statistics for the military highscore
+        // sub-categories (built/destroyed/lost/honor) for every participant.
+        $combatStatsService = resolve(CombatStatsService::class);
+        $combatStatsService->recordBattle(
+            $battleResult,
+            array_map(fn ($fleetResult) => $fleetResult->playerId, $battleResult->attackerFleetResults) ?: [$mission->user_id],
+            array_merge(
+                [$targetMoon->getPlayer()?->getId()],
+                array_map(fn ($fleetResult) => $fleetResult->ownerId, $battleResult->defenderFleetResults),
+            ),
+        );
 
         // Deduct loot from the target moon
         $targetMoon->deductResources($battleResult->loot);

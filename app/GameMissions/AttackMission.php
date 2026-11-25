@@ -20,6 +20,7 @@ use OGame\Models\FleetMission;
 use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
 use OGame\Services\CharacterClassService;
+use OGame\Services\CombatStatsService;
 use OGame\Services\DebrisFieldService;
 use OGame\Services\ObjectService;
 use OGame\Services\PlanetService;
@@ -140,6 +141,18 @@ class AttackMission extends GameMission
             throw new RuntimeException('Attack mission has no origin planet.');
         }
         $battleResult->attackerPlanetId = $mission->planet_id_from;
+
+        // Record cumulative combat statistics for the military highscore
+        // sub-categories (built/destroyed/lost/honor) for every participant.
+        $combatStatsService = resolve(CombatStatsService::class);
+        $combatStatsService->recordBattle(
+            $battleResult,
+            array_map(fn ($fleetResult) => $fleetResult->playerId, $battleResult->attackerFleetResults) ?: [$attackerPlayer->getId()],
+            array_merge(
+                [$defenderPlanet->getPlayer()?->getId()],
+                array_map(fn ($fleetResult) => $fleetResult->ownerId, $battleResult->defenderFleetResults),
+            ),
+        );
 
         // Deduct loot from the target planet.
         $defenderPlanet->deductResources($battleResult->loot);

@@ -59,11 +59,10 @@ class HighscoreService
      */
     public function setHighscoreType(int $type): void
     {
-        // 0 = general score
-        // 1 = economy points
-        // 2 = research points
-        // 3 = military points
-        $this->highscoreType = HighscoreTypeEnum::cases()[$type];
+        // Vanilla highscore type IDs, see HighscoreTypeEnum. Unknown values
+        // fall back to the general list instead of erroring so a malformed
+        // request can never take the highscore page down.
+        $this->highscoreType = HighscoreTypeEnum::tryFrom($type) ?? HighscoreTypeEnum::general;
     }
 
     /**
@@ -389,6 +388,7 @@ class HighscoreService
                         'alliance_tag' => $allianceTag,
                         'alliance_id' => $allianceId,
                         'total_ships' => $totalShips,
+                        'honor_points' => (int) $playerScore->honor,
                     ];
                 }
                 return $parsedHighscores;
@@ -405,8 +405,12 @@ class HighscoreService
      */
     public function getHighscorePlayerRank(PlayerService $player): int
     {
-        // Find the player in the highscore list to determine its rank.
-        return Highscore::where('player_id', $player->getId())->first()->general_rank ?? 0;
+        // Find the player in the highscore list to determine its rank. New
+        // players have no highscore row yet until the scheduler runs, so
+        // fall back to rank 0 instead of erroring.
+        $highscore = Highscore::where('player_id', $player->getId())->first();
+
+        return $highscore === null ? 0 : $highscore->general_rank;
     }
 
     /**

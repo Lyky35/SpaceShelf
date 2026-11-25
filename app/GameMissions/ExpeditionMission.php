@@ -37,6 +37,7 @@ use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
 use OGame\Models\User;
 use OGame\Services\CharacterClassService;
+use OGame\Services\CombatStatsService;
 use OGame\Services\DarkMatterService;
 use OGame\Services\DebrisFieldService;
 use OGame\Services\MerchantService;
@@ -681,6 +682,10 @@ class ExpeditionMission extends GameMission
         // Load the mission owner user
         $player = $this->playerServiceFactory->make($mission->user_id, true);
 
+        // The whole fleet counts towards the "military lost" highscore stat.
+        $combatStatsService = resolve(CombatStatsService::class);
+        $combatStatsService->addLost($mission->user_id, $this->fleetMissionService->getFleetUnits($mission));
+
         // Send a message to the player with the fleet destroyed outcome.
         $message_variation_id = ExpeditionLossOfFleet::getRandomMessageVariationId();
         $this->messageService->sendSystemMessageToPlayer($player, ExpeditionLossOfFleet::class, ['message_variation_id' => $message_variation_id]);
@@ -751,6 +756,12 @@ class ExpeditionMission extends GameMission
         );
 
         $battleResult = $battleEngine->simulateBattle();
+
+        // Own losses count towards the "military lost" highscore stat; NPC
+        // kills are not credited ("destroyed" tracks player units only,
+        // best-effort - vanilla expedition NPC accounting is not observable).
+        $combatStatsService = resolve(CombatStatsService::class);
+        $combatStatsService->addLost($mission->user_id, $battleResult->attackerUnitsLost);
 
         // Create battle report for expedition battle
         // Note: Battle report uses origin planet coordinates, not deep space position 16

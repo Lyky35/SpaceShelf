@@ -14,6 +14,7 @@ use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\FleetMission;
 use OGame\Models\Planet\Coordinate;
+use OGame\Services\CombatStatsService;
 use OGame\Services\MessageService;
 use OGame\Services\ObjectService;
 use OGame\Services\PlanetService;
@@ -260,6 +261,26 @@ class MissileMission extends GameMission
 
                 $defenderTarget->save();
             });
+
+            // Cumulative combat statistics for the military highscore
+            // sub-categories. Missile attacks never change honor (vanilla 3.1:
+            // no HP for IPM-destroyed defense) but do move the built/lost
+            // counters: intercepted IPMs are attacker losses, expended ABMs
+            // and destroyed defense are defender losses.
+            $combatStatsService = resolve(CombatStatsService::class);
+            $interceptedIpms = new UnitCollection();
+            $expendedAbms = new UnitCollection();
+            if ($interceptedMissiles > 0) {
+                $interceptedIpms->addUnit(ObjectService::getUnitObjectByMachineName('interplanetary_missile'), $interceptedMissiles);
+                $expendedAbms->addUnit(ObjectService::getUnitObjectByMachineName('anti_ballistic_missile'), $interceptedMissiles);
+            }
+            $combatStatsService->addLost($attackerPlayer->getId(), $interceptedIpms);
+            $combatStatsService->addDestroyed($attackerPlayer->getId(), $destroyedDefenses);
+
+            $defenderMissileLosses = clone $destroyedDefenses;
+            $defenderMissileLosses->addCollection($expendedAbms);
+            $combatStatsService->addLost($defenderPlayer->getId(), $defenderMissileLosses);
+            $combatStatsService->addDestroyed($defenderPlayer->getId(), $interceptedIpms);
 
             // Get defense counts AFTER attack for reporting
             foreach ($defensesBeforeAttack as $machineName => &$defenseData) {

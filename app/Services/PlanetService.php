@@ -1822,6 +1822,9 @@ class PlanetService
                         $item->save();
 
                         $this->addUnit($object->machine_name, $remaining, $save_planet);
+
+                        // Cumulative "military built" highscore stat.
+                        resolve(CombatStatsService::class)->addBuilt($this, $object->machine_name, $remaining);
                     }
                     continue;
                 }
@@ -1864,6 +1867,9 @@ class PlanetService
 
                     // Update planet fleet amount
                     $this->addUnit($object->machine_name, $unit_amount, $save_planet);
+
+                    // Cumulative "military built" highscore stat.
+                    resolve(CombatStatsService::class)->addBuilt($this, $object->machine_name, $unit_amount);
                 }
             }
         });

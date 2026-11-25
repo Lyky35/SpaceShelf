@@ -104,7 +104,7 @@
                                     </a>
                                 </div>
                                 <div class="honorScore">
-                                    (<span class="undermark tooltip js_hideTipOnMobile" title="{{ __('t_ingame.highscore.honour_points') }}">0</span>)
+                                    (<span class="undermark tooltip js_hideTipOnMobile" title="{{ __('t_ingame.highscore.honour_points') }}">{{ $highscorePlayer['honor_points'] ?? 0 }}</span>)
                                 </div>
                             </div>
                         </div>

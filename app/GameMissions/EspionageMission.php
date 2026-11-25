@@ -21,6 +21,7 @@ use OGame\Models\EspionageReport;
 use OGame\Models\FleetMission;
 use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
+use OGame\Services\CombatStatsService;
 use OGame\Services\CounterEspionageService;
 use OGame\Services\DebrisFieldService;
 use OGame\Services\PlanetService;
@@ -286,6 +287,20 @@ class EspionageMission extends GameMission
         }
 
         $battleResult = $battleEngine->simulateBattle();
+
+        // Record cumulative combat statistics for the military highscore
+        // sub-categories. No honor in counter-espionage battles (best-effort,
+        // vanilla does not document HP from espionage interceptions).
+        $combatStatsService = resolve(CombatStatsService::class);
+        $combatStatsService->recordBattle(
+            $battleResult,
+            array_map(fn ($fleetResult) => $fleetResult->playerId, $battleResult->attackerFleetResults) ?: [$ownerId],
+            array_merge(
+                [$targetPlanet->getPlayer()?->getId()],
+                array_map(fn ($fleetResult) => $fleetResult->ownerId, $battleResult->defenderFleetResults),
+            ),
+            grantHonor: false,
+        );
 
         // Restore defense to planet (they were not part of the battle)
         foreach ($originalDefense->units as $unit) {
