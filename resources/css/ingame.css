@@ -51,14 +51,15 @@ TODO: Remove these at a later time if they are not needed anymore.
 <![endif]-->
  */
 /* ---------------------------------------------------------------------------
-   Overview page statistics timeline box: middle column, below the fleet
-   events (Events/Missions) box (see statscharts.js + shared/stats-charts).
-   Stretches the vanilla contentbox skin to the 670px content column.
+   Overview page statistics timeline box: bottom of the middle content
+   column, below the Buildings/Research/Shipyard row (see statscharts.js
+   + shared/stats-charts). Stretches the vanilla contentbox skin to the
+   670px content width, mirroring the queue row above it.
    --------------------------------------------------------------------------- */
 .statsCharts {
     clear: both;
     width: 670px;
-    margin: 12px 0 0 0;
+    margin: 15px 0 5px 0;
 }
 
 .statsCharts .contentbox {
