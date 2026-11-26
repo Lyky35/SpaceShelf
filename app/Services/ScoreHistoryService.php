@@ -4,22 +4,48 @@ namespace OGame\Services;
 
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use OGame\Bots\BotRegistry;
 
 /**
- * Records and serves the daily score/ship snapshots behind the overview
- * page timeline charts.
+ * Records and serves the daily score snapshots behind the highscore page
+ * timeline graphs (one graph per highscore tab: points, economy, research,
+ * military incl. its sub-categories, and alliances).
  *
- * Snapshots copy the live counters (highscores.general plus the cumulative
- * combat counters on the users table) once per day; the charts therefore
- * cover everything since the first snapshot was taken. Ships built/destroyed
- * are raw unit amounts of ship type (defense excluded); note that in ACS
- * fights every participating attacker is credited with the full per-battle
- * losses, so the server-wide "destroyed" total can slightly overcount
- * (same convention as the military destroyed highscore).
+ * Snapshots copy the live highscore tables plus the raw ship counters on
+ * the users table once per day; the graphs therefore cover everything
+ * since the first snapshot was taken. Ships built/destroyed are raw unit
+ * amounts of ship type (defense excluded); note that in ACS fights every
+ * participating attacker is credited with the full per-battle losses, so
+ * the server-wide "destroyed" total can slightly overcount (same
+ * convention as the military destroyed highscore).
  */
 class ScoreHistoryService
 {
+    /**
+     * Player metrics available for timelines, mapped to their score_histories column.
+     */
+    public const METRICS = [
+        'general' => 'general',
+        'economy' => 'economy',
+        'research' => 'research',
+        'military' => 'military',
+        'military_built' => 'military_built',
+        'military_destroyed' => 'military_destroyed',
+        'military_lost' => 'military_lost',
+        'honor' => 'honor',
+    ];
+
+    /**
+     * Alliance metrics, mapped to their alliance_score_histories column.
+     */
+    public const ALLIANCE_METRICS = [
+        'general' => 'general',
+        'economy' => 'economy',
+        'research' => 'research',
+        'military' => 'military',
+    ];
+
     public function __construct(private BotRegistry $botRegistry)
     {
     }
@@ -36,25 +62,33 @@ class ScoreHistoryService
         $today = $now->toDateString();
 
         $users = DB::table('users')
-            ->select('id', 'military_built', 'military_destroyed', 'ships_built', 'ships_destroyed')
+            ->select('id', 'ships_built', 'ships_destroyed')
             ->get();
 
         if ($users->isEmpty()) {
             return 0;
         }
 
-        $generalScores = DB::table('highscores')
+        $highscores = DB::table('highscores')
             ->whereIn('player_id', $users->pluck('id'))
-            ->pluck('general', 'player_id');
+            ->get()
+            ->keyBy('player_id');
 
         $rows = [];
         foreach ($users as $user) {
+            $highscore = $highscores->get($user->id);
+
             $rows[] = [
                 'player_id' => $user->id,
                 'date' => $today,
-                'general' => (int) ($generalScores[$user->id] ?? 0),
-                'military_built' => (int) $user->military_built,
-                'military_destroyed' => (int) $user->military_destroyed,
+                'general' => (int) ($highscore->general ?? 0),
+                'economy' => (int) ($highscore->economy ?? 0),
+                'research' => (int) ($highscore->research ?? 0),
+                'military' => (int) ($highscore->military ?? 0),
+                'military_built' => (int) ($highscore->military_built ?? 0),
+                'military_destroyed' => (int) ($highscore->military_destroyed ?? 0),
+                'military_lost' => (int) ($highscore->military_lost ?? 0),
+                'honor' => (int) ($highscore->honor ?? 0),
                 'ships_built' => (int) $user->ships_built,
                 'ships_destroyed' => (int) $user->ships_destroyed,
                 'created_at' => $now,
@@ -65,55 +99,157 @@ class ScoreHistoryService
         DB::table('score_histories')->upsert(
             $rows,
             ['player_id', 'date'],
-            ['general', 'military_built', 'military_destroyed', 'ships_built', 'ships_destroyed', 'updated_at'],
+            [
+                'general', 'economy', 'research', 'military',
+                'military_built', 'military_destroyed', 'military_lost', 'honor',
+                'ships_built', 'ships_destroyed', 'updated_at',
+            ],
         );
 
         return count($rows);
     }
 
     /**
-     * General-score timeline for the strongest players (bots included).
+     * Write one alliance snapshot row for today from the alliance
+     * highscores. Same-day reruns update rather than duplicate.
      *
-     * The top N is picked from the latest snapshot; each player's history
-     * is then rendered across every recorded date (null where the player
-     * had no snapshot yet, e.g. accounts created later).
+     * @return int Number of alliances snapshotted.
+     */
+    public function recordAllianceSnapshots(): int
+    {
+        $now = Date::now();
+        $today = $now->toDateString();
+
+        $highscores = DB::table('alliance_highscores')->get();
+
+        if ($highscores->isEmpty()) {
+            return 0;
+        }
+
+        $rows = [];
+        foreach ($highscores as $highscore) {
+            $rows[] = [
+                'alliance_id' => $highscore->alliance_id,
+                'date' => $today,
+                'general' => (int) $highscore->general,
+                'economy' => (int) $highscore->economy,
+                'research' => (int) $highscore->research,
+                'military' => (int) $highscore->military,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        DB::table('alliance_score_histories')->upsert(
+            $rows,
+            ['alliance_id', 'date'],
+            ['general', 'economy', 'research', 'military', 'updated_at'],
+        );
+
+        return count($rows);
+    }
+
+    /**
+     * Metric timeline for the strongest players (bots included).
+     *
+     * The top N is picked from the latest snapshot ordered by the requested
+     * metric; each player's history is then rendered across every recorded
+     * date (null where the player had no snapshot yet, e.g. accounts
+     * created later).
      *
      * @param int $limit Number of players to chart.
+     * @param string $metric One of the METRICS keys.
      * @return array{dates: array<int, string>, series: array<int, array{name: string, bot: bool, values: array<int, int|null>}>}
      */
-    public function scoreTimeline(int $limit = 15): array
+    public function scoreTimeline(int $limit = 15, string $metric = 'general'): array
     {
-        $latestDate = DB::table('score_histories')->max('date');
+        $column = self::METRICS[$metric] ?? throw new InvalidArgumentException("Unknown score history metric: {$metric}");
+
+        $botIds = $this->botRegistry->botUserIds();
+
+        return $this->buildTimeline(
+            'score_histories',
+            'player_id',
+            'users',
+            'username',
+            $column,
+            $limit,
+            fn (int $id): bool => in_array($id, $botIds, true),
+        );
+    }
+
+    /**
+     * Metric timeline for the strongest alliances.
+     *
+     * @param int $limit Number of alliances to chart.
+     * @param string $metric One of the ALLIANCE_METRICS keys.
+     * @return array{dates: array<int, string>, series: array<int, array{name: string, bot: bool, values: array<int, int|null>}>}
+     */
+    public function allianceTimeline(int $limit = 15, string $metric = 'general'): array
+    {
+        $column = self::ALLIANCE_METRICS[$metric] ?? throw new InvalidArgumentException("Unknown alliance score history metric: {$metric}");
+
+        return $this->buildTimeline(
+            'alliance_score_histories',
+            'alliance_id',
+            'alliances',
+            'alliance_name',
+            $column,
+            $limit,
+            fn (int $id): bool => false,
+        );
+    }
+
+    /**
+     * Shared timeline builder for the per-player and per-alliance tables.
+     *
+     * @param string $historyTable Snapshot table holding (subject_id, date, column).
+     * @param string $subjectIdColumn Subject key column in the snapshot table.
+     * @param string $subjectTable Table providing the display name (with id).
+     * @param string $nameColumn Display name column of the subject table.
+     * @param string $column Metric column to chart.
+     * @param int $limit Number of subjects to chart.
+     * @param callable(int): bool $isBot Marks legend entries as bot-driven.
+     * @return array{dates: array<int, string>, series: array<int, array{name: string, bot: bool, values: array<int, int|null>}>}
+     */
+    private function buildTimeline(
+        string $historyTable,
+        string $subjectIdColumn,
+        string $subjectTable,
+        string $nameColumn,
+        string $column,
+        int $limit,
+        callable $isBot,
+    ): array {
+        $latestDate = DB::table($historyTable)->max('date');
         if ($latestDate === null) {
             return ['dates' => [], 'series' => []];
         }
 
-        $dates = DB::table('score_histories')->distinct()->orderBy('date')->pluck('date')->all();
+        $dates = DB::table($historyTable)->distinct()->orderBy('date')->pluck('date')->all();
 
-        $topPlayers = DB::table('score_histories')
-            ->join('users', 'users.id', '=', 'score_histories.player_id')
-            ->where('score_histories.date', $latestDate)
-            ->orderByDesc('score_histories.general')
+        $topSubjects = DB::table($historyTable)
+            ->join($subjectTable, "{$subjectTable}.id", '=', "{$historyTable}.{$subjectIdColumn}")
+            ->where("{$historyTable}.date", $latestDate)
+            ->orderByDesc("{$historyTable}.{$column}")
             ->limit($limit)
-            ->select('users.id', 'users.username')
+            ->select("{$subjectTable}.id", "{$subjectTable}.{$nameColumn}")
             ->get();
 
-        $botIds = $this->botRegistry->botUserIds();
-
-        $history = DB::table('score_histories')
-            ->whereIn('player_id', $topPlayers->pluck('id'))
+        $history = DB::table($historyTable)
+            ->whereIn($subjectIdColumn, $topSubjects->pluck('id'))
             ->orderBy('date')
             ->get()
-            ->groupBy('player_id');
+            ->groupBy($subjectIdColumn);
 
         $series = [];
-        foreach ($topPlayers as $player) {
-            $byDate = collect($history[$player->id] ?? [])->keyBy('date');
+        foreach ($topSubjects as $subject) {
+            $byDate = collect($history[(int) $subject->id] ?? [])->keyBy('date');
             $series[] = [
-                'name' => $player->username,
-                'bot' => in_array((int) $player->id, $botIds, true),
+                'name' => (string) $subject->{$nameColumn},
+                'bot' => $isBot((int) $subject->id),
                 'values' => array_map(
-                    fn ($date) => isset($byDate[$date]) ? (int) $byDate[$date]->general : null,
+                    fn ($date) => isset($byDate[$date]) ? (int) $byDate[$date]->{$column} : null,
                     $dates,
                 ),
             ];

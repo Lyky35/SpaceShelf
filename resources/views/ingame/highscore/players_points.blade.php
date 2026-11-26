@@ -3,11 +3,14 @@
         <script type="text/javascript">
             var currentCategory = 1;
             var currentType = {{ $highscoreCurrentType }};
-            var searchPosition = {{ $player->getId() }};
+            // SpaceShelf: when the page was opened through an explicit rank
+            // search link (searchRelId), focus the searched player; the
+            // index blade only enables the scroll for those links.
+            var searchPosition = {{ $highscoreSearchRelId ?? $player->getId() }};
             var site = {{ $highscoreCurrentPage }};
             var searchSite = {{ $highscoreCurrentPage }};
             var resultsPerPage = 100;
-            var searchRelId = {{ $player->getId() }};
+            var searchRelId = {{ $highscoreSearchRelId ?? $player->getId() }};
         </script>
 
         <div class="pagebar">

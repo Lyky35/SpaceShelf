@@ -34,7 +34,8 @@ return [
 
     'stats' => [
         'title'            => 'Statistics',
-        'score_history'    => 'Score history — top 15 players (bots included)',
+        'top15_players'    => 'Top 15 players (bots included)',
+        'top15_alliances'  => 'Top 15 alliances',
         'ships_built'      => 'Ships built',
         'ships_destroyed'  => 'Ships destroyed',
         'ships_history'    => 'Ships built vs. destroyed (cumulative)',

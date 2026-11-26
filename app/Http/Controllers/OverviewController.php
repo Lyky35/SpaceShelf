@@ -14,7 +14,6 @@ use OGame\Services\HighscoreService;
 use OGame\Services\PlanetMoveService;
 use OGame\Services\PlayerService;
 use OGame\Services\ResearchQueueService;
-use OGame\Services\ScoreHistoryService;
 use OGame\Services\UnitQueueService;
 use OGame\Services\WreckFieldService;
 
@@ -30,7 +29,7 @@ class OverviewController extends OGameController
      * @return View
      * @throws Exception
      */
-    public function index(PlayerService $player, BuildingQueueService $building_queue, ResearchQueueService $research_queue, UnitQueueService $unit_queue, WreckFieldService $wreckFieldService, PlanetMoveService $planetMoveService, FleetMissionService $fleetMissionService, ScoreHistoryService $scoreHistoryService): View
+    public function index(PlayerService $player, BuildingQueueService $building_queue, ResearchQueueService $research_queue, UnitQueueService $unit_queue, WreckFieldService $wreckFieldService, PlanetMoveService $planetMoveService, FleetMissionService $fleetMissionService): View
     {
         $this->setBodyId('overview');
 
@@ -139,8 +138,6 @@ class OverviewController extends OGameController
             'planet_move_target' => $planetMoveTarget,
             'planet_move_blockers' => $planetMoveBlockers,
             'planet_move_cooldown' => $planetMoveCooldown,
-            'stats_scores' => $scoreHistoryService->scoreTimeline(),
-            'stats_ships' => $scoreHistoryService->shipTimeline(),
         ]);
     }
 }

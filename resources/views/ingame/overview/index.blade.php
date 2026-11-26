@@ -383,9 +383,5 @@
                 </div>
             </div>
         </div>
-
-        {{-- Statistics timeline box at the bottom of the content column,
-             below the Buildings/Research/Shipyard queue row. --}}
-        @include('ingame.shared.stats-charts')
     </div>
 @endsection

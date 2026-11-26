@@ -19,7 +19,8 @@ class RecordScoreHistory extends Command
         $this->info('Recording daily score history snapshots...');
 
         $count = $scoreHistoryService->recordDailySnapshots();
+        $allianceCount = $scoreHistoryService->recordAllianceSnapshots();
 
-        $this->info("Recorded score history for {$count} player(s).");
+        $this->info("Recorded score history for {$count} player(s) and {$allianceCount} alliance(s).");
     }
 }

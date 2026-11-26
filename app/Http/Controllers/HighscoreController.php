@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use OGame\Services\HighscoreService;
 use OGame\Services\PlayerService;
+use OGame\Services\ScoreHistoryService;
 
 class HighscoreController extends OGameController
 {
@@ -15,15 +16,68 @@ class HighscoreController extends OGameController
      * @param Request $request
      * @param PlayerService $player
      * @param HighscoreService $highscoreService
+     * @param ScoreHistoryService $scoreHistoryService
      * @return View
      */
-    public function index(Request $request, PlayerService $player, HighscoreService $highscoreService): View
+    public function index(Request $request, PlayerService $player, HighscoreService $highscoreService, ScoreHistoryService $scoreHistoryService): View
     {
         $this->setBodyId('highscore');
 
         return view('ingame.highscore.index')->with([
             'initialContent' => $this->ajax($request, $player, $highscoreService),
+            // Daily snapshot timelines for the per-tab graphs (see statscharts.js).
+            'stats_timelines' => $this->buildStatsTimelines($scoreHistoryService),
+            'stats_subtitles' => $this->buildStatsSubtitles(),
         ]);
+    }
+
+    /**
+     * Graph subtitle per tab key, localized.
+     *
+     * @return array<string, string>
+     */
+    private function buildStatsSubtitles(): array
+    {
+        $topPlayers = __('t_ingame.stats.top15_players');
+        $topAlliances = __('t_ingame.stats.top15_alliances');
+
+        return [
+            'player_general' => __('t_ingame.highscore.points') . ' — ' . $topPlayers,
+            'player_economy' => __('t_ingame.highscore.economy') . ' — ' . $topPlayers,
+            'player_research' => __('t_ingame.highscore.research') . ' — ' . $topPlayers,
+            'player_military' => __('t_ingame.highscore.military') . ' — ' . $topPlayers,
+            'player_military_built' => __('t_ingame.highscore.military_built') . ' — ' . $topPlayers,
+            'player_military_destroyed' => __('t_ingame.highscore.military_destroyed') . ' — ' . $topPlayers,
+            'player_military_lost' => __('t_ingame.highscore.military_lost') . ' — ' . $topPlayers,
+            'player_honor' => __('t_ingame.highscore.honour_points') . ' — ' . $topPlayers,
+            'alliance_general' => __('t_ingame.highscore.points') . ' — ' . $topAlliances,
+            'alliance_economy' => __('t_ingame.highscore.economy') . ' — ' . $topAlliances,
+            'alliance_research' => __('t_ingame.highscore.research') . ' — ' . $topAlliances,
+            'alliance_military' => __('t_ingame.highscore.military') . ' — ' . $topAlliances,
+        ];
+    }
+
+    /**
+     * Timeline payload for the graphs, one entry per highscore tab plus
+     * the alliance view and the server-wide ship counters.
+     *
+     * @return array<string, array>
+     */
+    private function buildStatsTimelines(ScoreHistoryService $scoreHistoryService): array
+    {
+        $timelines = [];
+
+        foreach (array_keys(ScoreHistoryService::METRICS) as $metric) {
+            $timelines['player_' . $metric] = $scoreHistoryService->scoreTimeline(15, $metric);
+        }
+
+        foreach (array_keys(ScoreHistoryService::ALLIANCE_METRICS) as $metric) {
+            $timelines['alliance_' . $metric] = $scoreHistoryService->allianceTimeline(15, $metric);
+        }
+
+        $timelines['ships'] = $scoreHistoryService->shipTimeline();
+
+        return $timelines;
     }
 
     /**
@@ -78,9 +132,10 @@ class HighscoreController extends OGameController
 
         // Check if we're searching for a specific player's rank
         $searchRelId = $request->input('searchRelId', null);
-        if ($searchRelId) {
+        $searchedPlayerId = $searchRelId ? (int) $searchRelId : null;
+        if ($searchedPlayerId) {
             // Get the rank of the searched player
-            $searchedPlayer = resolve(PlayerService::class, ['player_id' => (int)$searchRelId]);
+            $searchedPlayer = resolve(PlayerService::class, ['player_id' => $searchedPlayerId]);
             $searchedPlayerRank = $highscoreService->getHighscorePlayerRank($searchedPlayer);
             $page = (int) (floor($searchedPlayerRank / 100) + 1);
         } else {
@@ -110,6 +165,10 @@ class HighscoreController extends OGameController
             'highscoreCurrentPlayerPage' => $currentPlayerPage,
             'highscoreCurrentPage' => $page,
             'highscoreCurrentType' => $type,
+            // Explicitly searched player id (rank-search links), if any; the
+            // blade uses it so the page scrolls to the searched player
+            // instead of always to the current one.
+            'highscoreSearchRelId' => $searchedPlayerId,
             'player' => $player,
             'highscoreAdminVisible' => $highscoreService->isAdminVisibleInHighscore(),
             'currentPlayerIsAdmin' => $player->isAdmin(),
