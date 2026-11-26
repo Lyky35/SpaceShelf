@@ -102,6 +102,15 @@ class FleetDispatchCombatStatsTest extends FleetDispatchTestCase
         // defenses; the defender can only ever gain or keep honor.
         $this->assertGreaterThan(0, $attackerHonor, 'Honourable fight should award attacker honor points');
         $this->assertGreaterThanOrEqual(0, $defenderHonor, 'Defender never loses honor points');
+
+        // Raw ship counters for the timeline charts: the target only has
+        // defense (no ships to destroy), while the defender destroys at
+        // least one attacking cruiser.
+        $attackerShipsDestroyed = (int) DB::table('users')->where('id', $attackerId)->value('ships_destroyed');
+        $defenderShipsDestroyed = (int) DB::table('users')->where('id', $defenderUserId)->value('ships_destroyed');
+        $this->assertSame(0, $attackerShipsDestroyed, 'Defender has no ships, so nothing to destroy');
+        $this->assertGreaterThanOrEqual(1, $defenderShipsDestroyed, 'Defender should be credited for shooting down cruisers');
+        $this->assertLessThanOrEqual(10, $defenderShipsDestroyed, 'Only dispatched cruisers can be destroyed');
     }
 
     /**

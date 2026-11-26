@@ -5,6 +5,7 @@ namespace OGame\Services;
 use Illuminate\Support\Facades\DB;
 use OGame\Factories\PlayerServiceFactory;
 use OGame\GameMissions\BattleEngine\Models\BattleResult;
+use OGame\GameObjects\Models\Enums\GameObjectType;
 use OGame\GameObjects\Models\Units\UnitCollection;
 
 /**
@@ -44,6 +45,10 @@ use OGame\GameObjects\Models\Units\UnitCollection;
  *   (vanilla since 3.1 grants no HP for IPM-destroyed defense; expedition
  *   NPC handling upstream is not observable). The lost/destroyed/built
  *   counters still apply everywhere.
+ *
+ * The service also keeps raw ship counters (users.ships_built /
+ * users.ships_destroyed, ship type only, no defense) that feed the
+ * game-wide ships built/destroyed timeline on the overview page.
  */
 class CombatStatsService
 {
@@ -57,19 +62,21 @@ class CombatStatsService
             return;
         }
 
-        $points = (int) floor($this->unitCost($machineName, $amount, true) / 1000);
-        if ($points <= 0) {
-            return;
-        }
-
         $owner = $planet->getPlayer();
         if ($owner === null) {
             return;
         }
 
-        DB::table('users')
-            ->where('id', $owner->getId())
-            ->increment('military_built', $points);
+        $points = (int) floor($this->unitCost($machineName, $amount, true) / 1000);
+        if ($points > 0) {
+            DB::table('users')->where('id', $owner->getId())->increment('military_built', $points);
+        }
+
+        // Raw ship count for the game-wide built/destroyed timeline charts
+        // (ship type only; defense structures are intentionally excluded).
+        if (ObjectService::getObjectByMachineName($machineName)->type === GameObjectType::Ship) {
+            DB::table('users')->where('id', $owner->getId())->increment('ships_built', $amount);
+        }
     }
 
     /**
@@ -91,6 +98,11 @@ class CombatStatsService
         $points = $this->collectionPoints($unitsDestroyed, true);
         if ($points > 0) {
             DB::table('users')->where('id', $playerId)->increment('military_destroyed', $points);
+        }
+
+        $ships = $this->collectionShipCount($unitsDestroyed);
+        if ($ships > 0) {
+            DB::table('users')->where('id', $playerId)->increment('ships_destroyed', $ships);
         }
     }
 
@@ -116,16 +128,27 @@ class CombatStatsService
         $defenderLossScore = $this->collectionPoints($result->defenderUnitsLost, true);
         $attackerLossScore = $this->collectionPoints($result->attackerUnitsLost, true);
 
+        // Raw ship amounts for the built/destroyed timeline charts (full
+        // per-battle credit per participant, same as destroyed points).
+        $defenderShipLosses = $this->collectionShipCount($result->defenderUnitsLost);
+        $attackerShipLosses = $this->collectionShipCount($result->attackerUnitsLost);
+
         foreach ($attackerPlayerIds as $playerId) {
             DB::table('users')->where('id', $playerId)->increment('military_lost', $this->perFleetLostPoints($result->attackerFleetResults, $playerId, $result->attackerUnitsLost));
             if ($defenderLossScore > 0) {
                 DB::table('users')->where('id', $playerId)->increment('military_destroyed', $defenderLossScore);
+            }
+            if ($defenderShipLosses > 0) {
+                DB::table('users')->where('id', $playerId)->increment('ships_destroyed', $defenderShipLosses);
             }
         }
         foreach ($defenderPlayerIds as $playerId) {
             DB::table('users')->where('id', $playerId)->increment('military_lost', $this->perFleetLostPoints($result->defenderFleetResults, $playerId, $result->defenderUnitsLost));
             if ($attackerLossScore > 0) {
                 DB::table('users')->where('id', $playerId)->increment('military_destroyed', $attackerLossScore);
+            }
+            if ($attackerShipLosses > 0) {
+                DB::table('users')->where('id', $playerId)->increment('ships_destroyed', $attackerShipLosses);
             }
         }
 
@@ -271,6 +294,22 @@ class CombatStatsService
         }
 
         return $found ? $total : $this->collectionPoints($fallback, true);
+    }
+
+    /**
+     * Amount of ship-type units in a collection (civil and military ships;
+     * defense structures are excluded).
+     */
+    private function collectionShipCount(UnitCollection $units): int
+    {
+        $count = 0;
+        foreach ($units->units as $entry) {
+            if ($entry->unitObject->type === GameObjectType::Ship) {
+                $count += max(0, $entry->amount);
+            }
+        }
+
+        return $count;
     }
 
     /**

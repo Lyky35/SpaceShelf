@@ -29,6 +29,19 @@ return [
     ],
 
     // -------------------------------------------------------------------------
+    // Overview page statistics timeline charts
+    // -------------------------------------------------------------------------
+
+    'stats' => [
+        'title'            => 'Statistics',
+        'score_history'    => 'Score history — top 15 players (bots included)',
+        'ships_built'      => 'Ships built',
+        'ships_destroyed'  => 'Ships destroyed',
+        'ships_history'    => 'Ships built vs. destroyed (cumulative)',
+        'no_data'          => 'Statistics are recorded once per day; the charts appear after the first daily snapshot.',
+    ],
+
+    // -------------------------------------------------------------------------
     // Planet relocation / planet move
     // -------------------------------------------------------------------------
 

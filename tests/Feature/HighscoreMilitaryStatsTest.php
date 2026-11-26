@@ -82,5 +82,9 @@ class HighscoreMilitaryStatsTest extends IsolatedAccountTestCase
 
         $built = (int) DB::table('users')->where('id', $this->currentUserId)->value('military_built');
         $this->assertSame($expected, $built);
+
+        // Raw ship counter for the timeline charts: 10 fighters + 5 freighters;
+        // the rocket launchers (defense) are excluded from ship counts.
+        $this->assertSame(15, (int) DB::table('users')->where('id', $this->currentUserId)->value('ships_built'));
     }
 }

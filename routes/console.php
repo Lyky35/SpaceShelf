@@ -9,6 +9,7 @@ use OGame\Console\Commands\Scheduler\DeleteOldMessages;
 use OGame\Console\Commands\Scheduler\GenerateAllianceHighscores;
 use OGame\Console\Commands\Scheduler\GenerateHighscoreRanks;
 use OGame\Console\Commands\Scheduler\GenerateHighscores;
+use OGame\Console\Commands\Scheduler\RecordScoreHistory;
 use OGame\Console\Commands\Scheduler\ResetDebrisFields;
 
 /*
@@ -27,6 +28,9 @@ Schedule::command(GenerateHighscores::class)->everyFiveMinutes();
 Schedule::command(GenerateAllianceHighscores::class)->everyFiveMinutes();
 // Generates ranks for both player and alliance highscores
 Schedule::command(GenerateHighscoreRanks::class)->everyFiveMinutes();
+
+// Daily snapshot of scores and ship stats for the overview timeline charts
+Schedule::command(RecordScoreHistory::class)->dailyAt('00:05')->withoutOverlapping();
 
 // Reset empty debris fields weekly on Monday at 1:00 AM
 Schedule::command(ResetDebrisFields::class)->weeklyOn(1, '1:00');

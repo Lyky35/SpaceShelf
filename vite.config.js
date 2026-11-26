@@ -24,6 +24,7 @@ const ingameScripts = [
     'resources/js/ingame/echo.js',
     'resources/js/ingame/chat.js',
     'resources/js/ingame/directives.js',
+    'resources/js/ingame/statscharts.js',
 ]
 
 const outgameScripts = [

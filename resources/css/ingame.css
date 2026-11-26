@@ -50,3 +50,80 @@ TODO: Remove these at a later time if they are not needed anymore.
 <link rel="stylesheet" type="text/css" href="/css/ie8/0db2335aa04275bf3d33e76a35aafd.css" media="screen" />
 <![endif]-->
  */
+/* ---------------------------------------------------------------------------
+   Overview page statistics timeline charts (see statscharts.js)
+   --------------------------------------------------------------------------- */
+.statsCharts {
+    clear: both;
+    margin-top: 20px;
+}
+
+.statsCharts .content-box-m .content {
+    padding: 10px 15px 15px;
+}
+
+.statsTotals {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.statsTotal {
+    border: 1px solid #3a3f47;
+    border-radius: 4px;
+    padding: 8px 16px;
+    background: #25292e;
+}
+
+.statsTotal span {
+    display: block;
+    color: #9aa0a8;
+    font-size: 12px;
+}
+
+.statsTotal b {
+    font-size: 20px;
+}
+
+.statsSubtitle {
+    margin: 14px 0 6px;
+    font-size: 14px;
+    color: #c8ccd2;
+}
+
+.statsChart svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.statsLegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.statsLegendItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.statsLegendItem i {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+.statsLegendBot {
+    font-style: italic;
+    color: #9aa0a8;
+}
+
+.statsEmpty {
+    color: #9aa0a8;
+    font-style: italic;
+}
