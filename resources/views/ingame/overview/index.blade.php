@@ -272,6 +272,37 @@
         <div class="c-right"></div>
 
         <div id="productionboxBottom">
+            <div class="statsCharts">
+                <div class="content-box-s">
+                    <div class="header"><h3>{{ __('t_ingame.stats.title') }}</h3></div>
+                    <div class="content">
+                        <div class="statsTotals">
+                            <div class="statsTotal">
+                                <span>{{ __('t_ingame.stats.ships_built') }}</span>
+                                <b>{{ number_format($stats_ships['total_built']) }}</b>
+                            </div>
+                            <div class="statsTotal">
+                                <span>{{ __('t_ingame.stats.ships_destroyed') }}</span>
+                                <b>{{ number_format($stats_ships['total_destroyed']) }}</b>
+                            </div>
+                        </div>
+
+                        @if (count($stats_scores['dates']) === 0)
+                            <p class="statsEmpty">{{ __('t_ingame.stats.no_data') }}</p>
+                        @else
+                            <h4 class="statsSubtitle">{{ __('t_ingame.stats.score_history') }}</h4>
+                            <div id="statsScoreChart" class="statsChart"></div>
+                            <div id="statsScoreLegend" class="statsLegend"></div>
+
+                            <h4 class="statsSubtitle">{{ __('t_ingame.stats.ships_history') }}</h4>
+                            <div id="statsShipChart" class="statsChart"></div>
+                            <div id="statsShipLegend" class="statsLegend"></div>
+                        @endif
+                    </div>
+                    <div class="footer"></div>
+                </div>
+            </div>
+
             <div class="productionBoxBuildings boxColumn building">
                 <div id="productionboxbuildingcomponent" class="productionboxbuilding injectedComponent parent overview">
                     <div class="content-box-s">
@@ -380,37 +411,6 @@
                         </div>
                         <div class="footer"></div>
                     </div>
-                </div>
-            </div>
-
-            <div class="statsCharts">
-                <div class="content-box-m">
-                    <div class="header"><h3>{{ __('t_ingame.stats.title') }}</h3></div>
-                    <div class="content">
-                        <div class="statsTotals">
-                            <div class="statsTotal">
-                                <span>{{ __('t_ingame.stats.ships_built') }}</span>
-                                <b>{{ number_format($stats_ships['total_built']) }}</b>
-                            </div>
-                            <div class="statsTotal">
-                                <span>{{ __('t_ingame.stats.ships_destroyed') }}</span>
-                                <b>{{ number_format($stats_ships['total_destroyed']) }}</b>
-                            </div>
-                        </div>
-
-                        @if (count($stats_scores['dates']) === 0)
-                            <p class="statsEmpty">{{ __('t_ingame.stats.no_data') }}</p>
-                        @else
-                            <h4 class="statsSubtitle">{{ __('t_ingame.stats.score_history') }}</h4>
-                            <div id="statsScoreChart" class="statsChart"></div>
-                            <div id="statsScoreLegend" class="statsLegend"></div>
-
-                            <h4 class="statsSubtitle">{{ __('t_ingame.stats.ships_history') }}</h4>
-                            <div id="statsShipChart" class="statsChart"></div>
-                            <div id="statsShipLegend" class="statsLegend"></div>
-                        @endif
-                    </div>
-                    <div class="footer"></div>
                 </div>
             </div>
 

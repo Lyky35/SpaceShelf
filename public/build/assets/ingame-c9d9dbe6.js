@@ -75426,7 +75426,9 @@ ogame.chat = {
  * plain concatenated scripts, so no chart library is loaded.
  *
  * Data is provided by the overview blade as the globals STATS_SCORE_DATA
- * and STATS_SHIP_DATA.
+ * and STATS_SHIP_DATA. The charts render inside the compact stats column
+ * next to the queue boxes, so text sizes are scaled for a ~200px-wide
+ * box (viewBox units shrink with CSS scaling).
  */
 (function () {
     'use strict';
@@ -75436,6 +75438,14 @@ ogame.chat = {
         '#4b3fbf', '#c864c8', '#8b5a2b', '#11a67f', '#d95b92',
         '#6f7fd0', '#a0a33a', '#cc7832', '#5a768f', '#9b2d5e'
     ];
+
+    var DEFAULT_OPTIONS = {
+        width: 340,
+        height: 250,
+        fontSize: 15,
+        gridLines: 3,
+        maxLabels: 3
+    };
 
     function esc(value) {
         return String(value)
@@ -75474,13 +75484,21 @@ ogame.chat = {
      *
      * series: [{name, color, values: [number|null]}]
      */
-    function renderLineChart(container, dates, series) {
-        var width = 940;
-        var height = 300;
-        var padLeft = 54;
-        var padRight = 14;
-        var padTop = 12;
-        var padBottom = 34;
+    function renderLineChart(container, dates, series, options) {
+        var opts = {};
+        for (var key in DEFAULT_OPTIONS) {
+            opts[key] = (options && options[key] !== undefined) ? options[key] : DEFAULT_OPTIONS[key];
+        }
+
+        var width = opts.width;
+        var height = opts.height;
+        var fontSize = opts.fontSize;
+        var dotRadius = Math.max(2, fontSize / 6);
+        var lineWidth = Math.max(1.5, fontSize / 7);
+        var padLeft = Math.round(fontSize * 3.2);
+        var padRight = Math.round(fontSize * 0.6);
+        var padTop = Math.round(fontSize * 0.8);
+        var padBottom = Math.round(fontSize * 2);
         var plotWidth = width - padLeft - padRight;
         var plotHeight = height - padTop - padBottom;
 
@@ -75509,17 +75527,17 @@ ogame.chat = {
         parts.push('<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="xMidYMid meet" role="img">');
 
         // Horizontal grid + y-axis labels.
-        for (var line = 0; line <= 4; line++) {
-            var value = (max / 4) * line;
+        for (var line = 0; line <= opts.gridLines; line++) {
+            var value = (max / opts.gridLines) * line;
             var gy = y(value).toFixed(1);
             parts.push('<line x1="' + padLeft + '" y1="' + gy + '" x2="' + (width - padRight) + '" y2="' + gy + '" stroke="#3a3f47" stroke-width="1"/>');
-            parts.push('<text x="' + (padLeft - 8) + '" y="' + (parseFloat(gy) + 4) + '" text-anchor="end" font-size="11" fill="#9aa0a8">' + esc(shortNumber(value)) + '</text>');
+            parts.push('<text x="' + (padLeft - 5) + '" y="' + (parseFloat(gy) + fontSize * 0.35) + '" text-anchor="end" font-size="' + fontSize + '" fill="#9aa0a8">' + esc(shortNumber(value)) + '</text>');
         }
 
-        // X-axis labels (up to six, evenly spaced).
-        var labelEvery = Math.max(1, Math.ceil(count / 6));
+        // X-axis labels (up to maxLabels, evenly spaced).
+        var labelEvery = Math.max(1, Math.ceil(count / opts.maxLabels));
         for (var i = 0; i < count; i += labelEvery) {
-            parts.push('<text x="' + x(i).toFixed(1) + '" y="' + (height - 12) + '" text-anchor="middle" font-size="11" fill="#9aa0a8">' + esc(dates[i]) + '</text>');
+            parts.push('<text x="' + x(i).toFixed(1) + '" y="' + (height - fontSize * 0.4) + '" text-anchor="middle" font-size="' + (fontSize - 2) + '" fill="#9aa0a8">' + esc(dates[i]) + '</text>');
         }
 
         // Series polylines; null values break the line.
@@ -75527,9 +75545,9 @@ ogame.chat = {
             var segment = [];
             function flush() {
                 if (segment.length === 1) {
-                    parts.push('<circle cx="' + segment[0][0] + '" cy="' + segment[0][1] + '" r="2.5" fill="' + s.color + '"/>');
+                    parts.push('<circle cx="' + segment[0][0] + '" cy="' + segment[0][1] + '" r="' + dotRadius + '" fill="' + s.color + '"/>');
                 } else if (segment.length > 1) {
-                    parts.push('<polyline fill="none" stroke="' + s.color + '" stroke-width="2" points="' + segment.map(function (p) { return p.join(','); }).join(' ') + '"/>');
+                    parts.push('<polyline fill="none" stroke="' + s.color + '" stroke-width="' + lineWidth + '" points="' + segment.map(function (p) { return p.join(','); }).join(' ') + '" stroke-linejoin="round"/>');
                 }
                 segment = [];
             }
@@ -75545,7 +75563,7 @@ ogame.chat = {
 
                 // Dots (with tooltip) when the point count stays reasonable.
                 if (count <= 250) {
-                    parts.push('<circle cx="' + px + '" cy="' + py + '" r="2.5" fill="' + s.color + '"><title>' + esc(s.name + ' — ' + dates[index] + ': ' + v) + '</title></circle>');
+                    parts.push('<circle cx="' + px + '" cy="' + py + '" r="' + dotRadius + '" fill="' + s.color + '"><title>' + esc(s.name + ' — ' + dates[index] + ': ' + v) + '</title></circle>');
                 }
             });
             flush();
