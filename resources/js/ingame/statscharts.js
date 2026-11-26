@@ -232,7 +232,9 @@
         }
 
         if (!payload || payload.dates.length === 0) {
-            container.innerHTML = '';
+            container.innerHTML = typeof STATS_EMPTY_TEXT !== 'undefined'
+                ? '<p class="statsEmpty">' + esc(STATS_EMPTY_TEXT) + '</p>'
+                : '';
             renderLegend(document.getElementById('statsScoreLegend'), []);
             return;
         }

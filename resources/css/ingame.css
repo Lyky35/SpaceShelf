@@ -51,14 +51,13 @@ TODO: Remove these at a later time if they are not needed anymore.
 <![endif]-->
  */
 /* ---------------------------------------------------------------------------
-   Highscore page statistics timeline box: below the highscore table, one
-   graph per highscore tab (see statscharts.js + highscore/index.blade).
-   Stretches the vanilla contentbox skin to the 670px content width.
+   Highscore page statistics timeline box: directly under the tab buttons,
+   above the ranking list (see statscharts.js + highscore/index.blade).
+   Stretches the vanilla contentbox skin to the container width.
    --------------------------------------------------------------------------- */
 .statsCharts {
     clear: both;
-    width: 670px;
-    margin: 15px 0 5px 0;
+    margin: 10px 0 15px 0;
 }
 
 .statsCharts .contentbox {
