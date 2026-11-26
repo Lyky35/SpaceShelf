@@ -442,6 +442,39 @@ class FleetDispatchTransportTest extends FleetDispatchTestCase
     }
 
     /**
+     * Regression: the outbound event list row must show the mission's
+     * destination coordinates in its destination column instead of
+     * repeating the origin coordinates (fork regression from bc4ffefa).
+     */
+    public function testDispatchFleetEventListOutboundRowShowsDestinationCoords(): void
+    {
+        $this->basicSetup();
+
+        $unitCollection = new UnitCollection();
+        $unitCollection->addUnit(ObjectService::getUnitObjectByMachineName('small_cargo'), 1);
+        $this->sendMissionToSecondPlanet($unitCollection, new Resources(100, 100, 0, 0));
+
+        $this->assertNotNull($this->secondPlanetService);
+        $originCoords = '[' . $this->planetService->getPlanetCoordinates()->asString() . ']';
+        $destinationCoords = '[' . $this->secondPlanetService->getPlanetCoordinates()->asString() . ']';
+
+        $response = $this->get('/ajax/fleet/eventlist/fetch');
+        $response->assertStatus(200);
+        $html = (string) $response->getContent();
+
+        // Isolate the outbound row (the return-trip row legitimately shows
+        // both coordinate pairs in swapped columns).
+        $start = strpos($html, 'data-return-flight="false"');
+        $this->assertNotFalse($start, 'Outbound event row should be present');
+        $end = strpos($html, '</tr>', $start);
+        $this->assertNotFalse($end);
+        $outboundRow = substr($html, $start, $end - $start);
+
+        $this->assertStringContainsString($destinationCoords, $outboundRow, 'Outbound row must show the destination coordinates');
+        $this->assertSame(1, substr_count($outboundRow, $originCoords), 'Origin coordinates must not be repeated in the destination column');
+    }
+
+    /**
      * Verify that an active mission towards a moon shows the moon icon and the (not yet existing) return trip in the fleet event list.
      */
     public function testDispatchFleetMoonReturnShown(): void

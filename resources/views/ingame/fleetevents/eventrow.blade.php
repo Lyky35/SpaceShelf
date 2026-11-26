@@ -250,9 +250,9 @@
             @endswitch
         </td>
         <td class="destCoords">
-            <a href="{{ route('galaxy.index', ['galaxy' => $fleet_event_row->origin_planet_coords->galaxy, 'system' => $fleet_event_row->origin_planet_coords->system]) }}"
+            <a href="{{ route('galaxy.index', ['galaxy' => $fleet_event_row->destination_planet_coords->galaxy, 'system' => $fleet_event_row->destination_planet_coords->system]) }}"
                target="_top">
-                [{{ $fleet_event_row->origin_planet_coords->asString() }}]
+                [{{ $fleet_event_row->destination_planet_coords->asString() }}]
             </a>
         </td>
         <td class="sendMail">
