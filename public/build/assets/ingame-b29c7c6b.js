@@ -75426,9 +75426,8 @@ ogame.chat = {
  * plain concatenated scripts, so no chart library is loaded.
  *
  * Data is provided by the overview blade as the globals STATS_SCORE_DATA
- * and STATS_SHIP_DATA. The charts render inside the compact stats column
- * next to the queue boxes, so text sizes are scaled for a ~200px-wide
- * box (viewBox units shrink with CSS scaling).
+ * and STATS_SHIP_DATA. The charts render full width inside the 670px middle
+ * column stats box (contentbox skin), so the viewBox matches that width.
  */
 (function () {
     'use strict';
@@ -75440,11 +75439,11 @@ ogame.chat = {
     ];
 
     var DEFAULT_OPTIONS = {
-        width: 340,
-        height: 250,
-        fontSize: 15,
-        gridLines: 3,
-        maxLabels: 3
+        width: 640,
+        height: 260,
+        fontSize: 12,
+        gridLines: 4,
+        maxLabels: 6
     };
 
     function esc(value) {

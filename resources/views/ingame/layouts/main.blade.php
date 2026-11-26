@@ -1717,6 +1717,12 @@ However, the Space Dock's engineers think that some of the remains can be salvag
                     // Chat speech bubble icon now links to /chat page directly.
                 });</script>            <!-- END JAVASCRIPT -->
 
+            {{-- Statistics timeline box, below the fleet events (Events/
+                 Missions) box in the middle column. Overview page only:
+                 the data variables are provided by OverviewController. --}}
+            @isset($stats_scores)
+                @include('ingame.shared.stats-charts')
+            @endisset
 
             @yield('content')
         </div>
