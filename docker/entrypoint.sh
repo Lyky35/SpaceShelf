@@ -36,7 +36,16 @@ if [ "$role" = "scheduler" ]; then
         sleep 60
     done
 elif [ "$role" = "queue" ]; then
-      su -s /bin/sh -c "php /var/www/artisan queue:work --verbose --no-interaction" www-data
+      # queue:work keeps the booted app (every game class) in memory between
+      # jobs, so a long-lived worker silently keeps running the code from its
+      # start - volume-mounted deploys never reach it. Bot fleet processing
+      # (combat stats, shipyard awards) runs in this worker, so stale code
+      # means lost counters. --max-time recycles the worker every two minutes;
+      # the loop keeps the container alive across each recycle.
+      while true; do
+          su -s /bin/sh -c "php /var/www/artisan queue:work --verbose --no-interaction --max-time=120" www-data
+          sleep 2
+      done
 elif [ "$role" = "reverb" ]; then
     su -s /bin/sh -c "php /var/www/artisan reverb:start --host=\"${REVERB_SERVER_HOST:-0.0.0.0}\" --port=\"${REVERB_SERVER_PORT:-8090}\"" www-data
 elif [ "$role" = "app" ]; then
