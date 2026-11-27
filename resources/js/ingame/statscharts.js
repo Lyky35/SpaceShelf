@@ -34,6 +34,21 @@
     var TYPE_KEY_BY_REL = {'0': 'general', '1': 'economy', '2': 'research', '3': 'military'};
     var SUBNAV_KEY_BY_REL = {'5': 'military_built', '6': 'military_destroyed', '4': 'military_lost', '7': 'honor'};
 
+    /**
+     * Chart options scaled to the container's real pixel width so the
+     * side column graphs fit the page (viewBox matches client width, so
+     * SVG text renders at natural size instead of being shrunk).
+     */
+    function chartOptionsFor(container) {
+        var width = container.clientWidth || 280;
+        return {
+            width: width,
+            height: Math.max(170, Math.min(230, Math.round(width * 0.75))),
+            fontSize: width < 340 ? 11 : 12,
+            maxLabels: width < 340 ? 4 : 6
+        };
+    }
+
     function esc(value) {
         return String(value)
             .replace(/&/g, '&amp;')
@@ -223,7 +238,6 @@
         if (!container || typeof STATS_TIMELINES === 'undefined') {
             return;
         }
-
         var key = currentTimelineKey();
         var payload = STATS_TIMELINES[key];
         var subtitle = document.getElementById('statsChartSubtitle');
@@ -242,7 +256,7 @@
         var scoreSeries = payload.series.map(function (s, index) {
             return {name: s.name, bot: s.bot, color: PALETTE[index % PALETTE.length], values: s.values};
         });
-        renderLineChart(container, payload.dates, scoreSeries);
+        renderLineChart(container, payload.dates, scoreSeries, chartOptionsFor(container));
         renderLegend(document.getElementById('statsScoreLegend'), scoreSeries);
     }
 
@@ -262,7 +276,7 @@
             {name: labels.built || 'Ships built', color: '#2fb42f', values: ships.built},
             {name: labels.destroyed || 'Ships destroyed', color: '#e6262b', values: ships.destroyed}
         ];
-        renderLineChart(container, ships.dates, shipSeries);
+        renderLineChart(container, ships.dates, shipSeries, chartOptionsFor(container));
         renderLegend(document.getElementById('statsShipLegend'), shipSeries);
     }
 
@@ -283,6 +297,18 @@
             if (btn) {
                 window.setTimeout(renderScoreChart, 0);
             }
+        });
+
+        // Keep the side column graphs fitted to the page on resize.
+        var resizeTimer = null;
+        window.addEventListener('resize', function () {
+            if (resizeTimer) {
+                window.clearTimeout(resizeTimer);
+            }
+            resizeTimer = window.setTimeout(function () {
+                renderScoreChart();
+                renderShipChart();
+            }, 150);
         });
     }
 

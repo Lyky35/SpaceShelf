@@ -93,52 +93,6 @@
                         <br class="clearfloat">
                     </div>
 
-                    {{-- SpaceShelf addition: daily score timeline graphs, one
-                         per highscore tab (points/economy/research/military
-                         incl. its sub-categories, plus alliances). Placed
-                         directly under the tab buttons and above the ranking
-                         list so the graph for the active tab is always
-                         visible; it lives outside #stat_list_content so the
-                         AJAX tab switching never replaces it, and
-                         statscharts.js re-renders it on every tab click. --}}
-                    <div class="statsCharts">
-                        <div class="contentbox">
-                            <div class="header">
-                                <span class="c-left"></span>
-                                <span class="c-right"></span>
-                                <h3>{{ __('t_ingame.stats.title') }}</h3>
-                            </div>
-                            <div class="content">
-                                <div class="statsTotals">
-                                    <div class="statsTotal">
-                                        <span>{{ __('t_ingame.stats.ships_built') }}</span>
-                                        <b>{{ number_format($stats_timelines['ships']['total_built']) }}</b>
-                                    </div>
-                                    <div class="statsTotal">
-                                        <span>{{ __('t_ingame.stats.ships_destroyed') }}</span>
-                                        <b>{{ number_format($stats_timelines['ships']['total_destroyed']) }}</b>
-                                    </div>
-                                </div>
-
-                                @if (count($stats_timelines['ships']['dates']) === 0)
-                                    <p class="statsEmpty">{{ __('t_ingame.stats.no_data') }}</p>
-                                @else
-                                    <h4 class="statsSubtitle" id="statsChartSubtitle">{{ $stats_subtitles['player_general'] }}</h4>
-                                    <div id="statsScoreChart" class="statsChart"></div>
-                                    <div id="statsScoreLegend" class="statsLegend"></div>
-
-                                    <h4 class="statsSubtitle">{{ __('t_ingame.stats.ships_history') }}</h4>
-                                    <div id="statsShipChart" class="statsChart"></div>
-                                    <div id="statsShipLegend" class="statsLegend"></div>
-                                @endif
-                            </div>
-                            <div class="footer">
-                                <span class="c-left"></span>
-                                <span class="c-right"></span>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="" id="stat_list_content">
                         <!-- start dynamic highscore paging content -->
                         {!! $initialContent !!}
@@ -148,16 +102,62 @@
             </div>
             <div class="footer"></div>
         </div>
-
-        <script type="text/javascript">
-            var STATS_TIMELINES = {!! json_encode($stats_timelines, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
-            var STATS_SUBTITLES = {!! json_encode($stats_subtitles, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
-            var STATS_SHIP_LABELS = {
-                built: '{{ __('t_ingame.stats.ships_built') }}',
-                destroyed: '{{ __('t_ingame.stats.ships_destroyed') }}'
-            };
-            var STATS_EMPTY_TEXT = '{{ __('t_ingame.stats.no_data') }}';
-        </script>
     </div>
 
+@endsection
+
+@section('rightcolumn')
+    {{-- SpaceShelf addition: daily score timeline graphs in the right
+         column, one per highscore tab (points/economy/research/military
+         incl. its sub-categories, plus alliances). Outside #stat_list_content,
+         so AJAX tab switching never replaces it; statscharts.js re-renders
+         the active tab's graph on every tab click and scales the SVGs to
+         the column width. --}}
+    <div class="statsCharts">
+        <div class="contentbox">
+            <div class="header">
+                <span class="c-left"></span>
+                <span class="c-right"></span>
+                <h3>{{ __('t_ingame.stats.title') }}</h3>
+            </div>
+            <div class="content">
+                <div class="statsTotals">
+                    <div class="statsTotal">
+                        <span>{{ __('t_ingame.stats.ships_built') }}</span>
+                        <b>{{ number_format($stats_timelines['ships']['total_built']) }}</b>
+                    </div>
+                    <div class="statsTotal">
+                        <span>{{ __('t_ingame.stats.ships_destroyed') }}</span>
+                        <b>{{ number_format($stats_timelines['ships']['total_destroyed']) }}</b>
+                    </div>
+                </div>
+
+                @if (count($stats_timelines['ships']['dates']) === 0)
+                    <p class="statsEmpty">{{ __('t_ingame.stats.no_data') }}</p>
+                @else
+                    <h4 class="statsSubtitle" id="statsChartSubtitle">{{ $stats_subtitles['player_general'] }}</h4>
+                    <div id="statsScoreChart" class="statsChart"></div>
+                    <div id="statsScoreLegend" class="statsLegend"></div>
+
+                    <h4 class="statsSubtitle">{{ __('t_ingame.stats.ships_history') }}</h4>
+                    <div id="statsShipChart" class="statsChart"></div>
+                    <div id="statsShipLegend" class="statsLegend"></div>
+                @endif
+            </div>
+            <div class="footer">
+                <span class="c-left"></span>
+                <span class="c-right"></span>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var STATS_TIMELINES = {!! json_encode($stats_timelines, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+        var STATS_SUBTITLES = {!! json_encode($stats_subtitles, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+        var STATS_SHIP_LABELS = {
+            built: '{{ __('t_ingame.stats.ships_built') }}',
+            destroyed: '{{ __('t_ingame.stats.ships_destroyed') }}'
+        };
+        var STATS_EMPTY_TEXT = '{{ __('t_ingame.stats.no_data') }}';
+    </script>
 @endsection

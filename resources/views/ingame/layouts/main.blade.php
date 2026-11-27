@@ -1867,6 +1867,7 @@ However, the Space Dock's engineers think that some of the remains can be salvag
                 </div>
             </div>
         </div>
+        @yield('rightcolumn')
     </div>
 </div>
 
