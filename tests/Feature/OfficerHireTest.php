@@ -80,6 +80,29 @@ class OfficerHireTest extends IsolatedAccountTestCase
         $this->assertStringContainsString('admiral js_hideTipOnMobile on', (string) $response->getContent());
     }
 
+    public function testPremiumPageStaffBenefitsToggleWithAllFiveOfficers(): void
+    {
+        // Without the full staff, the Commanding Staff benefit list renders
+        // with the red "off" cross sprites.
+        $response = $this->get('/premium');
+        $response->assertStatus(200);
+        $this->assertStringContainsString('class="allOfficers off"', (string) $response->getContent());
+
+        $user = $this->user();
+        foreach (['commander', 'admiral', 'engineer', 'geologist', 'technocrat'] as $officer) {
+            $user->{$officer . '_expires_at'} = now()->addDays(3);
+        }
+        $user->save();
+        $this->actingAs($user);
+
+        // With all five active the benefit list switches to the green check sprites.
+        $response = $this->get('/premium');
+        $response->assertStatus(200);
+        $response->assertSee('5 of 5');
+        $this->assertStringContainsString('class="allOfficers on"', (string) $response->getContent());
+        $this->assertStringNotContainsString('class="allOfficers off"', (string) $response->getContent());
+    }
+
     // ==================== Hire flow ====================
 
     public function testHireOfficerDebitsDarkMatterAndSetsExpiry(): void
