@@ -53,12 +53,21 @@ TODO: Remove these at a later time if they are not needed anymore.
 /* ---------------------------------------------------------------------------
    Highscore page statistics timeline graphs: side box in the right column
    (under the planet bar, see statscharts.js + highscore/index.blade). The
-   right column is normally just the 150px planet bar; on the highscore page
-   it widens to host the graphs, and statscharts.js scales the SVGs to the
-   measured column width so they always fit the page.
+   990px page is exactly filled by menu + content + 150px planet column, so
+   on this page only the page and the right column widen (planet bar keeps
+   its size and stays pinned to the top right); statscharts.js scales the
+   SVGs to the measured column width so they always fit.
    --------------------------------------------------------------------------- */
+#highscore #pageContent {
+    width: 1160px;
+}
+
 #highscore #right {
     width: 316px;
+}
+
+#highscore #planetbarcomponent {
+    float: right;
 }
 
 .statsCharts {
