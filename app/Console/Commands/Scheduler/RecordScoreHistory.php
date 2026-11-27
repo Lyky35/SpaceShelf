@@ -7,7 +7,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use OGame\Services\ScoreHistoryService;
 
-#[Description('Records the daily snapshot of player scores and ship stats used by the overview timeline charts.')]
+#[Description('Records the score history snapshot for today (one row per day, refreshed hourly) used by the highscore timeline charts.')]
 #[Signature('spaceshelf:scheduler:record-score-history')]
 class RecordScoreHistory extends Command
 {

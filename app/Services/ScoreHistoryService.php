@@ -13,12 +13,13 @@ use OGame\Bots\BotRegistry;
  * military incl. its sub-categories, and alliances).
  *
  * Snapshots copy the live highscore tables plus the raw ship counters on
- * the users table once per day; the graphs therefore cover everything
- * since the first snapshot was taken. Ships built/destroyed are raw unit
- * amounts of ship type (defense excluded); note that in ACS fights every
- * participating attacker is credited with the full per-battle losses, so
- * the server-wide "destroyed" total can slightly overcount (same
- * convention as the military destroyed highscore).
+ * the users table; the graphs therefore cover everything since the first
+ * snapshot was taken. One row per player per day is kept (matching the
+ * vanilla daily highscore history) and the scheduler refreshes it hourly.
+ * Ships built/destroyed are raw unit amounts of ship type (defense excluded);
+ * note that in ACS fights every participating attacker is credited with the
+ * full per-battle losses, so the server-wide "destroyed" total can slightly
+ * overcount (same convention as the military destroyed highscore).
  */
 class ScoreHistoryService
 {

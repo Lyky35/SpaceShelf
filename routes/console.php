@@ -30,7 +30,10 @@ Schedule::command(GenerateAllianceHighscores::class)->everyFiveMinutes();
 Schedule::command(GenerateHighscoreRanks::class)->everyFiveMinutes();
 
 // Daily snapshot of scores and ship stats for the overview timeline charts
-Schedule::command(RecordScoreHistory::class)->dailyAt('00:05')->withoutOverlapping();
+// One row per player per day, but refreshed every hour so today's graph
+// point tracks live scores during the day instead of freezing at whatever
+// state the 00:05 run happened to catch.
+Schedule::command(RecordScoreHistory::class)->hourly()->withoutOverlapping();
 
 // Reset empty debris fields weekly on Monday at 1:00 AM
 Schedule::command(ResetDebrisFields::class)->weeklyOn(1, '1:00');
